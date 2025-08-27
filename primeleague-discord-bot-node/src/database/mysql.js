@@ -148,7 +148,7 @@ pool.getConnection()
 async function getDiscordLinksById(discordId) {
     try {
         const [rows] = await pool.execute(
-            `SELECT id, discord_id, player_id, player_name, is_primary, verified, 
+            `SELECT discord_id, player_id, player_name, is_primary, verified, 
                     verify_code, verify_expires_at, linked_at, verified_at
              FROM discord_links 
              WHERE discord_id = ? 

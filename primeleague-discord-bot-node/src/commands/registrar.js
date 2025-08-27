@@ -140,7 +140,7 @@ module.exports = {
                         `Digite \`/verify ${verifyCode}\` **no servidor Minecraft**\n\n` +
                         '**📋 Próximos Passos:**\n' +
                         '1. ✅ Complete a verificação no servidor\n' +
-                        '2. 💎 Adquira uma assinatura individual com `/renovar`\n' +
+                        '2. 💎 Adquira uma assinatura individual com `/primeira-conta`\n' +
                         '3. 📋 Use `/minhas-contas` para gerenciar seu portfólio\n\n' +
                         '**⏱️ Código expira em 5 minutos**'
             });
