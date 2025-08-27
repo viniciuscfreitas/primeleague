@@ -6,6 +6,7 @@
 --            UUID compatibility fix aplicado
 --            SSOT (Single Source of Truth) implementado
 --            Shared subscriptions funcionando
+--            TODAS as tabelas do sistema incluídas
 -- =========================================================
 
 -- =====================================================
@@ -103,16 +104,232 @@ CREATE TABLE `punishments` (
   `pardoned_at` TIMESTAMP NULL DEFAULT NULL,
   `pardon_reason` TEXT DEFAULT NULL,
   PRIMARY KEY (`id`),
-  KEY `idx_target_player` (`target_player_id`),
-  KEY `idx_type` (`type`),
-  KEY `idx_is_active` (`is_active`),
-  KEY `idx_expires_at` (`expires_at`),
-  CONSTRAINT `fk_punishments_target` 
+  KEY `idx_punishments_target_type_active` (`target_player_id`, `type`, `is_active`),
+  KEY `idx_punishments_expires_at` (`expires_at`),
+  KEY `idx_punishments_target_name` (`target_name`),
+  KEY `idx_punishments_author_name` (`author_name`),
+  CONSTRAINT `fk_punishments_target_player` 
     FOREIGN KEY (`target_player_id`) REFERENCES `player_data` (`player_id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `fk_punishments_author` 
+  CONSTRAINT `fk_punishments_author_player` 
     FOREIGN KEY (`author_player_id`) REFERENCES `player_data` (`player_id`) ON DELETE SET NULL ON UPDATE CASCADE,
-  CONSTRAINT `fk_punishments_pardoned_by` 
+  CONSTRAINT `fk_punishments_pardoned_by_player` 
     FOREIGN KEY (`pardoned_by_player_id`) REFERENCES `player_data` (`player_id`) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- TABELA DE TICKETS (ADMIN)
+-- =====================================================
+
+CREATE TABLE `tickets` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `reporter_player_id` INT NOT NULL,
+  `reporter_name` VARCHAR(16) NOT NULL,
+  `target_player_id` INT NOT NULL,
+  `target_name` VARCHAR(16) NOT NULL,
+  `reason` TEXT NOT NULL,
+  `status` ENUM('OPEN', 'CLAIMED', 'CLOSED') NOT NULL DEFAULT 'OPEN',
+  `priority` ENUM('LOW', 'MEDIUM', 'HIGH', 'URGENT') NOT NULL DEFAULT 'MEDIUM',
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `claimed_by_player_id` INT DEFAULT NULL,
+  `claimed_by_name` VARCHAR(16) DEFAULT NULL,
+  `claimed_at` TIMESTAMP NULL DEFAULT NULL,
+  `closed_at` TIMESTAMP NULL DEFAULT NULL,
+  `resolution` TEXT DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_tickets_status` (`status`),
+  KEY `idx_tickets_priority` (`priority`),
+  KEY `idx_tickets_created_at` (`created_at`),
+  KEY `idx_tickets_reporter` (`reporter_player_id`),
+  KEY `idx_tickets_target` (`target_player_id`),
+  CONSTRAINT `fk_tickets_reporter_player` 
+    FOREIGN KEY (`reporter_player_id`) REFERENCES `player_data` (`player_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_tickets_target_player` 
+    FOREIGN KEY (`target_player_id`) REFERENCES `player_data` (`player_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_tickets_claimed_by_player` 
+    FOREIGN KEY (`claimed_by_player_id`) REFERENCES `player_data` (`player_id`) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- TABELA DE STAFF VANISH (ADMIN)
+-- =====================================================
+
+CREATE TABLE `staff_vanish` (
+  `player_id` INT NOT NULL,
+  `enabled` TINYINT(1) NOT NULL DEFAULT 0,
+  `enabled_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `enabled_by_player_id` INT DEFAULT NULL,
+  PRIMARY KEY (`player_id`),
+  CONSTRAINT `fk_staff_vanish_player` 
+    FOREIGN KEY (`player_id`) REFERENCES `player_data` (`player_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_staff_vanish_enabled_by_player` 
+    FOREIGN KEY (`enabled_by_player_id`) REFERENCES `player_data` (`player_id`) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- TABELA DE WHITELIST (ACESSO ADMINISTRATIVO)
+-- =====================================================
+
+CREATE TABLE `whitelist_players` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `player_id` INT NOT NULL,
+  `player_name` VARCHAR(16) NOT NULL,
+  `added_by_player_id` INT NOT NULL,
+  `added_by_name` VARCHAR(16) NOT NULL,
+  `added_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `reason` VARCHAR(255) NOT NULL,
+  `is_active` TINYINT(1) NOT NULL DEFAULT 1,
+  `removed_by_player_id` INT DEFAULT NULL,
+  `removed_by_name` VARCHAR(16) DEFAULT NULL,
+  `removed_at` TIMESTAMP NULL DEFAULT NULL,
+  `removal_reason` VARCHAR(255) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_whitelist_player_id_active` (`player_id`, `is_active`),
+  KEY `idx_whitelist_is_active` (`is_active`),
+  KEY `idx_whitelist_added_at` (`added_at`),
+  CONSTRAINT `fk_whitelist_player` 
+    FOREIGN KEY (`player_id`) REFERENCES `player_data` (`player_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_whitelist_added_by_player` 
+    FOREIGN KEY (`added_by_player_id`) REFERENCES `player_data` (`player_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_whitelist_removed_by_player` 
+    FOREIGN KEY (`removed_by_player_id`) REFERENCES `player_data` (`player_id`) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- TABELAS DE CLÃS E COMUNICAÇÃO
+-- =====================================================
+
+-- Tabela de Clãs
+CREATE TABLE `clans` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `tag` VARCHAR(5) NOT NULL,
+  `name` VARCHAR(32) NOT NULL,
+  `founder_player_id` INT NOT NULL,
+  `creation_date` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `friendly_fire_enabled` TINYINT(1) NOT NULL DEFAULT 0,
+  `penalty_points` INT NOT NULL DEFAULT 0,
+  `ranking_points` INT NOT NULL DEFAULT 1000,
+  `active_sanction_tier` INT NOT NULL DEFAULT 0,
+  `sanction_expires_at` TIMESTAMP NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_clans_tag` (`tag`),
+  UNIQUE KEY `uk_clans_name` (`name`),
+  KEY `idx_clans_founder_player_id` (`founder_player_id`),
+  KEY `idx_clans_penalty_points` (`penalty_points`),
+  KEY `idx_clans_ranking_points` (`ranking_points`),
+  KEY `idx_clans_creation_date` (`creation_date`),
+  CONSTRAINT `fk_clans_founder_player` 
+    FOREIGN KEY (`founder_player_id`) REFERENCES `player_data` (`player_id`) ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Tabela de Relação Jogador-Clã (Fonte Única de Afiliação)
+CREATE TABLE `clan_players` (
+  `player_id` INT NOT NULL,
+  `clan_id` INT NOT NULL,
+  `role` ENUM('LEADER', 'CO_LEADER', 'OFFICER', 'MEMBER') NOT NULL DEFAULT 'MEMBER',
+  `join_date` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `kills` INT NOT NULL DEFAULT 0,
+  `deaths` INT NOT NULL DEFAULT 0,
+  PRIMARY KEY (`player_id`),
+  KEY `idx_clan_players_clan_id` (`clan_id`),
+  KEY `idx_clan_players_role` (`role`),
+  KEY `idx_clan_players_join_date` (`join_date`),
+  CONSTRAINT `fk_clan_players_player` 
+    FOREIGN KEY (`player_id`) REFERENCES `player_data` (`player_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_clan_players_clan` 
+    FOREIGN KEY (`clan_id`) REFERENCES `clans` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Tabela de Alianças entre Clãs
+CREATE TABLE `clan_alliances` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `clan1_id` INT NOT NULL,
+  `clan2_id` INT NOT NULL,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `created_by_player_id` INT NOT NULL,
+  `status` ENUM('ACTIVE', 'PENDING', 'CANCELLED') NOT NULL DEFAULT 'PENDING',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_clan_alliances_unique` (`clan1_id`, `clan2_id`),
+  KEY `idx_clan_alliances_status` (`status`),
+  CONSTRAINT `fk_clan_alliances_clan1` 
+    FOREIGN KEY (`clan1_id`) REFERENCES `clans` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_clan_alliances_clan2` 
+    FOREIGN KEY (`clan2_id`) REFERENCES `clans` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_clan_alliances_created_by` 
+    FOREIGN KEY (`created_by_player_id`) REFERENCES `player_data` (`player_id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- TABELAS DE COMUNICAÇÃO
+-- =====================================================
+
+-- Tabela de Logs de Chat (Sistema de Comunicação)
+CREATE TABLE `chat_logs` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `timestamp` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `channel_type` ENUM('GLOBAL', 'LOCAL', 'CLAN', 'ALLY', 'PRIVATE', 'STAFF') NOT NULL,
+  `sender_player_id` INT NOT NULL,
+  `sender_name` VARCHAR(16) NOT NULL,
+  `receiver_player_id` INT NULL DEFAULT NULL,
+  `receiver_name` VARCHAR(16) NULL DEFAULT NULL,
+  `clan_id` INT NULL DEFAULT NULL,
+  `message_content` TEXT NOT NULL,
+  `is_deleted` TINYINT(1) NOT NULL DEFAULT 0,
+  `deleted_by_player_id` INT NULL DEFAULT NULL,
+  `deleted_at` TIMESTAMP NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_chat_logs_timestamp` (`timestamp`),
+  KEY `idx_chat_logs_channel_type` (`channel_type`),
+  KEY `idx_chat_logs_sender` (`sender_player_id`),
+  KEY `idx_chat_logs_receiver` (`receiver_player_id`),
+  KEY `idx_chat_logs_clan` (`clan_id`),
+  KEY `idx_chat_logs_is_deleted` (`is_deleted`),
+  CONSTRAINT `fk_chat_logs_sender` 
+    FOREIGN KEY (`sender_player_id`) REFERENCES `player_data` (`player_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_chat_logs_receiver` 
+    FOREIGN KEY (`receiver_player_id`) REFERENCES `player_data` (`player_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_chat_logs_clan` 
+    FOREIGN KEY (`clan_id`) REFERENCES `clans` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_chat_logs_deleted_by` 
+    FOREIGN KEY (`deleted_by_player_id`) REFERENCES `player_data` (`player_id`) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- SISTEMA DE NOTIFICAÇÕES
+-- =====================================================
+
+-- Tabela de Notificações para Serviços Externos (Core)
+CREATE TABLE `server_notifications` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `action_type` VARCHAR(50) NOT NULL,
+  `payload` TEXT NOT NULL,
+  `processed` TINYINT(1) NOT NULL DEFAULT 0,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_server_notifications_processed` (`processed`),
+  KEY `idx_server_notifications_action_type` (`action_type`),
+  KEY `idx_server_notifications_created_at` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- TABELA DE LOGS DE ECONOMIA (AUDITORIA)
+-- =====================================================
+
+CREATE TABLE `economy_logs` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `player_id` INT NOT NULL,
+  `change_type` ENUM('CREDIT', 'DEBIT', 'ADMIN_GIVE', 'ADMIN_TAKE', 'ADMIN_SET', 'PLAYER_SHOP_SALE', 'PLAYER_SHOP_PURCHASE', 'ADMIN_SHOP_PURCHASE', 'PLAYER_TRANSFER', 'CLAN_BANK_DEPOSIT', 'CLAN_BANK_WITHDRAW', 'CLAN_TAX_COLLECTION', 'SYSTEM_REWARD', 'SYSTEM_PENALTY', 'BOUNTY_REWARD', 'BOUNTY_PAYMENT', 'EVENT_REWARD', 'TOURNAMENT_PRIZE', 'OTHER') NOT NULL,
+  `amount` DECIMAL(15,2) NOT NULL,
+  `balance_before` DECIMAL(15,2) NOT NULL,
+  `new_balance` DECIMAL(15,2) NOT NULL,
+  `reason` VARCHAR(100) NOT NULL,
+  `context_info` TEXT NULL,
+  `related_player_id` INT NULL,
+  `timestamp` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_economy_logs_player_id` (`player_id`),
+  KEY `idx_economy_logs_reason` (`reason`),
+  CONSTRAINT `fk_economy_logs_player` FOREIGN KEY (`player_id`) REFERENCES `player_data`(`player_id`),
+  CONSTRAINT `fk_economy_logs_related_player` FOREIGN KEY (`related_player_id`) REFERENCES `player_data`(`player_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =====================================================
@@ -129,6 +346,22 @@ CREATE TABLE `server_stats` (
   PRIMARY KEY (`id`),
   KEY `idx_recorded_at` (`recorded_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- DADOS INICIAIS ESSENCIAIS
+-- =====================================================
+
+-- Inserir o CONSOLE (ESSENCIAL para funcionamento da whitelist)
+INSERT INTO `player_data` (`player_id`, `uuid`, `name`, `elo`, `money`, `status`) 
+VALUES (0, '00000000-0000-0000-0000-000000000000', 'CONSOLE', 0, 0.00, 'ACTIVE');
+
+-- Jogador inicial do sistema (opcional)
+INSERT IGNORE INTO `player_data` (`uuid`, `name`, `elo`, `money`, `status`) 
+VALUES ('7c42729a-60a2-abfb-7aec-b4dd1c8ffd93', 'SYSTEM', 0, 0.00, 'ACTIVE');
+
+-- Inserir estatísticas iniciais
+INSERT INTO `server_stats` (`total_players`, `online_players`, `total_matches`, `total_revenue`) 
+VALUES (0, 0, 0, 0.00);
 
 -- =====================================================
 -- STORED PROCEDURES
@@ -200,6 +433,10 @@ BEGIN
     WHERE expires_at < NOW() 
     AND is_active = 1;
     
+    -- Limpeza de notificações processadas antigas (mais de 30 dias)
+    DELETE FROM `server_notifications` 
+    WHERE `processed` = 1 AND `created_at` < DATE_SUB(NOW(), INTERVAL 30 DAY);
+    
     SELECT ROW_COUNT() as cleaned_records;
 END //
 
@@ -207,22 +444,35 @@ END //
 CREATE PROCEDURE `GetServerStats`()
 BEGIN
     SELECT 
-        (SELECT COUNT(*) FROM player_data WHERE status = 'ACTIVE') as total_active_players,
-        (SELECT COUNT(*) FROM discord_users WHERE subscription_expires_at > NOW()) as active_subscriptions,
-        (SELECT COUNT(*) FROM discord_links WHERE verified = 1) as verified_links,
-        (SELECT SUM(money) FROM player_data) as total_economy,
-        (SELECT COUNT(*) FROM punishments WHERE is_active = 1) as active_punishments;
+        'player_data' as tabela,
+        COUNT(*) as total_registros,
+        COUNT(CASE WHEN status = 'ACTIVE' THEN 1 END) as jogadores_ativos,
+        COUNT(CASE WHEN status = 'BANNED' THEN 1 END) as jogadores_banidos
+    FROM player_data
+    UNION ALL
+    SELECT 
+        'discord_users' as tabela,
+        COUNT(*) as total_registros,
+        COUNT(CASE WHEN donor_tier > 0 THEN 1 END) as doadores_ativos,
+        COUNT(CASE WHEN subscription_expires_at > NOW() THEN 1 END) as assinaturas_ativas
+    FROM discord_users
+    UNION ALL
+    SELECT 
+        'clans' as tabela,
+        COUNT(*) as total_registros,
+        COUNT(CASE WHEN penalty_points = 0 THEN 1 END) as clans_sem_penalidade,
+        COUNT(CASE WHEN penalty_points > 0 THEN 1 END) as clans_com_penalidade
+    FROM clans
+    UNION ALL
+    SELECT 
+        'whitelist_players' as tabela,
+        COUNT(*) as total_registros,
+        COUNT(CASE WHEN is_active = 1 THEN 1 END) as whitelist_ativos,
+        COUNT(CASE WHEN is_active = 0 THEN 1 END) as whitelist_inativos
+    FROM whitelist_players;
 END //
 
 DELIMITER ;
-
--- =====================================================
--- DADOS INICIAIS
--- =====================================================
-
--- Inserir estatísticas iniciais
-INSERT INTO `server_stats` (`total_players`, `online_players`, `total_matches`, `total_revenue`) 
-VALUES (0, 0, 0, 0.00);
 
 -- =====================================================
 -- ÍNDICES ADICIONAIS PARA PERFORMANCE
@@ -291,6 +541,32 @@ SELECT
     COUNT(CASE WHEN subscription_expires_at <= NOW() OR subscription_expires_at IS NULL THEN 1 END) as expired_subscribers
 FROM discord_users
 GROUP BY subscription_type;
+
+-- =====================================================
+-- VERIFICAÇÃO FINAL
+-- =====================================================
+
+-- Verificar se o CONSOLE foi inserido corretamente
+SELECT 
+    'VERIFICACAO FINAL:' as info,
+    'CONSOLE player_id = 0 existe na player_data' as resultado
+FROM player_data 
+WHERE player_id = 0;
+
+-- Verificar estrutura das tabelas principais
+SELECT 
+    'ESTRUTURA CRIADA:' as info,
+    COUNT(*) as total_tabelas
+FROM information_schema.tables 
+WHERE table_schema = 'primeleague';
+
+-- Verificar foreign keys
+SELECT 
+    'FOREIGN KEYS:' as info,
+    COUNT(*) as total_foreign_keys
+FROM information_schema.key_column_usage 
+WHERE table_schema = 'primeleague' 
+  AND referenced_table_name IS NOT NULL;
 
 -- =====================================================
 -- FIM DO SCHEMA
