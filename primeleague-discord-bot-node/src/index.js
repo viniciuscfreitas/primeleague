@@ -106,15 +106,19 @@ client.on('interactionCreate', async interaction => {
     } catch (error) {
         console.error('[Bot] Erro ao processar interação:', error);
         
-        const errorMessage = {
-            content: '❌ **Erro interno:** Ocorreu um erro ao processar esta ação.',
-            ephemeral: true
-        };
+        try {
+            const errorMessage = {
+                content: '❌ **Erro interno:** Ocorreu um erro ao processar esta ação.',
+                ephemeral: true
+            };
 
-        if (interaction.replied || interaction.deferred) {
-            await interaction.editReply(errorMessage);
-        } else {
-            await interaction.reply(errorMessage);
+            if (interaction.replied || interaction.deferred) {
+                await interaction.editReply(errorMessage);
+            } else {
+                await interaction.reply(errorMessage);
+            }
+        } catch (replyError) {
+            console.error('[Bot] Erro ao enviar mensagem de erro:', replyError);
         }
     }
 });

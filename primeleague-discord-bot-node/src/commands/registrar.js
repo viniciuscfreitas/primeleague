@@ -76,7 +76,7 @@ module.exports = {
                         });
                     } else {
                         // Conta vinculada mas não verificada - mostrar código
-                        const verificationInfo = await getVerificationStatus(existingAccount.discord_id, nickname);
+                        const verificationInfo = await getVerificationStatus(existingAccount.discord_id);
                         if (verificationInfo && verificationInfo.verify_code) {
                             return interaction.editReply({
                                 content: `⏳ **Verificação Pendente**\n\n` +
@@ -111,7 +111,7 @@ module.exports = {
             const verifyCode = await generateVerifyCode();
             
             // Criar registro na tabela discord_links
-            const linkResult = await createDiscordLink(discordId, player.uuid, player.name, verifyCode);
+            const linkResult = await createDiscordLink(discordId, player.player_id, player.name, verifyCode);
             if (!linkResult) {
                 return interaction.editReply({
                     content: '❌ **Erro:** Falha ao iniciar registro. Tente novamente.'
@@ -119,7 +119,8 @@ module.exports = {
             }
 
             // Criar notificação para o servidor Minecraft
-            await createServerNotification('PORTFOLIO_VERIFY_REQUEST', player.name, {
+            await createServerNotification('PORTFOLIO_VERIFY_REQUEST', {
+                player_name: player.name,
                 code: verifyCode,
                 discord_id: discordId,
                 discord_user: interaction.user.tag,
