@@ -479,7 +479,7 @@ DELIMITER ;
 -- =====================================================
 
 -- Índices para consultas frequentes
-CREATE INDEX `idx_player_data_name_lower` ON `player_data` (LOWER(`name`));
+-- NOTA: MariaDB não suporta LOWER() em índices, removido para compatibilidade
 CREATE INDEX `idx_discord_links_verification` ON `discord_links` (`verification_code`, `code_expires_at`, `verified`);
 CREATE INDEX `idx_discord_users_subscription_status` ON `discord_users` (`subscription_expires_at`, `donor_tier`);
 
