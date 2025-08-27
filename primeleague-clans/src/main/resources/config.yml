@@ -1,0 +1,150 @@
+# =====================================================
+# CONFIGURACAO DO MODULO DE CLAS - PRIME LEAGUE
+# =====================================================
+
+# Configuracoes Gerais
+general:
+  # Tag máxima de clã
+  max_clan_tag_length: 5
+  # Nome máximo de clã
+  max_clan_name_length: 32
+  # Número máximo de membros por clã
+  max_clan_members: 50
+  # Tempo de expiração de convites (em segundos)
+  invite_expiration_time: 300
+  # Pontos iniciais de ranking para novos clãs
+  initial_ranking_points: 1000
+
+# Configuracoes de KDR
+kdr:
+  # Se o sistema de KDR está habilitado
+  enabled: true
+  # Se deve contar kills/deaths apenas entre clãs diferentes
+  cross_clan_only: false
+
+# Configuracoes de Friendly Fire
+friendly_fire:
+  # Se o sistema de friendly fire está habilitado
+  enabled: true
+  # Se deve permitir friendly fire por padrão
+  default_enabled: false
+
+# Configuracoes de Alianças e Rivalidades
+relations:
+  # Se o sistema de alianças está habilitado
+  alliances_enabled: true
+  # Se o sistema de rivalidades está habilitado
+  rivalries_enabled: true
+  # Número máximo de alianças por clã
+  max_alliances: 3
+  # Número máximo de rivalidades por clã
+  max_rivalries: 5
+
+# Configuracoes de Chat
+chat:
+  # Prefixo do chat de clã
+  prefix: "&2[&a{clan_tag}&2] &f"
+  # Se deve mostrar o cargo do jogador no chat
+  show_rank: true
+  # Formato do cargo: {rank} será substituído pelo cargo
+  rank_format: "&7[{rank}&7] "
+
+# Configuracoes de Mensagens
+messages:
+  # Mensagens de sucesso
+  success:
+    clan_created: "&aClã '{clan_name}' criado com sucesso!"
+    player_invited: "&aJogador {player} convidado para o clã!"
+    player_joined: "&a{player} entrou no clã!"
+    player_left: "&a{player} saiu do clã!"
+    player_kicked: "&a{player} foi expulso do clã!"
+    player_promoted: "&a{player} foi promovido a {rank}!"
+    player_demoted: "&a{player} foi rebaixado a {rank}!"
+    clan_disbanded: "&aClã foi dissolvido!"
+    alliance_created: "&aAliança criada com {clan}!"
+    rivalry_declared: "&aRivalidade declarada com {clan}!"
+  
+  # Mensagens de erro
+  error:
+    clan_exists: "&cJá existe um clã com esta tag/nome!"
+    player_not_found: "&cJogador não encontrado!"
+    player_already_in_clan: "&cJogador já está em um clã!"
+    player_not_in_clan: "&cJogador não está em um clã!"
+    no_permission: "&cVocê não tem permissão para fazer isso!"
+    clan_full: "&cClã está cheio!"
+    invite_expired: "&cConvite expirou!"
+    no_invite: "&cVocê não tem convite pendente!"
+    cannot_kick_leader: "&cNão é possível expulsar o líder!"
+    cannot_promote_leader: "&cO líder já tem o cargo máximo!"
+    cannot_demote_leader: "&cNão é possível rebaixar o líder!"
+    clan_not_found: "&cClã não encontrado!"
+    already_allied: "&cJá existe uma aliança com este clã!"
+    already_rivals: "&cJá existe uma rivalidade com este clã!"
+
+# Configuracoes de Permissoes
+permissions:
+  # Permissões básicas
+  basic:
+    create: "primeleague.clans.create"
+    invite: "primeleague.clans.invite"
+    kick: "primeleague.clans.kick"
+    promote: "primeleague.clans.promote"
+    demote: "primeleague.clans.demote"
+    disband: "primeleague.clans.disband"
+    chat: "primeleague.clans.chat"
+  
+  # Permissões administrativas
+  admin:
+    bypass: "primeleague.clans.admin"
+    force_disband: "primeleague.clans.force_disband"
+    view_all: "primeleague.clans.view_all"
+    sanction: "primeleague.clans.sanction"
+
+# Configuracoes de Sanções de Clã
+sanctions:
+  # Pontos de penalidade por severidade de punição
+  penalty-points:
+    leve: 1      # Warn
+    media: 3     # Kick, TempMute
+    seria: 8     # TempBan, Mute
+    gravissima: 15 # Ban permanente
+  
+  # Níveis de sanção (tiers) - progressão escalonada
+  sanction-tiers:
+    tier-1:
+      threshold: 10
+      penalty: "warning" # Apenas aviso formal
+      duration-days: 0
+    tier-2:
+      threshold: 25
+      penalty: "fine" # Multa econômica
+      fine-percentage: 10
+      duration-days: 0
+    tier-3:
+      threshold: 50
+      penalty: "suspension" # Suspensão competitiva
+      duration-days: 14
+      elo-deduction-percentage: 25
+    tier-4:
+      threshold: 100
+      penalty: "disqualification" # Desqualificação
+      duration-days: 30
+      elo-deduction-percentage: 50
+  
+  # Sistema de reabilitação
+  rehabilitation:
+    decay: 1 # pontos perdidos por dia
+    internal-discipline: true # kick de membros punidos
+
+# Configuracoes de Limpeza de Membros Inativos
+inactive-member-cleanup:
+  # Se o sistema de limpeza automática está habilitado
+  enabled: true
+  # Número de dias de inatividade antes da remoção automática
+  inactive-days: 90
+  # Se deve notificar fundadores sobre remoções
+  notify-founders: true
+  # Hora do dia para executar a limpeza (0-23, formato 24h)
+  execution-hour: 3
+  # Número máximo de membros processados por execução (para evitar picos de carga)
+  batch-size: 500

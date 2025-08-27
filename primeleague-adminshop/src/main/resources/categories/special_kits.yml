@@ -1,0 +1,113 @@
+# ========================================
+# CATEGORIA: KITS ESPECIAIS
+# ========================================
+# 
+# Kits completos para diferentes situacoes
+
+items:
+  - id: "pvp_kit"
+    name: "§cKit PvP Completo"
+    description: "Equipamento completo para PvP"
+    material: "DIAMOND_SWORD"
+    price: 10000.0
+    lore:
+      - "§7Kit completo para PvP"
+      - "§7Inclui armadura e armas"
+    kit_items:
+      - material: "DIAMOND_SWORD"
+        enchantments:
+          DAMAGE_ALL: 3
+          DURABILITY: 2
+      - material: "DIAMOND_HELMET"
+        enchantments:
+          PROTECTION_ENVIRONMENTAL: 3
+          DURABILITY: 2
+      - material: "DIAMOND_CHESTPLATE"
+        enchantments:
+          PROTECTION_ENVIRONMENTAL: 3
+          DURABILITY: 2
+      - material: "DIAMOND_LEGGINGS"
+        enchantments:
+          PROTECTION_ENVIRONMENTAL: 3
+          DURABILITY: 2
+      - material: "DIAMOND_BOOTS"
+        enchantments:
+          PROTECTION_ENVIRONMENTAL: 3
+          DURABILITY: 2
+      - material: "GOLDEN_APPLE"
+        amount: 16
+      - material: "POTION"
+        amount: 8
+        potion_effects:
+          HEAL: 1:1
+          
+  - id: "mining_kit"
+    name: "§6Kit de Mineracao"
+    description: "Ferramentas para mineracao eficiente"
+    material: "DIAMOND_PICKAXE"
+    price: 8000.0
+    lore:
+      - "§7Kit para mineracao"
+      - "§7Inclui picaretas e tochas"
+    kit_items:
+      - material: "DIAMOND_PICKAXE"
+        enchantments:
+          DIG_SPEED: 3
+          DURABILITY: 2
+      - material: "DIAMOND_SHOVEL"
+        enchantments:
+          DIG_SPEED: 3
+          DURABILITY: 2
+      - material: "TORCH"
+        amount: 64
+      - material: "COOKED_BEEF"
+        amount: 32
+        
+  - id: "builder_kit"
+    name: "§eKit de Construtor"
+    description: "Ferramentas para construcao"
+    material: "DIAMOND_AXE"
+    price: 6000.0
+    lore:
+      - "§7Kit para construcao"
+      - "§7Inclui ferramentas e blocos"
+    kit_items:
+      - material: "DIAMOND_AXE"
+        enchantments:
+          DIG_SPEED: 3
+          DURABILITY: 2
+      - material: "DIAMOND_SHOVEL"
+        enchantments:
+          DIG_SPEED: 3
+          DURABILITY: 2
+      - material: "STONE"
+        amount: 64
+      - material: "WOOD"
+        amount: 64
+      - material: "GLASS"
+        amount: 32
+        
+  - id: "survival_kit"
+    name: "§aKit de Sobrevivencia"
+    description: "Itens essenciais para sobrevivencia"
+    material: "IRON_SWORD"
+    price: 3000.0
+    lore:
+      - "§7Kit basico de sobrevivencia"
+      - "§7Inclui armas e comida"
+    kit_items:
+      - material: "IRON_SWORD"
+        enchantments:
+          DURABILITY: 1
+      - material: "IRON_PICKAXE"
+        enchantments:
+          DURABILITY: 1
+      - material: "IRON_AXE"
+        enchantments:
+          DURABILITY: 1
+      - material: "COOKED_BEEF"
+        amount: 16
+      - material: "TORCH"
+        amount: 32
+      - material: "BREAD"
+        amount: 16

@@ -1,0 +1,21 @@
+{
+  "name": "primeleague-discord-bot-node",
+  "version": "1.0.0",
+  "description": "Bot Discord para integração com o ecossistema Prime League",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js"
+  },
+  "keywords": [],
+  "author": "Prime League Team",
+  "license": "ISC",
+  "dependencies": {
+    "discord.js": "^14.13.0",
+    "dotenv": "^16.3.1",
+    "mysql2": "^3.6.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}

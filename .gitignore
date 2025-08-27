@@ -1,0 +1,83 @@
+# ========================================
+# GITIGNORE - PRIME LEAGUE (VERSÃO FINAL)
+# ========================================
+# Estratégia: Versionar tudo, ignorar apenas cache e dados variáveis
+
+# ========================================
+# ARQUIVOS DE LOG E DADOS DINÂMICOS
+# ========================================
+*.log
+*.log.*
+*.lck
+logs/
+server/logs/
+errlogs/
+
+# ========================================
+# MUNDOS DO MINECRAFT (dados dinâmicos)
+# ========================================
+server/world/
+server/world_nether/
+server/world_the_end/
+world/
+world_nether/
+world_the_end/
+
+# ========================================
+# CACHE E ARTEFATOS DE COMPILAÇÃO
+# ========================================
+target/
+build/
+*.class
+
+# ========================================
+# DEPENDÊNCIAS EXTERNAS (cache)
+# ========================================
+node_modules/
+
+# ========================================
+# ARQUIVOS DE CONFIGURAÇÃO SENSÍVEIS
+# ========================================
+.env
+*.env
+
+# ========================================
+# ARQUIVOS DE IDE E EDITORES
+# ========================================
+.cursor/
+.vscode/
+.idea/
+*.iml
+*.ipr
+*.iws
+.project
+.classpath
+.settings/
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# ========================================
+# SISTEMAS OPERACIONAIS
+# ========================================
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ========================================
+# ARQUIVOS DE BACKUP E COMPRESSÃO
+# ========================================
+*.bak
+*.backup
+*.7z
+*.zip
+*.rar
+
+# ========================================
+# CACHE E TEMPORÁRIOS
+# ========================================
+cache/
+.cache/
+*.cache

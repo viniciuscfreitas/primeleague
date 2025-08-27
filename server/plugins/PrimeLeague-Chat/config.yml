@@ -1,0 +1,44 @@
+# Configuração do PrimeLeague-Chat
+# Sistema de canais de chat para o servidor Prime League
+
+# Configurações dos canais de chat
+channels:
+  global:
+    format: "&7[&aGlobal&7] {clan_tag}&f{player}&7: &f{message}"
+    allow_colors: true
+    allow_formatting: true
+    
+  clan:
+    format: "&7[&bClã&7] {clan_tag}&f{player}&7: &f{message}"
+    allow_colors: true
+    allow_formatting: true
+    
+  ally:
+    format: "&7[&dAliança&7] {clan_tag}&f{player}&7: &f{message}"
+    allow_colors: true
+    allow_formatting: true
+    
+  local:
+    format: "&7[&eLocal&7] {clan_tag}&f{player}&7: &f{message}"
+    allow_colors: true
+    allow_formatting: true
+    radius: 100
+
+# Configurações de logging
+logging:
+  enabled: true
+  debug: false          # Logs detalhados para debugging (false em produção)
+  batch_interval: 5000  # 5 segundos
+  batch_size: 100       # Processar 100 mensagens por lote
+
+# Configurações de performance
+performance:
+  tag_cache_duration: 300000  # 5 minutos em millisegundos
+  auto_clear_cache: true
+  max_message_length: 256
+
+# Configurações de permissões
+permissions:
+  clan_chat: "primeleague.chat.clan"
+  ally_chat: "primeleague.chat.ally"
+  admin_chat: "primeleague.chat.admin"

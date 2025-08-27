@@ -1,0 +1,40 @@
+name: PrimeLeague-P2P
+version: 1.0.0
+main: br.com.primeleague.p2p.PrimeLeagueP2P
+description: Módulo de Acesso P2P para o servidor Prime League
+author: PrimeLeague Team
+api-version: 1.13
+depend: [PrimeLeague-Core]
+
+commands:
+  minhaassinatura:
+    description: Ver informações da sua assinatura
+    usage: /minhaassinatura
+    permission: primeleague.p2p.user
+    permission-message: §cVocê não tem permissão para usar este comando.
+  p2p:
+    description: Comandos administrativos do Prime League P2P
+    usage: /p2p <check|grant|revoke> <jogador> [dias]
+    permission: primeleague.p2p.admin
+    permission-message: §cVocê não tem permissão para usar este comando.
+  verify:
+    description: Verificar código de registro do Discord
+    usage: /verify <código>
+    permission: primeleague.verify
+    permission-message: §cVocê não tem permissão para usar este comando.
+
+
+permissions:
+  primeleague.p2p.user:
+    description: Permissão para jogadores usarem comandos P2P
+    default: "true"
+  primeleague.p2p.admin:
+    description: Permissão para comandos administrativos do P2P
+    default: "op"
+  primeleague.p2p.bypass:
+    description: Permissão para bypass da verificação de assinatura
+    default: "op"
+  primeleague.verify:
+    description: Permissão para verificar código do Discord
+    default: "true"
+

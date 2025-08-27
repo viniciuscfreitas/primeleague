@@ -1,0 +1,21 @@
+name: PrimeLeague-Chat
+version: 1.0.0
+main: br.com.primeleague.chat.PrimeLeagueChat
+description: Sistema de chat customizado para o servidor Prime League
+author: PrimeLeague Team
+website: https://primeleague.com.br
+
+# Dependências
+depend: [PrimeLeague-Core, PrimeLeague-Clans]
+
+# Comandos
+commands:
+  c:
+    description: Envia uma mensagem para o chat do clã.
+    usage: /c <mensagem>
+  a:
+    description: Envia uma mensagem para o chat de aliança.
+    usage: /a <mensagem>
+  chat:
+    description: Gerencia os canais de chat.
+    usage: /chat <canal>

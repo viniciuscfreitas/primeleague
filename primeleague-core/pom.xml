@@ -1,0 +1,110 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>br.com.primeleague</groupId>
+    <artifactId>primeleague-core</artifactId>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
+
+    <name>PrimeLeague-Core</name>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.source>1.7</maven.compiler.source>
+        <maven.compiler.target>1.7</maven.compiler.target>
+    </properties>
+
+    <dependencies>
+        <!-- PrimeLeague API -->
+        <dependency>
+            <groupId>br.com.primeleague</groupId>
+            <artifactId>primeleague-api</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+
+        <!-- Bukkit API 1.5.2 - dependência local -->
+        <dependency>
+            <groupId>org.bukkit</groupId>
+            <artifactId>bukkit</artifactId>
+            <version>1.5.2-R1.0</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/../lib/craftbukkit-1.5.2-R1.0.jar</systemPath>
+        </dependency>
+
+        <!-- Pool de conexões compatível com Java 7 -->
+        <dependency>
+            <groupId>com.zaxxer</groupId>
+            <artifactId>HikariCP-java7</artifactId>
+            <version>2.4.13</version>
+        </dependency>
+
+        <!-- Driver MySQL compatível com Java 7 -->
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+            <version>5.1.49</version>
+        </dependency>
+
+        <!-- SLF4J NOP - Remove avisos de logging -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-nop</artifactId>
+            <version>1.7.25</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.1</version>
+                <configuration>
+                    <source>1.7</source>
+                    <target>1.7</target>
+                </configuration>
+            </plugin>
+
+            <!-- Empacotar dependências no JAR do plugin, relocando Hikari -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>2.3</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <minimizeJar>false</minimizeJar>
+                            <!-- Forçar inclusão do primeleague-api e outras dependências -->
+                            <artifactSet>
+                                <includes>
+                                    <include>br.com.primeleague:primeleague-api</include>
+                                    <include>com.zaxxer:HikariCP-java7</include>
+                                    <include>org.slf4j:slf4j-api</include>
+                                    <include>mysql:mysql-connector-java</include>
+                                    <include>org.slf4j:slf4j-nop</include>
+                                </includes>
+                            </artifactSet>
+                            <!-- Removendo relocations para evitar conflitos de classe -->
+                            <transformers>
+                                <!-- Preserva META-INF/services (ex.: java.sql.Driver) ao sombrear o driver -->
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                    <mainClass>br.com.primeleague.core.PrimeLeagueCore</mainClass>
+                                </transformer>
+                            </transformers>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>
+
+

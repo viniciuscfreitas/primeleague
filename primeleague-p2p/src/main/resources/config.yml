@@ -1,0 +1,75 @@
+# =====================================================
+# CONFIGURACAO DO MODULO P2P - PRIME LEAGUE
+# =====================================================
+
+# Configuracoes do Webhook
+webhook:
+  # Porta onde o servidor webhook ira escutar
+  port: 8765
+  # Secret para validar as requisicoes do gateway de pagamento
+  secret: "wZ8!qN#k2$fC5&vL*gH9@pX6mJ4sB7rA"
+  # Endpoint para receber notificacoes
+  endpoint: "/webhook/payment"
+  # Timeout para processamento (milissegundos)
+  timeout: 30000
+  # Tamanho maximo do payload (bytes)
+  maxPayloadSize: 10240
+  # Rate limiting (requisicoes por minuto)
+  rateLimit: 10
+  rateLimitWindow: 60000
+
+# Configuracoes do Discord (para referencia - o bot sera separado)
+discord:
+  # Token do bot (sera usado em aplicacao separada)
+  bot_token: "SEU_TOKEN_AQUI"
+  # ID do servidor Discord
+  guild_id: "SEU_ID_AQUI"
+  # Canal para logs de pagamento
+  log_channel_id: "SEU_ID_AQUI"
+
+# Configuracoes de Pagamento
+payment:
+  # Valor da assinatura em reais
+  subscription_price: 30.00
+  # Dias de acesso por assinatura
+  subscription_days: 30
+  # Gateway de pagamento (stripe, mercadopago, etc.)
+  gateway: "stripe"
+
+# Configuracoes do Sistema de Limbo
+limbo:
+  # Se deve teleportar jogadores para o limbo
+  teleport_enabled: true
+  # Mundo do limbo
+  world: "world"
+  # Coordenadas do limbo
+  x: 0.5
+  y: 100.0
+  z: 0.5
+  yaw: 0.0
+  pitch: 0.0
+  # Comandos adicionais permitidos no limbo (alem de /verify, /ajuda, /discord)
+  allowed_commands:
+    - "help"
+    - "rules"
+
+# Configuracoes de Mensagens
+messages:
+  # Mensagem quando o acesso expirou
+  access_expired: "§cSeu acesso ao Prime League expirou.\n§aRenove sua assinatura em nosso Discord."
+  # Mensagem de erro ao carregar perfil
+  profile_error: "§cOcorreu um erro ao carregar seu perfil. Tente novamente."
+  # Mensagem de bypass ativo
+  bypass_active: "§aBypass de assinatura ativo para este jogador."
+  
+  # Mensagens do sistema de autenticacao
+  auth:
+    profile_creation_error: "§cErro ao criar seu perfil. Contate a administracao."
+    ip_not_authorized: "§cNovo local de acesso detectado!\n\n§ePor seguranca, voce precisa autorizar este IP.\n§aVerifique sua DM no Discord para aprovar.\n\n§7Aguarde alguns segundos e tente novamente."
+    auth_request_cooldown: "§cAguarde alguns minutos antes de tentar conectar novamente.\n§eVerifique sua DM no Discord para autorizar o acesso."
+    ip_verification_error: "§cErro na verificacao de IP. Tente novamente em instantes."
+    authentication_error: "§cErro na autenticacao. Contate a administracao se persistir."
+    unknown_status: "§cStatus de conta desconhecido. Contate a administracao."
+    status_inactive: "§cSua conta esta inativa.\n§aRenove sua assinatura em nosso Discord."
+    status_suspended: "§cSua conta foi suspensa.\n§eContate a administracao para mais informacoes."
+    status_banned: "§cVoce foi banido do servidor.\n§eContate a administracao se acredita que isso e um erro."

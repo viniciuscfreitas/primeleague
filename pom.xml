@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 
+         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>br.com.primeleague</groupId>
+    <artifactId>primeleague-parent</artifactId>
+    <version>1.0.0</version>
+    <packaging>pom</packaging>
+
+    <name>PrimeLeague Parent</name>
+    <description>Projeto pai para o ecossistema Prime League</description>
+
+    <!-- Módulos do projeto -->
+    <modules>
+        <module>primeleague-core</module>
+        <module>primeleague-api</module>
+        <module>primeleague-admin</module>
+        <module>primeleague-chat</module>
+        <module>primeleague-clans</module>
+        <module>primeleague-p2p</module>
+        <module>primeleague-adminshop</module>
+    </modules>
+
+    <properties>
+        <maven.compiler.source>1.7</maven.compiler.source>
+        <maven.compiler.target>1.7</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        
+        <!-- Versões das dependências -->
+        <bukkit.version>1.5.2-R1.0</bukkit.version>
+        <hikaricp.version>4.0.3</hikaricp.version>
+        <gson.version>2.8.9</gson.version>
+    </properties>
+
+    <!-- Dependências comuns para todos os módulos -->
+    <dependencyManagement>
+        <dependencies>
+            <!-- Bukkit API -->
+            <dependency>
+                <groupId>org.bukkit</groupId>
+                <artifactId>bukkit</artifactId>
+                <version>${bukkit.version}</version>
+                <scope>system</scope>
+                <systemPath>${project.basedir}/lib/craftbukkit-1.5.2-R1.0.jar</systemPath>
+            </dependency>
+
+            <!-- HikariCP -->
+            <dependency>
+                <groupId>com.zaxxer</groupId>
+                <artifactId>HikariCP</artifactId>
+                <version>${hikaricp.version}</version>
+            </dependency>
+
+            <!-- Gson -->
+            <dependency>
+                <groupId>com.google.code.gson</groupId>
+                <artifactId>gson</artifactId>
+                <version>${gson.version}</version>
+            </dependency>
+
+            <!-- PrimeLeague API -->
+            <dependency>
+                <groupId>br.com.primeleague</groupId>
+                <artifactId>primeleague-api</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <!-- PrimeLeague Core -->
+            <dependency>
+                <groupId>br.com.primeleague</groupId>
+                <artifactId>primeleague-core</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <!-- Configurações de build comuns -->
+    <build>
+        <pluginManagement>
+            <plugins>
+                <!-- Compiler Plugin -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>3.8.1</version>
+                    <configuration>
+                        <source>${maven.compiler.source}</source>
+                        <target>${maven.compiler.target}</target>
+                        <encoding>${project.build.sourceEncoding}</encoding>
+                    </configuration>
+                </plugin>
+
+                <!-- Shade Plugin -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-shade-plugin</artifactId>
+                    <version>3.2.4</version>
+                    <configuration>
+                        <createDependencyReducedPom>true</createDependencyReducedPom>
+                    </configuration>
+                </plugin>
+
+                <!-- Surefire Plugin (para testes) -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>3.2.5</version>
+                    <configuration>
+                        <skipTests>true</skipTests>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
+
+    <!-- Repositórios -->
+    <repositories>
+        <repository>
+            <id>spigot-repo</id>
+            <url>https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url>
+        </repository>
+    </repositories>
+
+    <pluginRepositories>
+        <pluginRepository>
+            <id>spigot-repo</id>
+            <url>https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url>
+        </pluginRepository>
+    </pluginRepositories>
+</project>

@@ -1,0 +1,95 @@
+# Prime League Core - Configuração Econômica e de Doadores
+# Versão: 2.0.0
+
+economy:
+  # Limites de transação (anti-inflacionário)
+  max_transaction_amount: 10000.0
+  min_shop_price: 0.01
+  initial_balance: 100.0
+  initial_elo: 1000  # ELO inicial para novos jogadores
+  
+  # Taxas e custos
+  transaction_fee_rate: 0.01  # 1% de taxa por transação
+  market_tax_rate: 0.05       # 5% de taxa no mercado
+  shop_maintenance_fee: 10.0  # Taxa diária de manutenção de lojas
+  
+  # Configurações de doador
+  donor_discount_rate: 0.10   # 10% de desconto base para doadores
+  
+  # Logs e auditoria
+  enable_transaction_logs: true
+  log_level: "INFO"  # DEBUG, INFO, WARNING
+
+donors:
+  # Sistema de níveis de doador
+  levels:
+    bronze:
+      name: "Bronze"
+      discount: 0.05      # 5% de desconto
+      min_donation: 10.0  # Doação mínima em reais
+      color: "§6"
+      permissions:
+        - "primeleague.donor.bronze"
+        - "primeleague.shop.discount"
+    
+    silver:
+      name: "Prata"
+      discount: 0.10      # 10% de desconto
+      min_donation: 25.0  # Doação mínima em reais
+      color: "§7"
+      permissions:
+        - "primeleague.donor.silver"
+        - "primeleague.shop.discount"
+        - "primeleague.chat.color"
+    
+    gold:
+      name: "Ouro"
+      discount: 0.15      # 15% de desconto
+      min_donation: 50.0  # Doação mínima em reais
+      color: "§e"
+      permissions:
+        - "primeleague.donor.gold"
+        - "primeleague.shop.discount"
+        - "primeleague.chat.color"
+        - "primeleague.chat.format"
+    
+    diamond:
+      name: "Diamante"
+      discount: 0.20      # 20% de desconto
+      min_donation: 100.0 # Doação mínima em reais
+      color: "§b"
+      permissions:
+        - "primeleague.donor.diamond"
+        - "primeleague.shop.discount"
+        - "primeleague.chat.color"
+        - "primeleague.chat.format"
+        - "primeleague.chat.mention"
+
+# Configurações de banco de dados
+database:
+  host: 127.0.0.1
+  port: 3306
+  name: primeleague
+  user: root
+  password: 123456
+  pool:
+    maximumPoolSize: 10
+    minimumIdle: 2
+    connectionTimeoutMs: 10000
+    idleTimeoutMs: 600000
+    maxLifetimeMs: 1800000
+  jdbcParams: useUnicode=true&characterEncoding=utf8&useSSL=false&autoReconnect=true
+  connectionTestQuery: SELECT 1
+  
+  # Tabelas específicas da economia
+  economy_table: "player_economy"
+  donor_table: "donors"
+  transaction_log_table: "economy_transactions"
+  
+# Configurações de segurança
+security:
+  max_daily_transactions: 1000  # Limite diário de transações por jogador
+  suspicious_amount_threshold: 5000.0  # Valor que dispara alerta de segurança
+  enable_fraud_detection: true
+
+

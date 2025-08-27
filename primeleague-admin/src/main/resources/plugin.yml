@@ -1,0 +1,114 @@
+name: PrimeLeagueAdmin
+version: 1.0.0
+main: br.com.primeleague.admin.PrimeLeagueAdmin
+description: Sistema administrativo para o servidor Prime League
+author: Prime League Team
+api-version: 1.13
+depend: [PrimeLeague-Core]
+softdepend: [PrimeLeague-P2P]
+
+commands:
+  vanish:
+    description: Ativa/desativa o modo staff invisível
+    usage: /vanish
+    permission: primeleague.admin.vanish
+  invsee:
+    description: Visualiza o inventário de um jogador
+    usage: /invsee <player>
+    permission: primeleague.admin.invsee
+  inspect:
+    description: Inspeciona um jogador em tempo real
+    usage: /inspect <player>
+    permission: primeleague.admin.inspect
+  report:
+    description: Reporta um jogador
+    usage: /report <player> <motivo> [prova]
+    permission: primeleague.report
+  tickets:
+    description: Gerencia tickets de denúncia
+    usage: /tickets <list|view|claim|close> [id] [status]
+    permission: primeleague.admin.tickets
+  warn:
+    description: Avisa um jogador
+    usage: /warn <player> <motivo>
+    permission: primeleague.admin.warn
+  kick:
+    description: Expulsa um jogador
+    usage: /kick <player> <motivo>
+    permission: primeleague.admin.kick
+  tempmute:
+    description: Silencia um jogador temporariamente
+    usage: /tempmute <player> <duração> <motivo>
+    permission: primeleague.admin.mute
+  mute:
+    description: Silencia um jogador permanentemente
+    usage: /mute <player> <motivo>
+    permission: primeleague.admin.mute
+  tempban:
+    description: Bane um jogador temporariamente
+    usage: /tempban <player> <duração> <motivo>
+    permission: primeleague.admin.ban
+  ban:
+    description: Bane um jogador permanentemente
+    usage: /ban <player> <motivo>
+    permission: primeleague.admin.ban
+  unmute:
+    description: Remove o silenciamento de um jogador
+    usage: /unmute <player> <motivo>
+    permission: primeleague.admin.mute
+  unban:
+    description: Remove o banimento de um jogador
+    usage: /unban <player> <motivo>
+    permission: primeleague.admin.ban
+  history:
+    description: Mostra o histórico de punições de um jogador
+    usage: /history <player>
+    permission: primeleague.admin.history
+  whitelist:
+    description: Gerencia a whitelist centralizada V2
+    usage: /whitelist <add|remove|list|stats|reload> [jogador] [motivo]
+    permission: primeleague.admin.whitelist
+
+permissions:
+  primeleague.report:
+    description: Permite reportar jogadores
+    default: true
+  primeleague.admin.vanish:
+    description: Permite usar o modo vanish
+    default: op
+  primeleague.admin.invsee:
+    description: Permite visualizar inventários
+    default: op
+  primeleague.admin.inspect:
+    description: Permite inspecionar jogadores
+    default: op
+  primeleague.admin.tickets:
+    description: Permite gerenciar tickets
+    default: op
+  primeleague.admin.warn:
+    description: Permite avisar jogadores
+    default: op
+  primeleague.admin.kick:
+    description: Permite expulsar jogadores
+    default: op
+  primeleague.admin.mute:
+    description: Permite silenciar jogadores
+    default: op
+  primeleague.admin.ban:
+    description: Permite banir jogadores
+    default: op
+  primeleague.admin.history:
+    description: Permite ver histórico de punições
+    default: op
+  primeleague.admin.viewip:
+    description: Permite ver endereços IP (usado no /inspect)
+    default: op
+  primeleague.admin.staff:
+    description: Permite receber notificações de staff
+    default: op
+  primeleague.admin.tempban:
+    description: Permite banir jogadores temporariamente
+    default: op
+  primeleague.admin.whitelist:
+    description: Permite gerenciar a whitelist centralizada
+    default: op

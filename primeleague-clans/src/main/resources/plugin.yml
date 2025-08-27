@@ -1,0 +1,42 @@
+name: PrimeLeague-Clans
+version: 1.0.0
+main: br.com.primeleague.clans.PrimeLeagueClans
+description: Sistema de Clãs para o servidor Prime League
+author: Prime League Team
+api-version: 1.5.2
+depend: [PrimeLeague-Core]
+
+commands:
+  clan:
+    description: Comandos do sistema de clãs
+    usage: /clan <subcomando> [argumentos]
+    permission: primeleague.clans.use
+
+permissions:
+  primeleague.clans.use:
+    description: Permite usar comandos básicos do clã
+    default: true
+  primeleague.clans.create:
+    description: Permite criar um clã
+    default: true
+  primeleague.clans.invite:
+    description: Permite convidar jogadores para o clã
+    default: true
+  primeleague.clans.kick:
+    description: Permite expulsar membros do clã
+    default: true
+  primeleague.clans.promote:
+    description: Permite promover membros do clã
+    default: true
+  primeleague.clans.demote:
+    description: Permite rebaixar membros do clã
+    default: true
+  primeleague.clans.disband:
+    description: Permite dissolver um clã
+    default: true
+  primeleague.clans.chat:
+    description: Permite usar o chat do clã
+    default: true
+  primeleague.clans.admin:
+    description: Permissões administrativas do sistema de clãs
+    default: op

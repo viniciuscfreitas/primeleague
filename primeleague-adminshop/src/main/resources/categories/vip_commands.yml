@@ -1,0 +1,74 @@
+# ========================================
+# CATEGORIA: COMANDOS VIP
+# ========================================
+# 
+# Comandos especiais para VIPs e jogadores premium
+
+items:
+  - id: "fly_command"
+    name: "§bComando /fly"
+    description: "Permite voar por 1 hora"
+    material: "FEATHER"
+    price: 5000.0
+    lore:
+      - "§7Ativa voo por 1 hora"
+      - "§7Comando: /fly"
+    commands:
+      - "fly {player} 3600"
+      
+  - id: "vanish_command"
+    name: "§8Comando /vanish"
+    description: "Fica invisivel por 30 minutos"
+    material: "ENDER_PEARL"
+    price: 3000.0
+    lore:
+      - "§7Fica invisivel por 30 min"
+      - "§7Comando: /vanish"
+    commands:
+      - "vanish {player} 1800"
+      
+  - id: "heal_command"
+    name: "§aComando /heal"
+    description: "Cura completamente"
+    material: "GOLDEN_APPLE"
+    price: 1000.0
+    lore:
+      - "§7Cura vida e fome"
+      - "§7Comando: /heal"
+    commands:
+      - "heal {player}"
+      - "feed {player}"
+      
+  - id: "gamemode_command"
+    name: "§eComando /gamemode"
+    description: "Muda para modo criativo por 2 horas"
+    material: "BEDROCK"
+    price: 8000.0
+    lore:
+      - "§7Modo criativo por 2 horas"
+      - "§7Comando: /gamemode"
+    commands:
+      - "gamemode creative {player}"
+      - "schedule gamemode survival {player} 7200"
+      
+  - id: "speed_command"
+    name: "§bComando /speed"
+    description: "Aumenta velocidade de movimento"
+    material: "SUGAR"
+    price: 2000.0
+    lore:
+      - "§7Velocidade aumentada por 1 hora"
+      - "§7Comando: /speed"
+    commands:
+      - "speed {player} 2 3600"
+      
+  - id: "god_command"
+    name: "§6Comando /god"
+    description: "Modo invencivel por 30 minutos"
+    material: "NETHER_STAR"
+    price: 15000.0
+    lore:
+      - "§7Invencivel por 30 minutos"
+      - "§7Comando: /god"
+    commands:
+      - "god {player} 1800"

@@ -1,0 +1,28 @@
+name: PrimeLeague-AdminShop
+version: 1.0.0
+main: br.com.primeleague.adminshop.AdminShopPlugin
+api: 1.5.2
+depend: [PrimeLeague-Core]
+description: Módulo de Loja Administrativa do Prime League
+author: PrimeLeague Team
+
+commands:
+  shop:
+    description: Abre a loja administrativa
+    usage: /shop [categoria]
+    permission: primeleague.shop.use
+  adminshop:
+    description: Comandos administrativos da loja
+    usage: /adminshop <reload|add|remove|list>
+    permission: primeleague.shop.admin
+
+permissions:
+  primeleague.shop.use:
+    description: Permite usar a loja
+    default: true
+  primeleague.shop.admin:
+    description: Permite gerenciar a loja
+    default: op
+  primeleague.shop.free:
+    description: Permite compras gratuitas
+    default: false

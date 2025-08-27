@@ -1,0 +1,35 @@
+name: PrimeLeague-Core
+main: br.com.primeleague.core.PrimeLeagueCore
+version: 1.0.0
+author: PrimeLeague Team
+website: https://primeleague.example
+load: POSTWORLD
+commands:
+  msg:
+    description: Envia uma mensagem privada para outro jogador
+    usage: /msg <jogador> <mensagem>
+    aliases: [tell]
+  r:
+    description: Responde à última mensagem privada recebida
+    usage: /r <mensagem>
+  money:
+    description: Exibe o saldo do jogador
+    usage: /money [jogador]
+  pagar:
+    description: Transfere dinheiro para outro jogador
+    usage: /pagar <jogador> <quantia>
+  eco:
+    description: Comando administrativo para gerenciar economia
+    usage: /eco <give|take|set> <jogador> <quantia>
+permissions:
+  primeleague.money:
+    description: Permite usar o comando /money
+    default: true
+  primeleague.pay:
+    description: Permite usar o comando /pagar
+    default: true
+  primeleague.admin.eco:
+    description: Permite usar comandos administrativos de economia
+    default: op
+
+
