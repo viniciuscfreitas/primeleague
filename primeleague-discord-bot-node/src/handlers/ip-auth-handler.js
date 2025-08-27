@@ -290,11 +290,10 @@ class IPAuthHandler {
 
         try {
             await connection.execute(`
-                INSERT INTO server_notifications (action_type, target_player, payload) 
-                VALUES (?, ?, ?)
+                INSERT INTO server_notifications (action_type, payload) 
+                VALUES (?, ?)
             `, [
                 'ADMIN_SECURITY_ALERT',
-                payload.player_name,
                 JSON.stringify({
                     type: 'IP_ACCESS_DENIED',
                     player_name: payload.player_name,

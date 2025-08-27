@@ -96,7 +96,6 @@ class NotificationWorker {
                 SELECT 
                     id,
                     action_type,
-                    target_player,
                     payload,
                     created_at
                 FROM server_notifications 

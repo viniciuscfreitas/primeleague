@@ -113,12 +113,11 @@ async function verifyDiscordLink(playerName, verifyCode) {
         return false;
     }
 }
-
-async function createServerNotification(actionType, targetPlayer, payload) {
+async function createServerNotification(actionType, payload) {
     try {
         const [result] = await pool.execute(
-            'INSERT INTO server_notifications (action_type, target_player, payload, created_at) VALUES (?, ?, ?, NOW())',
-            [actionType, targetPlayer, JSON.stringify(payload)]
+            'INSERT INTO server_notifications (action_type, payload) VALUES (?, ?)',
+            [actionType, JSON.stringify(payload)]
         );
         return result.affectedRows > 0;
     } catch (error) {
@@ -193,34 +192,15 @@ async function removeClanMember(playerId) {
 }
 
 async function getClanSubscription(discordOwnerId) {
-    try {
-        const [rows] = await pool.execute(
-            `SELECT id, discord_owner_id, subscription_tier, max_simultaneous_logins, 
-                    expires_at, created_at, updated_at
-             FROM subscriptions 
-             WHERE discord_owner_id = ?`,
-            [discordOwnerId]
-        );
-        return rows[0];
-    } catch (error) {
-        console.error('Erro ao buscar assinatura do clã:', error);
-        return null;
-    }
+    // Função removida - tabela subscriptions não existe no schema atual
+    console.log('Função getClanSubscription removida - tabela subscriptions não existe');
+    return null;
 }
 
 async function getClanActiveSessionsCount(discordOwnerId) {
-    try {
-        const [rows] = await pool.execute(
-            `SELECT COUNT(*) as active_count
-             FROM session_history 
-             WHERE discord_owner_id = ? AND session_end IS NULL`,
-            [discordOwnerId]
-        );
-        return rows[0]?.active_count || 0;
-    } catch (error) {
-        console.error('Erro ao buscar sessões ativas do clã:', error);
-        return 0;
-    }
+    // Função removida - tabela session_history não existe no schema atual
+    console.log('Função getClanActiveSessionsCount removida - tabela session_history não existe');
+    return 0;
 }
 
 async function getClanMemberCount(discordOwnerId) {
@@ -239,54 +219,21 @@ async function getClanMemberCount(discordOwnerId) {
 }
 
 async function getSubscriptionTiers() {
-    try {
-        const [rows] = await pool.execute(
-            `SELECT tier_name, display_name, max_slots, price_brl, duration_days, description
-             FROM subscription_tiers 
-             WHERE is_active = TRUE 
-             ORDER BY price_brl ASC`
-        );
-        return rows;
-    } catch (error) {
-        console.error('Erro ao buscar tiers de assinatura:', error);
-        return [];
-    }
+    // Função removida - tabela subscription_tiers não existe no schema atual
+    console.log('Função getSubscriptionTiers removida - tabela subscription_tiers não existe');
+    return [];
 }
 
 async function updateSubscription(discordOwnerId, subscriptionTier, maxSlots, expiresAt) {
-    try {
-        const [result] = await pool.execute(
-            `INSERT INTO subscriptions (discord_owner_id, subscription_tier, max_simultaneous_logins, expires_at)
-             VALUES (?, ?, ?, ?)
-             ON DUPLICATE KEY UPDATE
-             subscription_tier = VALUES(subscription_tier),
-             max_simultaneous_logins = VALUES(max_simultaneous_logins),
-             expires_at = VALUES(expires_at),
-             updated_at = NOW()`,
-            [discordOwnerId, subscriptionTier, maxSlots, expiresAt]
-        );
-        return result.affectedRows > 0;
-    } catch (error) {
-        console.error('Erro ao atualizar assinatura:', error);
-        return false;
-    }
+    // Função removida - tabela subscriptions não existe no schema atual
+    console.log('Função updateSubscription removida - tabela subscriptions não existe');
+    return false;
 }
 
 async function getClanActiveSessions(discordOwnerId) {
-    try {
-        const [rows] = await pool.execute(
-            `SELECT player_id, player_name, session_start, ip_address,
-                    TIMESTAMPDIFF(MINUTE, session_start, NOW()) as duration_minutes
-             FROM session_history 
-             WHERE discord_owner_id = ? AND session_end IS NULL
-             ORDER BY session_start DESC`,
-            [discordOwnerId]
-        );
-        return rows;
-    } catch (error) {
-        console.error('Erro ao buscar sessões ativas do clã:', error);
-        return [];
-    }
+    // Função removida - tabela session_history não existe no schema atual
+    console.log('Função getClanActiveSessions removida - tabela session_history não existe');
+    return [];
 }
 
 // =====================================================
@@ -294,77 +241,28 @@ async function getClanActiveSessions(discordOwnerId) {
 // =====================================================
 
 async function getGlobalClanStats() {
-    try {
-        const [statsRows] = await pool.execute(`
-            SELECT 
-                COALESCE(SUM(s.max_simultaneous_logins), 0) as total_slots,
-                COALESCE(COUNT(DISTINCT sh.discord_owner_id), 0) as clans_with_sessions,
-                COALESCE(COUNT(sh.id), 0) as total_players_online,
-                COALESCE(COUNT(sh.id), 0) as used_slots,
-                COUNT(DISTINCT s.discord_owner_id) as active_clans
-            FROM subscriptions s
-            LEFT JOIN session_history sh ON s.discord_owner_id = sh.discord_owner_id AND sh.session_end IS NULL
-            WHERE s.expires_at > NOW()
-        `);
-
-        const [tierRows] = await pool.execute(`
-            SELECT subscription_tier, COUNT(*) as count
-            FROM subscriptions 
-            WHERE expires_at > NOW()
-            GROUP BY subscription_tier
-        `);
-
-        const stats = statsRows[0] || {};
-        
-        // Adicionar distribuição por tiers
-        const tierDistribution = {};
-        tierRows.forEach(tier => {
-            tierDistribution[tier.subscription_tier] = tier.count;
-        });
-        stats.tier_distribution = tierDistribution;
-
-        return stats;
-    } catch (error) {
-        console.error('Erro ao buscar estatísticas globais:', error);
-        return {};
-    }
+    // Função removida - tabelas subscriptions e session_history não existem no schema atual
+    console.log('Função getGlobalClanStats removida - tabelas não existem no schema');
+    return {
+        total_slots: 0,
+        clans_with_sessions: 0,
+        total_players_online: 0,
+        used_slots: 0,
+        active_clans: 0,
+        tier_distribution: {}
+    };
 }
 
 async function getTopActiveClans(limit = 5) {
-    try {
-        const [rows] = await pool.execute(`
-            SELECT 
-                s.discord_owner_id,
-                s.subscription_tier,
-                s.max_simultaneous_logins as max_slots,
-                COUNT(sh.id) as active_sessions,
-                ROUND((COUNT(sh.id) / s.max_simultaneous_logins) * 100, 1) as usage_percentage
-            FROM subscriptions s
-            LEFT JOIN session_history sh ON s.discord_owner_id = sh.discord_owner_id AND sh.session_end IS NULL
-            WHERE s.expires_at > NOW()
-            GROUP BY s.discord_owner_id
-            HAVING active_sessions > 0
-            ORDER BY usage_percentage DESC, active_sessions DESC
-            LIMIT ?
-        `, [limit]);
-
-        return rows;
-    } catch (error) {
-        console.error('Erro ao buscar top clãs ativos:', error);
-        return [];
-    }
+    // Função removida - tabelas subscriptions e session_history não existem no schema atual
+    console.log('Função getTopActiveClans removida - tabelas não existem no schema');
+    return [];
 }
 
 async function getSystemConfig() {
-    try {
-        const [rows] = await pool.execute(
-            'SELECT config_key, config_value, description FROM system_config WHERE 1=1'
-        );
-        return rows;
-    } catch (error) {
-        console.error('Erro ao buscar configurações do sistema:', error);
-        return [];
-    }
+    // Função removida - tabela system_config não existe no schema atual
+    console.log('Função getSystemConfig removida - tabela não existe no schema');
+    return [];
 }
 
 async function getServerMetrics() {
@@ -386,16 +284,10 @@ async function getServerMetrics() {
             FROM discord_links WHERE verified = TRUE
             UNION ALL
             SELECT 
-                'total_sessions_today' as metric,
-                COUNT(*) as value
-            FROM session_history 
-            WHERE DATE(session_start) = CURDATE()
-            UNION ALL
-            SELECT 
                 'active_subscriptions' as metric,
                 COUNT(*) as value
-            FROM subscriptions 
-            WHERE expires_at > NOW()
+            FROM player_data 
+            WHERE subscription_expires_at > NOW()
         `);
 
         const metrics = {};

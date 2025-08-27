@@ -77,29 +77,8 @@ class StatusWorker {
      * Carrega configurações do sistema.
      */
     async loadConfig() {
-        try {
-            // Tentar carregar do banco de dados primeiro
-            const configs = await getSystemConfig();
-            const statusChannelConfig = configs.find(c => c.config_key === 'status_channel_id');
-            
-            if (statusChannelConfig) {
-                this.statusChannelId = statusChannelConfig.config_value;
-            } else {
-                // Fallback para variável de ambiente
-                this.statusChannelId = process.env.STATUS_CHANNEL_ID;
-            }
-
-            // Carregar intervalo personalizado se existir
-            const intervalConfig = configs.find(c => c.config_key === 'status_update_interval');
-            if (intervalConfig) {
-                this.updateInterval = parseInt(intervalConfig.config_value) * 1000; // converter para ms
-            }
-
-        } catch (error) {
-            console.error('❌ Erro ao carregar configurações:', error);
-            // Usar variáveis de ambiente como fallback
-            this.statusChannelId = process.env.STATUS_CHANNEL_ID;
-        }
+        // Usar variável de ambiente diretamente (tabela system_config não existe)
+        this.statusChannelId = process.env.STATUS_CHANNEL_ID;
     }
 
     /**

@@ -75,7 +75,6 @@ module.exports = {
             const [recentActivity] = await connection.execute(`
                 SELECT 
                     action_type,
-                    target_player,
                     created_at,
                     processed
                 FROM server_notifications 
@@ -112,7 +111,7 @@ module.exports = {
                         name: '🕒 Atividade Recente (2h)',
                         value: recentActivity.length > 0 
                             ? recentActivity.map(activity => 
-                                `\`${activity.action_type}\` - ${activity.target_player} ${activity.processed ? '✅' : '⏳'}`
+                                `\`${activity.action_type}\` ${activity.processed ? '✅' : '⏳'}`
                               ).join('\n')
                             : 'Nenhuma atividade recente',
                         inline: false
@@ -141,7 +140,6 @@ module.exports = {
                 SELECT 
                     id,
                     action_type,
-                    target_player,
                     created_at,
                     payload
                 FROM server_notifications 
@@ -185,7 +183,7 @@ module.exports = {
                 }
 
                 embed.addFields([{
-                    name: `🎯 ${notification.target_player} (ID: ${notification.id})`,
+                    name: `🎯 Notificação (ID: ${notification.id})`,
                     value: description,
                     inline: true
                 }]);

@@ -70,7 +70,7 @@ async function testVerificationSystem() {
         try {
             const { pool } = require('./src/database/mysql');
             await pool.execute('DELETE FROM discord_links WHERE discord_id = ?', ['999999999999999999']);
-            await pool.execute('DELETE FROM server_notifications WHERE target_player = ?', ['TestPlayer']);
+            await pool.execute('DELETE FROM server_notifications WHERE payload LIKE ?', ['%TestPlayer%']);
             console.log('   Limpeza concluída ✅');
             process.exit(0);
         } catch (err) {
