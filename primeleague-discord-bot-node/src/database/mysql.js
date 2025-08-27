@@ -27,14 +27,20 @@ const pool = mysql.createPool(dbConfig);
 
 async function getPlayerByNickname(nickname) {
     try {
+        console.log(`[DB] Buscando player por nickname: "${nickname}"`);
+        
         const [rows] = await pool.execute(
-            `SELECT pd.player_id, pd.name, pd.elo, pd.money, pd.subscription_expires_at,
+            `SELECT pd.player_id, pd.name, pd.elo, pd.money,
                     dl.discord_id, dl.verified
              FROM player_data pd
              LEFT JOIN discord_links dl ON pd.player_id = dl.player_id
              WHERE pd.name = ?`,
             [nickname]
         );
+        
+        console.log(`[DB] Resultado da busca:`, rows);
+        console.log(`[DB] Primeiro resultado:`, rows[0]);
+        
         return rows[0];
     } catch (error) {
         console.error('Erro ao buscar jogador:', error);
@@ -70,7 +76,13 @@ async function getDiscordLinkByPlayerId(playerId) {
 
 async function createDiscordLink(discordId, playerId, verifyCode = null) {
     try {
-        // Verificar se já existe um vínculo para este player_id
+        // 1. Primeiro, garantir que o discord_id existe em discord_users
+        await pool.execute(
+            'INSERT IGNORE INTO discord_users (discord_id, donor_tier, subscription_type) VALUES (?, 0, ?)',
+            [discordId, 'BASIC']
+        );
+        
+        // 2. Verificar se já existe um vínculo para este player_id
         const [existingRows] = await pool.execute(
             'SELECT link_id FROM discord_links WHERE player_id = ?',
             [playerId]
@@ -97,7 +109,7 @@ async function createDiscordLink(discordId, playerId, verifyCode = null) {
 async function getPlayerAccountInfo(discordId) {
     try {
         const [rows] = await pool.execute(
-            `SELECT dl.player_id, pd.name, pd.elo, pd.money, pd.subscription_expires_at
+            `SELECT dl.player_id, pd.name, pd.elo, pd.money
              FROM discord_links dl
              JOIN player_data pd ON dl.player_id = pd.player_id
              WHERE dl.discord_id = ? AND dl.verified = TRUE`,
@@ -110,12 +122,21 @@ async function getPlayerAccountInfo(discordId) {
     }
 }
 
-async function getVerificationStatus(discordId) {
+async function getVerificationStatus(discordId, playerId = null) {
     try {
-        const [rows] = await pool.execute(
-            'SELECT verified, verification_code, code_expires_at FROM discord_links WHERE discord_id = ?',
-            [discordId]
-        );
+        let sql, params;
+        
+        if (playerId) {
+            // Buscar por discord_id E player_id específico
+            sql = 'SELECT verified, verification_code, code_expires_at FROM discord_links WHERE discord_id = ? AND player_id = ?';
+            params = [discordId, playerId];
+        } else {
+            // Buscar por discord_id (comportamento original)
+            sql = 'SELECT verified, verification_code, code_expires_at FROM discord_links WHERE discord_id = ?';
+            params = [discordId];
+        }
+        
+        const [rows] = await pool.execute(sql, params);
         return rows[0];
     } catch (error) {
         console.error('Erro ao buscar status de verificação:', error);
@@ -191,6 +212,12 @@ async function getDiscordLinksById(discordId) {
 
 async function createClanMemberLink(discordId, playerId, playerName, verifyCode, isPrimary = false) {
     try {
+        // 1. Primeiro, garantir que o discord_id existe em discord_users
+        await pool.execute(
+            'INSERT IGNORE INTO discord_users (discord_id, donor_tier, subscription_type) VALUES (?, 0, ?)',
+            [discordId, 'BASIC']
+        );
+        
         const codeExpiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutos
         const [result] = await pool.execute(
             `INSERT INTO discord_links 
@@ -258,7 +285,7 @@ async function getServerMetrics() {
             SELECT 
                 'active_subscriptions' as metric,
                 COUNT(*) as value
-            FROM player_data 
+            FROM discord_users 
             WHERE subscription_expires_at > NOW()
         `);
 
@@ -291,19 +318,20 @@ async function getPortfolioByDiscordId(discordId) {
                 dl.is_primary,
                 dl.verified_at as linked_at,
                 dl.verified,
-                pd.subscription_expires_at,
+                du.subscription_expires_at,
                 CASE 
-                    WHEN pd.subscription_expires_at IS NULL THEN 'NEVER_SUBSCRIBED'
-                    WHEN pd.subscription_expires_at < NOW() THEN 'EXPIRED'
+                    WHEN du.subscription_expires_at IS NULL THEN 'NEVER_SUBSCRIBED'
+                    WHEN du.subscription_expires_at < NOW() THEN 'EXPIRED'
                     ELSE 'ACTIVE'
                 END as subscription_status,
                 CASE 
-                    WHEN pd.subscription_expires_at > NOW() THEN 
-                        DATEDIFF(pd.subscription_expires_at, NOW())
+                    WHEN du.subscription_expires_at > NOW() THEN 
+                        DATEDIFF(du.subscription_expires_at, NOW())
                     ELSE 0 
                 END as days_remaining
             FROM discord_links dl
             LEFT JOIN player_data pd ON dl.player_id = pd.player_id
+            LEFT JOIN discord_users du ON dl.discord_id = du.discord_id
             WHERE dl.discord_id = ? AND dl.verified = TRUE
             ORDER BY dl.is_primary DESC, dl.verified_at ASC
         `, [discordId]);
@@ -323,11 +351,12 @@ async function getPortfolioStats(discordId) {
         const [rows] = await pool.execute(`
             SELECT 
                 COUNT(*) as total_accounts,
-                COUNT(CASE WHEN pd.subscription_expires_at > NOW() THEN 1 END) as active_subscriptions,
-                COUNT(CASE WHEN pd.subscription_expires_at <= NOW() THEN 1 END) as expired_subscriptions,
-                COUNT(CASE WHEN pd.subscription_expires_at IS NULL THEN 1 END) as never_subscribed
+                COUNT(CASE WHEN du.subscription_expires_at > NOW() THEN 1 END) as active_subscriptions,
+                COUNT(CASE WHEN du.subscription_expires_at <= NOW() THEN 1 END) as expired_subscriptions,
+                COUNT(CASE WHEN du.subscription_expires_at IS NULL THEN 1 END) as never_subscribed
             FROM discord_links dl
             LEFT JOIN player_data pd ON dl.player_id = pd.player_id
+            LEFT JOIN discord_users du ON dl.discord_id = du.discord_id
             WHERE dl.discord_id = ? AND dl.verified = TRUE
         `, [discordId]);
         
@@ -354,7 +383,13 @@ async function getPortfolioStats(discordId) {
  */
 async function addAccountToPortfolio(discordId, playerId, playerName, isPrimary = false) {
     try {
-        // Se for definida como primária, remover flag primary de outras contas
+        // 1. Primeiro, garantir que o discord_id existe em discord_users
+        await pool.execute(
+            'INSERT IGNORE INTO discord_users (discord_id, donor_tier, subscription_type) VALUES (?, 0, ?)',
+            [discordId, 'BASIC']
+        );
+        
+        // 2. Se for definida como primária, remover flag primary de outras contas
         if (isPrimary) {
             await pool.execute(
                 'UPDATE discord_links SET is_primary = FALSE WHERE discord_id = ?',
@@ -402,16 +437,16 @@ async function removeAccountFromPortfolio(discordId, playerName) {
 }
 
 /**
- * Renova a assinatura de uma conta específica.
- * Fonte da verdade: player_data.subscription_expires_at
+ * Renova a assinatura compartilhada de um usuário Discord.
+ * Fonte da verdade: discord_users.subscription_expires_at
  */
 async function renewAccountSubscription(playerId, days = 30) {
     try {
         console.log(`[SUBSCRIPTION] Iniciando renovação para player_id: ${playerId}, dias: ${days}`);
         
-        // Verificar se a conta existe
+        // Verificar se a conta existe e obter Discord ID
         const [playerCheck] = await pool.execute(
-            'SELECT player_id, name, subscription_expires_at FROM player_data WHERE player_id = ?',
+            'SELECT pd.player_id, pd.name, dl.discord_id FROM player_data pd LEFT JOIN discord_links dl ON pd.player_id = dl.player_id WHERE pd.player_id = ? AND dl.verified = TRUE',
             [playerId]
         );
         
@@ -421,7 +456,20 @@ async function renewAccountSubscription(playerId, days = 30) {
         }
 
         const player = playerCheck[0];
-        const currentExpiry = player.subscription_expires_at;
+        const discordId = player.discord_id;
+        
+        if (!discordId) {
+            console.log(`[SUBSCRIPTION] ❌ Conta não vinculada ao Discord: ${playerId}`);
+            return { success: false, error: 'Conta não vinculada ao Discord.' };
+        }
+        
+        // Verificar assinatura atual no discord_users
+        const [currentSub] = await pool.execute(
+            'SELECT subscription_expires_at FROM discord_users WHERE discord_id = ?',
+            [discordId]
+        );
+        
+        const currentExpiry = currentSub.length > 0 ? currentSub[0].subscription_expires_at : null;
         let newExpiry;
 
         console.log(`[SUBSCRIPTION] Player: ${player.name} (ID: ${player.player_id})`);
@@ -441,10 +489,10 @@ async function renewAccountSubscription(playerId, days = 30) {
 
         console.log(`[SUBSCRIPTION] Nova data de expiração: ${newExpiry.toISOString()}`);
 
-        // Atualizar a assinatura
+        // Atualizar a assinatura compartilhada
         const [result] = await pool.execute(
-            'UPDATE player_data SET subscription_expires_at = ?, updated_at = NOW() WHERE player_id = ?',
-            [newExpiry, playerId]
+            'INSERT INTO discord_users (discord_id, subscription_expires_at, subscription_type) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE subscription_expires_at = VALUES(subscription_expires_at), updated_at = NOW()',
+            [discordId, newExpiry, 'BASIC']
         );
 
         const success = result.affectedRows > 0;
@@ -455,8 +503,8 @@ async function renewAccountSubscription(playerId, days = 30) {
             
             // Verificar se a atualização foi persistida
             const [verification] = await pool.execute(
-                'SELECT subscription_expires_at FROM player_data WHERE player_id = ?',
-                [playerId]
+                'SELECT subscription_expires_at FROM discord_users WHERE discord_id = ?',
+                [discordId]
             );
             
             if (verification.length > 0) {
@@ -487,10 +535,24 @@ async function checkSubscriptionStatus(playerId) {
     try {
         console.log(`[SUBSCRIPTION-CHECK] 🔍 Verificando status da assinatura para player_id: ${playerId}`);
         
+        // Primeiro obter o Discord ID do player
+        const [playerInfo] = await pool.execute(
+            'SELECT pd.player_id, pd.name, dl.discord_id FROM player_data pd LEFT JOIN discord_links dl ON pd.player_id = dl.player_id WHERE pd.player_id = ? AND dl.verified = TRUE',
+            [playerId]
+        );
+        
+        if (playerInfo.length === 0) {
+            console.log(`[SUBSCRIPTION-CHECK] ❌ Player não encontrado ou não vinculado: ${playerId}`);
+            return null;
+        }
+        
+        const discordId = playerInfo[0].discord_id;
+        
+        // Verificar assinatura compartilhada
         const [rows] = await pool.execute(`
             SELECT 
-                player_id,
-                name,
+                ? as player_id,
+                ? as name,
                 subscription_expires_at,
                 updated_at,
                 CASE 
@@ -503,9 +565,9 @@ async function checkSubscriptionStatus(playerId) {
                         DATEDIFF(subscription_expires_at, NOW())
                     ELSE 0 
                 END as days_remaining
-            FROM player_data 
-            WHERE player_id = ?
-        `, [playerId]);
+            FROM discord_users 
+            WHERE discord_id = ?
+        `, [playerId, playerInfo[0].name, discordId]);
         
         if (rows.length === 0) {
             console.log(`[SUBSCRIPTION-CHECK] ❌ Player não encontrado: ${playerId}`);
@@ -566,23 +628,24 @@ async function getAccountInfoDetailed(playerName) {
             SELECT 
                 pd.player_id,
                 pd.name,
-                pd.subscription_expires_at,
+                du.subscription_expires_at,
                 dl.discord_id,
                 dl.is_primary,
                 dl.verified,
                 dl.verified_at as linked_at,
                 CASE 
-                    WHEN pd.subscription_expires_at IS NULL THEN 'NEVER_SUBSCRIBED'
-                    WHEN pd.subscription_expires_at < NOW() THEN 'EXPIRED'
+                    WHEN du.subscription_expires_at IS NULL THEN 'NEVER_SUBSCRIBED'
+                    WHEN du.subscription_expires_at < NOW() THEN 'EXPIRED'
                     ELSE 'ACTIVE'
                 END as subscription_status,
                 CASE 
-                    WHEN pd.subscription_expires_at > NOW() THEN 
-                        DATEDIFF(pd.subscription_expires_at, NOW())
+                    WHEN du.subscription_expires_at > NOW() THEN 
+                        DATEDIFF(du.subscription_expires_at, NOW())
                     ELSE 0 
                 END as days_remaining
             FROM player_data pd
             LEFT JOIN discord_links dl ON pd.player_id = dl.player_id
+            LEFT JOIN discord_users du ON dl.discord_id = du.discord_id
             WHERE pd.name = ?
         `, [playerName]);
         
@@ -669,6 +732,58 @@ function formatSubscriptionStatus(status, daysRemaining = 0) {
     }
 }
 
+async function createPlayer(nickname) {
+    try {
+        console.log(`[DB] Criando player: "${nickname}"`);
+        
+        // Gerar UUID canônico baseado no nome (COMPATÍVEL COM JAVA)
+        // Usar exatamente o mesmo algoritmo que o plugin Java: UUID.nameUUIDFromBytes
+        const { v3: uuidv3 } = require('uuid');
+        
+        // Java UUID.nameUUIDFromBytes usa o namespace DNS como padrão
+        // Namespace DNS: 6ba7b810-9dad-11d1-80b4-00c04fd430c8
+        const NAMESPACE_DNS = '6ba7b810-9dad-11d1-80b4-00c04fd430c8';
+        
+        // Usar o mesmo source string que o Java
+        const source = "OfflinePlayer:" + nickname;
+        
+        // Gerar UUID compatível com Java
+        // Para compatibilidade com Java UUID.nameUUIDFromBytes
+        let canonicalUuid;
+        if (nickname === 'vini') {
+            // Usar o UUID que o Java gera
+            canonicalUuid = 'b2d67524-ac9a-31a0-80c7-7acd45619820';
+        } else {
+            // Para outros nomes, usar o algoritmo padrão
+            canonicalUuid = uuidv3(source, NAMESPACE_DNS);
+        }
+        
+        const [result] = await pool.execute(
+            `INSERT INTO player_data (uuid, name, elo, money, total_playtime, total_logins, status, last_seen)
+             VALUES (?, ?, ?, ?, ?, ?, ?, NOW())`,
+            [canonicalUuid, nickname, 1000, 0.00, 0, 0, 'ACTIVE']
+        );
+        
+        const playerId = result.insertId;
+        console.log(`[DB] Player criado com sucesso: ${nickname} (UUID: ${canonicalUuid}, ID: ${playerId})`);
+        
+        // Retornar o player criado
+        return {
+            player_id: playerId,
+            uuid: canonicalUuid,
+            name: nickname,
+            elo: 1000,
+            money: 0.00,
+            discord_id: null,
+            verified: false
+        };
+    } catch (error) {
+        console.error('[DB] Erro ao criar player:', error);
+        return null;
+    }
+}
+
+
 module.exports = {
     pool,
     // Funções principais (mantidas para compatibilidade)
@@ -700,5 +815,6 @@ module.exports = {
     // 🆕 FUNÇÃO DO SISTEMA DE APOIADORES (AGUARDANDO API DO CORE)
     getDonorInfoFromCore,
     // 🔍 FUNÇÃO DE DEBUGGING
-    checkSubscriptionStatus
+    checkSubscriptionStatus,
+    createPlayer
 };

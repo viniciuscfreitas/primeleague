@@ -1,8 +1,9 @@
 -- =========================================================
--- SCHEMA FINAL PRIME LEAGUE - VERSÃO PARA TRANSPORTE
--- Data: 26/08/2025
--- Descrição: Schema definitivo, limpo e completo para continuar desenvolvimento
---            Inclui todas as correções, estrutura otimizada e dados essenciais
+-- SCHEMA OTIMIZADO PRIME LEAGUE - VERSÃO FINAL
+-- Data: 27/08/2025
+-- Descrição: Schema otimizado seguindo SSOT (Single Source of Truth)
+--            Eliminação de redundâncias, centralização de dados
+--            Máxima performance e consistência
 -- =========================================================
 
 -- =====================================================
@@ -14,7 +15,7 @@ CREATE DATABASE `primeleague` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf
 USE `primeleague`;
 
 -- =====================================================
--- TABELA CENTRAL DE JOGADORES (A FONTE DA VERDADE)
+-- TABELA CENTRAL DE JOGADORES (SSOT PARA DADOS DE JOGADOR)
 -- =====================================================
 
 CREATE TABLE `player_data` (
@@ -24,12 +25,9 @@ CREATE TABLE `player_data` (
   `elo` INT NOT NULL DEFAULT 1000,
   `money` DECIMAL(15,2) NOT NULL DEFAULT 0.00,
   `total_playtime` BIGINT NOT NULL DEFAULT 0,
-  `subscription_expires_at` TIMESTAMP NULL DEFAULT NULL,
   `last_seen` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `total_logins` INT NOT NULL DEFAULT 0,
   `status` ENUM('ACTIVE', 'INACTIVE', 'BANNED') NOT NULL DEFAULT 'INACTIVE',
-  `donor_tier` INT NOT NULL DEFAULT 0,
-  `donor_tier_expires_at` TIMESTAMP NULL DEFAULT NULL,
   `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`player_id`),
@@ -37,10 +35,48 @@ CREATE TABLE `player_data` (
   UNIQUE KEY `uk_player_data_name` (`name`),
   KEY `idx_player_data_status` (`status`),
   KEY `idx_player_data_elo` (`elo`),
-  KEY `idx_player_data_last_seen` (`last_seen`),
-  KEY `idx_player_data_subscription` (`subscription_expires_at`),
-  KEY `idx_player_data_donor_tier` (`donor_tier`),
-  KEY `idx_player_data_donor_expiry` (`donor_tier_expires_at`)
+  KEY `idx_player_data_last_seen` (`last_seen`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- TABELA CENTRAL DE USUÁRIOS DISCORD (SSOT PARA DADOS DISCORD)
+-- =====================================================
+
+CREATE TABLE `discord_users` (
+  `discord_id` VARCHAR(20) NOT NULL PRIMARY KEY,
+  `donor_tier` INT NOT NULL DEFAULT 0,
+  `donor_tier_expires_at` TIMESTAMP NULL,
+  `subscription_expires_at` TIMESTAMP NULL,
+  `subscription_type` ENUM('BASIC', 'PREMIUM', 'VIP') DEFAULT 'BASIC',
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX `idx_discord_id` (`discord_id`),
+  INDEX `idx_donor_tier` (`donor_tier`),
+  INDEX `idx_subscription_expires` (`subscription_expires_at`),
+  INDEX `idx_donor_expiry` (`donor_tier_expires_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- TABELA DE VÍNCULOS (RELAÇÃO N:N DISCORD ↔ MINECRAFT)
+-- =====================================================
+
+CREATE TABLE `discord_links` (
+  `link_id` INT NOT NULL AUTO_INCREMENT,
+  `discord_id` VARCHAR(20) NOT NULL,
+  `player_id` INT NOT NULL,
+  `is_primary` TINYINT(1) NOT NULL DEFAULT 0,
+  `verified` TINYINT(1) NOT NULL DEFAULT 0,
+  `verification_code` VARCHAR(8) NULL DEFAULT NULL,
+  `code_expires_at` TIMESTAMP NULL DEFAULT NULL,
+  `verified_at` TIMESTAMP NULL DEFAULT NULL,
+  PRIMARY KEY (`link_id`),
+  UNIQUE KEY `uk_player_id` (`player_id`),
+  KEY `idx_discord_id` (`discord_id`),
+  KEY `idx_verified` (`verified`),
+  CONSTRAINT `fk_discord_links_player` 
+    FOREIGN KEY (`player_id`) REFERENCES `player_data` (`player_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_discord_links_user` 
+    FOREIGN KEY (`discord_id`) REFERENCES `discord_users` (`discord_id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =====================================================
@@ -151,26 +187,6 @@ CREATE TABLE `whitelist_players` (
     FOREIGN KEY (`added_by_player_id`) REFERENCES `player_data` (`player_id`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `fk_whitelist_removed_by_player` 
     FOREIGN KEY (`removed_by_player_id`) REFERENCES `player_data` (`player_id`) ON DELETE SET NULL ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- =====================================================
--- TABELA DE VÍNCULOS DISCORD (P2P)
--- =====================================================
-
-CREATE TABLE `discord_links` (
-  `link_id` INT NOT NULL AUTO_INCREMENT,
-  `discord_id` VARCHAR(20) NOT NULL,
-  `player_id` INT NOT NULL,
-  `is_primary` TINYINT(1) NOT NULL DEFAULT 0,
-  `verified` TINYINT(1) NOT NULL DEFAULT 0,
-  `verification_code` VARCHAR(8) NULL DEFAULT NULL,
-  `code_expires_at` TIMESTAMP NULL DEFAULT NULL,
-  `verified_at` TIMESTAMP NULL DEFAULT NULL,
-  PRIMARY KEY (`link_id`),
-  UNIQUE KEY `uk_player_id` (`player_id`),
-  KEY `idx_discord_id` (`discord_id`),
-  CONSTRAINT `fk_discord_links_player` 
-    FOREIGN KEY (`player_id`) REFERENCES `player_data` (`player_id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =====================================================
@@ -372,8 +388,8 @@ CREATE PROCEDURE `CleanupExpiredData`()
 BEGIN
     -- Limpeza de códigos de verificação expirados
     UPDATE `discord_links` 
-    SET `verify_code` = NULL, `verify_expires_at` = NULL
-    WHERE `verify_expires_at` IS NOT NULL AND `verify_expires_at` < NOW();
+    SET `verification_code` = NULL, `code_expires_at` = NULL
+    WHERE `code_expires_at` IS NOT NULL AND `code_expires_at` < NOW();
     
     -- Limpeza de banimentos temporários expirados
     UPDATE `punishments` 
@@ -396,6 +412,13 @@ BEGIN
         COUNT(CASE WHEN status = 'ACTIVE' THEN 1 END) as jogadores_ativos,
         COUNT(CASE WHEN status = 'BANNED' THEN 1 END) as jogadores_banidos
     FROM player_data
+    UNION ALL
+    SELECT 
+        'discord_users' as tabela,
+        COUNT(*) as total_registros,
+        COUNT(CASE WHEN donor_tier > 0 THEN 1 END) as doadores_ativos,
+        COUNT(CASE WHEN subscription_expires_at > NOW() THEN 1 END) as assinaturas_ativas
+    FROM discord_users
     UNION ALL
     SELECT 
         'clans' as tabela,
@@ -441,5 +464,5 @@ WHERE table_schema = 'primeleague'
   AND referenced_table_name IS NOT NULL;
 
 SELECT 
-    'SCHEMA FINAL PRIME LEAGUE CRIADO COM SUCESSO!' as status,
+    'SCHEMA OTIMIZADO PRIME LEAGUE CRIADO COM SUCESSO!' as status,
     NOW() as data_criacao;

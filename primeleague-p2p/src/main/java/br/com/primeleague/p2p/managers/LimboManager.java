@@ -102,6 +102,7 @@ public final class LimboManager implements Listener {
 
     /**
      * Coloca um jogador em estado de limbo.
+     * UX MELHORADA: Detecta se o usuário já tem contas vinculadas.
      */
     public void putPlayerInLimbo(Player player) {
         UUID playerUuid = player.getUniqueId();
@@ -118,10 +119,73 @@ public final class LimboManager implements Listener {
             player.teleport(limboLocation);
         }
         
-        // Enviar mensagens explicativas
-        sendLimboMessages(player);
+        // Verificar se o usuário já tem contas vinculadas
+        boolean hasExistingAccounts = checkIfUserHasExistingAccounts(player);
         
-        plugin.getLogger().info("Jogador " + player.getName() + " colocado em estado de limbo");
+        // Enviar mensagens explicativas baseadas no status
+        sendLimboMessages(player, hasExistingAccounts);
+        
+        plugin.getLogger().info("Jogador " + player.getName() + " colocado em estado de limbo (contas existentes: " + hasExistingAccounts + ")");
+    }
+    
+    /**
+     * Verifica se o usuário já possui contas vinculadas ao Discord.
+     * UX MELHORADA: Detecta usuários existentes para mensagens personalizadas.
+     * 
+     * LÓGICA CORRIGIDA: Verifica se o Discord ID que será usado já possui outras contas.
+     * Isso detecta usuários que estão adicionando uma nova conta ao Discord existente.
+     */
+    private boolean checkIfUserHasExistingAccounts(Player player) {
+        try {
+            String playerName = player.getName();
+            
+            // Buscar no banco de dados se já existe algum vínculo Discord para este nome de jogador
+            java.sql.Connection conn = br.com.primeleague.core.PrimeLeagueCore.getInstance().getDataManager().getConnection();
+            if (conn != null) {
+                // Primeiro, verificar se já existe um vínculo Discord para este nome (mesmo que não verificado)
+                String sql = "SELECT dl.discord_id FROM discord_links dl " +
+                           "JOIN player_data pd ON dl.player_id = pd.player_id " +
+                           "WHERE pd.name = ?";
+                
+                try (java.sql.PreparedStatement stmt = conn.prepareStatement(sql)) {
+                    stmt.setString(1, playerName);
+                    java.sql.ResultSet rs = stmt.executeQuery();
+                    
+                    if (rs.next()) {
+                        String discordId = rs.getString("discord_id");
+                        
+                        if (discordId != null) {
+                            // Se encontrou um Discord ID, verificar se há outras contas verificadas para este Discord ID
+                            String checkOtherAccountsSql = "SELECT COUNT(*) FROM discord_links dl2 " +
+                                                         "JOIN player_data pd2 ON dl2.player_id = pd2.player_id " +
+                                                         "WHERE dl2.discord_id = ? AND dl2.verified = TRUE " +
+                                                         "AND pd2.name != ?";
+                            
+                            try (java.sql.PreparedStatement stmt2 = conn.prepareStatement(checkOtherAccountsSql)) {
+                                stmt2.setString(1, discordId);
+                                stmt2.setString(2, playerName);
+                                java.sql.ResultSet rs2 = stmt2.executeQuery();
+                                
+                                if (rs2.next()) {
+                                    int otherAccounts = rs2.getInt(1);
+                                    boolean hasOtherAccounts = otherAccounts > 0;
+                                    
+                                    plugin.getLogger().info("UX-DEBUG: " + playerName + " - Discord ID: " + discordId + 
+                                                          " - Contas existentes: " + otherAccounts + " - Retornando: " + hasOtherAccounts);
+                                    
+                                    return hasOtherAccounts;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            plugin.getLogger().warning("Erro ao verificar contas existentes para " + player.getName() + ": " + e.getMessage());
+        }
+        
+        plugin.getLogger().info("UX-DEBUG: " + player.getName() + " - Retornando false (novo usuário)");
+        return false; // Em caso de erro ou não encontrado, assume que é novo usuário
     }
 
     /**
@@ -149,24 +213,55 @@ public final class LimboManager implements Listener {
 
     /**
      * Envia mensagens explicativas para o jogador em limbo.
+     * UX MELHORADA: Mensagens personalizadas baseadas no status do usuário.
      */
-    private void sendLimboMessages(Player player) {
+    private void sendLimboMessages(Player player, boolean hasExistingAccounts) {
+        if (hasExistingAccounts) {
+            // Mensagem para usuário que já tem contas vinculadas
+            sendExistingUserLimboMessages(player);
+        } else {
+            // Mensagem para novo usuário
+            sendNewUserLimboMessages(player);
+        }
+    }
+    
+    /**
+     * Mensagens para usuário que já possui contas vinculadas.
+     * UX MELHORADA: Mensagem específica para usuários existentes.
+     */
+    private void sendExistingUserLimboMessages(Player player) {
         player.sendMessage("");
-        player.sendMessage("§e§l▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
-        player.sendMessage("§a§l                          🔐 VERIFICAÇÃO NECESSÁRIA");
+        player.sendMessage("§6§l🎮 BEM-VINDO DE VOLTA AO PRIME LEAGUE!");
         player.sendMessage("");
-        player.sendMessage("§fOlá, §a" + player.getName() + "§f! Você precisa verificar sua conta.");
+        player.sendMessage("§f📱 Detectamos que você já possui contas vinculadas!");
+        player.sendMessage("§f🔗 Para conectar esta nova conta ao seu Discord:");
+        player.sendMessage("   §7→ Digite §a/registrar " + player.getName() + " §7no Discord");
+        player.sendMessage("   §7→ Depois use §a/verify <código> §7aqui");
         player.sendMessage("");
-        player.sendMessage("§e1. §fSe você ainda não se registrou:");
-        player.sendMessage("   §7Digite §a/registrar " + player.getName() + " §7no Discord");
+        player.sendMessage("§a💡 Dica: Sua assinatura será compartilhada automaticamente!");
+        player.sendMessage("§e⏱️ Você tem 5 minutos para verificar");
+        player.sendMessage("§b🔗 Discord: §adiscord.gg/primeleague");
         player.sendMessage("");
-        player.sendMessage("§e2. §fSe você já se registrou:");
-        player.sendMessage("   §7Digite §a/verify <código> §7aqui no servidor");
+        player.sendMessage("§7💡 Comandos: §a/verify§7, §a/ajuda§7, §a/discord");
         player.sendMessage("");
-        player.sendMessage("§6💡 §fComandos disponíveis: §a/verify§f, §a/ajuda§f, §a/discord");
+    }
+    
+    /**
+     * Mensagens para novo usuário (primeira vez).
+     * UX MELHORADA: Mensagem específica para novos usuários.
+     */
+    private void sendNewUserLimboMessages(Player player) {
         player.sendMessage("");
-        player.sendMessage("§c⚠ §fSuas ações estão limitadas até completar a verificação.");
-        player.sendMessage("§e§l▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
+        player.sendMessage("§6§l🎮 BEM-VINDO AO PRIME LEAGUE!");
+        player.sendMessage("");
+        player.sendMessage("§f📱 Para jogar, conecte sua conta Discord:");
+        player.sendMessage("   §7→ Digite §a/registrar " + player.getName() + " §7no Discord");
+        player.sendMessage("   §7→ Depois use §a/verify <código> §7aqui");
+        player.sendMessage("");
+        player.sendMessage("§e⏱️ Você tem 5 minutos para verificar");
+        player.sendMessage("§b🔗 Discord: §adiscord.gg/primeleague");
+        player.sendMessage("");
+        player.sendMessage("§7💡 Comandos: §a/verify§7, §a/ajuda§7, §a/discord");
         player.sendMessage("");
     }
 

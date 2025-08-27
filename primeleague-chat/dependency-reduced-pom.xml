@@ -53,21 +53,21 @@
       <artifactId>primeleague-api</artifactId>
       <version>1.0.0</version>
       <scope>system</scope>
-      <systemPath>C:\Users\Dell - INSP\mc\primeleague-chat/../primeleague-api/target/primeleague-api-1.0.0.jar</systemPath>
+      <systemPath>C:\Users\Dell - INSP\primeleague\primeleague\primeleague-chat/../primeleague-api/target/primeleague-api-1.0.0.jar</systemPath>
     </dependency>
     <dependency>
       <groupId>br.com.primeleague</groupId>
       <artifactId>primeleague-core</artifactId>
       <version>1.0.0</version>
       <scope>system</scope>
-      <systemPath>C:\Users\Dell - INSP\mc\primeleague-chat/../primeleague-core/target/primeleague-core-1.0.0.jar</systemPath>
+      <systemPath>C:\Users\Dell - INSP\primeleague\primeleague\primeleague-chat/../primeleague-core/target/primeleague-core-1.0.0.jar</systemPath>
     </dependency>
     <dependency>
       <groupId>org.bukkit</groupId>
       <artifactId>bukkit</artifactId>
       <version>1.5.2-R1.0</version>
       <scope>system</scope>
-      <systemPath>C:\Users\Dell - INSP\mc\primeleague-chat/../lib/craftbukkit-1.5.2-R1.0.jar</systemPath>
+      <systemPath>C:\Users\Dell - INSP\primeleague\primeleague\primeleague-chat/../lib/craftbukkit-1.5.2-R1.0.jar</systemPath>
     </dependency>
   </dependencies>
   <properties>

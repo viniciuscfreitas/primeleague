@@ -17,6 +17,7 @@ public final class DonorLevel {
     private final double minDonation;
     private final String color;
     private final List<String> permissions;
+    private final int maxAltAccounts;
     
     /**
      * Construtor para um nível de doador.
@@ -29,13 +30,14 @@ public final class DonorLevel {
      * @param permissions Lista de permissões do nível
      */
     public DonorLevel(String key, String name, double discount, double minDonation, 
-                     String color, List<String> permissions) {
+                     String color, List<String> permissions, int maxAltAccounts) {
         this.key = key;
         this.name = name;
         this.discount = Math.max(0.0, Math.min(1.0, discount)); // Garantir entre 0.0 e 1.0
         this.minDonation = Math.max(0.0, minDonation);
         this.color = color != null ? color : "§f";
         this.permissions = permissions != null ? permissions : new ArrayList<String>();
+        this.maxAltAccounts = Math.max(1, maxAltAccounts); // Mínimo 1 conta
     }
     
     /**
@@ -108,6 +110,15 @@ public final class DonorLevel {
      */
     public List<String> getPermissions() {
         return permissions;
+    }
+    
+    /**
+     * Obtém o número máximo de contas alternativas permitidas.
+     * 
+     * @return Número máximo de contas
+     */
+    public int getMaxAltAccounts() {
+        return maxAltAccounts;
     }
     
     /**

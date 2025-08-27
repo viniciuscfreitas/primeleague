@@ -81,28 +81,37 @@ public class VerifyCommand implements CommandExecutor {
                                 // Remover jogador do limbo
                                 limboManager.removePlayerFromLimbo(player.getUniqueId());
                                 
-                                // Mensagens de sucesso
+                                // UX MELHORADA: Mensagens de sucesso mais claras e tempo para leitura
                                 player.sendMessage("");
-                                player.sendMessage("§a§l✅ VERIFICAÇÃO CONCLUÍDA!");
+                                player.sendMessage("§a§l🎉 VERIFICAÇÃO CONCLUÍDA COM SUCESSO!");
                                 player.sendMessage("");
-                                player.sendMessage("§fSua conta Discord foi vinculada com sucesso!");
-                                player.sendMessage("§7🎮 Agora você pode usar todos os comandos do Discord.");
+                                player.sendMessage("§f✅ Sua conta Discord foi vinculada!");
+                                player.sendMessage("§f🎮 Agora você pode usar todos os comandos do Discord.");
                                 player.sendMessage("");
-                                player.sendMessage("§e⚠️ PRÓXIMO PASSO:");
-                                player.sendMessage("§fAdquira uma assinatura para acessar o servidor.");
-                                player.sendMessage("§7Use §a/renovar §7no Discord para mais informações.");
+                                player.sendMessage("§6§l📋 PRÓXIMO PASSO NECESSÁRIO:");
+                                player.sendMessage("§fPara acessar o servidor, você precisa de uma assinatura.");
+                                player.sendMessage("");
+                                player.sendMessage("§e💎 Como adquirir:");
+                                player.sendMessage("§7• Vá para o Discord: §fdiscord.gg/primeleague");
+                                player.sendMessage("§7• Use o comando §a/assinatura §7no Discord");
+                                player.sendMessage("§7• Escolha seu plano e complete o pagamento");
+                                player.sendMessage("");
+                                player.sendMessage("§a🔄 Após adquirir a assinatura, conecte novamente!");
                                 player.sendMessage("");
                                 
-                                // Kick jogador para forçar nova conexão (agora como INATIVO)
+                                // Kick jogador após tempo suficiente para leitura
                                 Bukkit.getScheduler().runTaskLater(PrimeLeagueP2P.getInstance(), new Runnable() {
                                     @Override
                                     public void run() {
-                                        player.kickPlayer("§a✅ Verificação concluída!\n\n" +
-                                                         "§fAdquira uma assinatura no Discord e\n" +
-                                                         "§fconecte novamente para acessar o servidor.\n\n" +
-                                                         "§7Use /renovar no Discord para mais informações.");
+                                        player.kickPlayer("§a§l✅ Verificação Concluída!\n\n" +
+                                                         "§fSua conta Discord foi vinculada com sucesso!\n\n" +
+                                                         "§6§l📋 Próximo Passo:\n" +
+                                                         "§fAdquira uma assinatura no Discord para acessar o servidor.\n\n" +
+                                                         "§e💎 Discord: §fdiscord.gg/primeleague\n" +
+                                                         "§e💎 Comando: §f/assinatura\n\n" +
+                                                         "§a🔄 Conecte novamente após adquirir a assinatura!");
                                     }
-                                }, 60L); // 3 segundos
+                                }, 120L); // 6 segundos para leitura completa
                                 
                                 // Notificar Discord sobre sucesso
                                 notifyDiscordSuccess(player.getName());

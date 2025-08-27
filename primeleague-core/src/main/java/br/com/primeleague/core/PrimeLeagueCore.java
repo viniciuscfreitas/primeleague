@@ -39,6 +39,7 @@ public final class PrimeLeagueCore extends JavaPlugin {
     private TagManager tagManager;
     private PrivateMessageManager privateMessageManager;
     private EconomyManager economyManager;
+    private HttpApiManager httpApiManager;
 
     @Override
     public void onEnable() {
@@ -67,6 +68,12 @@ public final class PrimeLeagueCore extends JavaPlugin {
         
         // Inicializa o EconomyManager (após DonorManager para integração)
         this.economyManager = new EconomyManager(this);
+        
+        // Inicializa API HTTP (para integração com bot Discord)
+        if (getConfig().getBoolean("api.enabled", true)) {
+            this.httpApiManager = new HttpApiManager(this);
+            this.httpApiManager.start();
+        }
         
         // Inicializa API
         PrimeLeagueAPI.initialize(this);
@@ -110,11 +117,19 @@ public final class PrimeLeagueCore extends JavaPlugin {
         logger.info("✅ [CORE] Sistema de identidade: ATIVO");
         logger.info("✅ [CORE] Sistema de doadores: ATIVO");
         logger.info("✅ [CORE] Sistema econômico: ATIVO");
+        if (httpApiManager != null) {
+            logger.info("✅ [CORE] API HTTP: ATIVA");
+        }
     }
 
     @Override
     public void onDisable() {
         logger.info("🔄 [CORE] PrimeLeague Core sendo desabilitado...");
+        
+        // Parar API HTTP
+        if (httpApiManager != null) {
+            httpApiManager.stop();
+        }
         
         // Limpar caches
         if (economyManager != null) {
@@ -157,6 +172,10 @@ public final class PrimeLeagueCore extends JavaPlugin {
 
     public EconomyManager getEconomyManager() {
         return economyManager;
+    }
+    
+    public HttpApiManager getHttpApiManager() {
+        return httpApiManager;
     }
 }
 

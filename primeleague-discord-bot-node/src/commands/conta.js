@@ -116,7 +116,7 @@ module.exports = {
                 value: 
                     '• `/registrar <nickname>` - Vincular nova conta\n' +
                     '• `/upgrade-doador` - Ver opções de upgrade\n' +
-                    '• `/primeira-conta` - Assinatura individual',
+                    '• `/assinatura` - Gerenciar assinatura',
                 inline: false
             });
 

@@ -8,7 +8,9 @@ const {
     getVerificationStatus,
     isNicknameAvailableForLinking,
     createDiscordLink,
-    getDonorInfoFromCore
+    getDiscordLinkByPlayerId,
+    getDonorInfoFromCore,
+    createPlayer
 } = require('../database/mysql');
 
 /**
@@ -36,16 +38,22 @@ module.exports = {
             const discordId = interaction.user.id;
 
             // 1. Verificar se o jogador existe no servidor
-            const player = await getPlayerByNickname(nickname);
+            console.log(`[REGISTRAR] Buscando player: ${nickname}`);
+            let player = await getPlayerByNickname(nickname);
+            console.log(`[REGISTRAR] Resultado da busca:`, player);
+            
             if (!player) {
-                return interaction.editReply({
-                    content: '❌ **Jogador não encontrado**\n\n' +
-                            `A conta \`${nickname}\` não foi encontrada no servidor.\n\n` +
-                            '**Dicas:**\n' +
-                            '• Verifique se digitou corretamente (case-sensitive)\n' +
-                            '• A conta deve ter entrado no servidor pelo menos uma vez\n' +
-                            '• Entre no servidor como visitante primeiro'
-                });
+                // Player não existe - criar automaticamente
+                console.log(`[REGISTRAR] Player não encontrado, criando novo: ${nickname}`);
+                player = await createPlayer(nickname);
+                
+                if (!player) {
+                    return interaction.editReply({
+                        content: '❌ **Erro:** Falha ao criar conta. Tente novamente.'
+                    });
+                }
+                
+                console.log(`[REGISTRAR] Player criado com sucesso:`, player);
             }
 
             // 2. Verificar portfólio atual e limite baseado no nível de doador
@@ -75,12 +83,15 @@ module.exports = {
             }
 
             // 3. Verificar se a conta já está vinculada
-            const existingAccount = await getPlayerByNickname(nickname);
-            if (existingAccount && existingAccount.discord_id) {
-                const isOwnAccount = existingAccount.discord_id === discordId;
+            console.log(`[REGISTRAR] Verificando vínculo existente para: ${nickname}`);
+            console.log(`[REGISTRAR] Player encontrado:`, player);
+            
+            if (player && player.discord_id) {
+                // Conta já está vinculada a algum Discord
+                const isOwnAccount = player.discord_id === discordId;
                 
                 if (isOwnAccount) {
-                    if (existingAccount.verified) {
+                    if (player.verified) {
                         return interaction.editReply({
                             content: `✅ **Conta já vinculada!**\n\n` +
                                     `A conta \`${nickname}\` já está registrada no seu portfólio.\n\n` +
@@ -88,7 +99,7 @@ module.exports = {
                         });
                     } else {
                         // Conta vinculada mas não verificada - mostrar código
-                        const verificationInfo = await getVerificationStatus(discordId);
+                        const verificationInfo = await getVerificationStatus(discordId, player.player_id);
                         if (verificationInfo && verificationInfo.verification_code) {
                             return interaction.editReply({
                                 content: `⏳ **Verificação Pendente**\n\n` +
@@ -130,7 +141,7 @@ module.exports = {
                 if (existingLink) {
                     if (existingLink.discord_id === discordId) {
                         // É o mesmo usuário - verificar se precisa de verificação
-                        const verificationInfo = await getVerificationStatus(discordId);
+                        const verificationInfo = await getVerificationStatus(discordId, player.player_id);
                         if (verificationInfo && verificationInfo.verification_code) {
                             return interaction.editReply({
                                 content: `⏳ **Verificação Pendente**\n\n` +
@@ -182,8 +193,8 @@ module.exports = {
                         `Digite \`/verify ${verifyCode}\` **no servidor Minecraft**\n\n` +
                         '**📋 Próximos Passos:**\n' +
                         '1. ✅ Complete a verificação no servidor\n' +
-                        '2. 💎 Adquira uma assinatura individual com `/primeira-conta`\n' +
-                        '3. 📋 Use `/minhas-contas` para gerenciar seu portfólio\n\n' +
+                        '2. 💎 Adquira uma assinatura com `/assinatura`\n' +
+                        '3. 📋 Use `/conta` para gerenciar seu portfólio\n\n' +
                         `**🎯 Seu Nível:** ${donorInfo.donorName} (${donorInfo.maxAccounts} contas max)\n` +
                         '**⏱️ Código expira em 5 minutos**'
             });

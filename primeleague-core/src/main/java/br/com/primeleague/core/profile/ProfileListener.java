@@ -4,6 +4,7 @@ import br.com.primeleague.core.api.PrimeLeagueAPI;
 import br.com.primeleague.core.managers.DataManager;
 import br.com.primeleague.core.models.PlayerProfile;
 import br.com.primeleague.core.util.UUIDUtils;
+import br.com.primeleague.core.PrimeLeagueCore;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -17,9 +18,11 @@ import java.util.UUID;
 public final class ProfileListener implements Listener {
 
     private final DataManager dataManager;
+    private final PrimeLeagueCore plugin;
 
     public ProfileListener(DataManager dataManager) {
         this.dataManager = dataManager;
+        this.plugin = PrimeLeagueCore.getInstance();
     }
 
     /**
@@ -58,8 +61,18 @@ public final class ProfileListener implements Listener {
         dataManager.startLoading(canonicalUuid);
         
         try {
-            // Garante que o perfil seja carregado ou criado com o UUID correto.
-            dataManager.loadPlayerProfile(canonicalUuid, playerName);
+            // REFATORADO: Só carregar perfil se existir, NÃO criar automaticamente
+            // A criação será feita apenas via comando /registrar no Discord
+            PlayerProfile profile = dataManager.loadPlayerProfile(canonicalUuid);
+            
+            if (profile == null) {
+                // Perfil não existe - não criar automaticamente
+                // O AuthenticationListener decidirá se deve kickar ou não
+                plugin.getLogger().info("[PROFILE-LISTENER] Perfil não encontrado para " + playerName + " - aguardando decisão do AuthenticationListener");
+            } else {
+                // Perfil existe - carregar normalmente
+                plugin.getLogger().info("[PROFILE-LISTENER] Perfil carregado para " + playerName);
+            }
         } finally {
             dataManager.finishLoading(canonicalUuid);
         }
@@ -89,7 +102,7 @@ public final class ProfileListener implements Listener {
         if (existingProfile == null) {
             // Fallback - carregar se não estiver no cache
             UUID canonicalUuid = UUIDUtils.offlineUUIDFromName(name);
-            dataManager.loadPlayerProfile(canonicalUuid, name);
+            dataManager.loadPlayerProfileWithCreation(canonicalUuid, name);
         }
 
         // 🔗 CRIAÇÃO DO MAPEAMENTO DE UUID PARA O CHAT LOG

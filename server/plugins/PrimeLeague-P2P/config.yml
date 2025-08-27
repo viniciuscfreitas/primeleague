@@ -21,11 +21,11 @@ webhook:
 # Configuracoes do Discord (para referencia - o bot sera separado)
 discord:
   # Token do bot (sera usado em aplicacao separada)
-  bot_token: "YOUR_DISCORD_BOT_TOKEN_HERE"
+  bot_token: "SEU_TOKEN_AQUI"
   # ID do servidor Discord
-  guild_id: "1344225249826443266"
+  guild_id: "SEU_ID_AQUI"
   # Canal para logs de pagamento
-  log_channel_id: "1405718108768829592"
+  log_channel_id: "SEU_ID_AQUI"
 
 # Configuracoes de Pagamento
 payment:

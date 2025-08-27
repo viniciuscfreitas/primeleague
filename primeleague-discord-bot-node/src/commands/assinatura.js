@@ -2,16 +2,16 @@ const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, Butt
 const { getPortfolioByDiscordId, getPlayerAccountInfo } = require('../database/mysql');
 
 /**
- * Comando /primeira-conta - Gerenciamento da Primeira Conta Individual
+ * Comando /assinatura - Gerenciamento de Assinaturas
  * 
- * Este comando é específico para usuários que acabaram de verificar sua primeira conta
- * e precisam adquirir uma assinatura individual (não de clã).
+ * Este comando permite que usuários adquiram e gerenciem suas assinaturas
+ * para acessar o servidor Prime League.
  */
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('primeira-conta')
-        .setDescription('💎 Adquirir assinatura para sua primeira conta verificada'),
+        .setName('assinatura')
+        .setDescription('💎 Adquirir ou gerenciar sua assinatura do Prime League'),
 
     async execute(interaction) {
         await interaction.deferReply({ ephemeral: true });
@@ -44,29 +44,57 @@ module.exports = {
             );
 
             if (hasActiveSubscription) {
+                // Buscar informações detalhadas da assinatura compartilhada
+                const activeAccount = portfolio.find(account => account.subscription_status === 'ACTIVE');
+                const daysRemaining = activeAccount ? activeAccount.days_remaining : 0;
+                const expiryDate = activeAccount ? new Date(activeAccount.subscription_expires_at) : null;
+                
                 const embed = new EmbedBuilder()
                     .setColor('#4ECDC4')
-                    .setTitle('✅ Assinatura Ativa')
+                    .setTitle('✅ Assinatura Compartilhada Ativa')
                     .setDescription(
-                        'Você já possui uma assinatura ativa!\n\n' +
-                        '**Para gerenciar suas contas:**\n' +
-                        '• Use `/minhas-contas` para ver seu portfólio\n' +
-                        '• Use `/renovar` para gerenciar assinaturas de clã\n\n' +
-                        '**Para adicionar mais contas:**\n' +
-                        '• Use `/registrar <nickname>` para novas contas'
+                        'Você já possui uma **assinatura compartilhada** ativa!\n\n' +
+                        '**📊 Status da Assinatura:**\n' +
+                        `• **Status:** Ativa\n` +
+                        `• **Dias Restantes:** ${daysRemaining} dias\n` +
+                        `• **Expira em:** ${expiryDate ? expiryDate.toLocaleDateString('pt-BR') : 'N/A'}\n\n` +
+                        '**🎮 Contas Vinculadas:**\n' +
+                        `• **Total:** ${portfolio.length} conta${portfolio.length > 1 ? 's' : ''}\n` +
+                        portfolio.map(acc => `• ${acc.player_name} (${acc.subscription_status === 'ACTIVE' ? '✅' : '❌'})`).join('\n') + '\n\n' +
+                        '**💡 Como Funciona:**\n' +
+                        '• Sua assinatura é **compartilhada** entre todas as contas\n' +
+                        '• Todas as contas vinculadas têm acesso ao servidor\n' +
+                        '• Você pode adicionar mais contas sem custo adicional'
                     )
+                    .addFields({
+                        name: '🔧 Ações Disponíveis',
+                        value: 
+                            '• `/conta` - Gerenciar seu portfólio completo\n' +
+                            '• `/registrar <nickname>` - Adicionar mais contas\n' +
+                            '• `/upgrade-doador` - Ver opções de upgrade\n' +
+                            '• `/assinatura` - Renovar quando necessário',
+                        inline: false
+                    })
+                    .setFooter({ 
+                        text: '💡 Sua assinatura é compartilhada automaticamente com todas as contas vinculadas',
+                        iconURL: interaction.client.user.displayAvatarURL()
+                    })
                     .setTimestamp();
 
                 return interaction.editReply({ embeds: [embed] });
             }
 
-            // 3. Mostrar planos individuais
+            // 3. Mostrar planos de assinatura compartilhada
             const embed = new EmbedBuilder()
                 .setColor('#FFD93D')
-                .setTitle('💎 Assinatura Individual - Prime League')
+                .setTitle('💎 Assinatura Compartilhada - Prime League')
                 .setDescription(
                     `**Jogador:** ${interaction.user}\n` +
                     `**Contas Verificadas:** ${portfolio.length}\n\n` +
+                    '**🎯 Sistema de Assinatura Compartilhada:**\n' +
+                    '• Uma única assinatura para **todas** suas contas\n' +
+                    '• Economia e simplicidade\n' +
+                    '• Adicione quantas contas quiser sem custo extra\n\n' +
                     '**Escolha o plano ideal para você:**'
                 )
                 .addFields([
@@ -76,9 +104,10 @@ module.exports = {
                             '**Preço:** R$ 9,90/mês\n' +
                             '**Benefícios:**\n' +
                             '• Acesso completo ao servidor\n' +
-                            '• 1 conta simultânea\n' +
+                            '• **Todas** suas contas vinculadas\n' +
                             '• Suporte básico\n' +
-                            '• Sem anúncios',
+                            '• Sem anúncios\n' +
+                            '• **Compartilhado** automaticamente',
                         inline: true
                     },
                     {
@@ -87,9 +116,10 @@ module.exports = {
                             '**Preço:** R$ 19,90/mês\n' +
                             '**Benefícios:**\n' +
                             '• Tudo do Básico\n' +
-                            '• 2 contas simultâneas\n' +
+                            '• **Todas** suas contas vinculadas\n' +
                             '• Prioridade no suporte\n' +
-                            '• Cores especiais no chat',
+                            '• Cores especiais no chat\n' +
+                            '• **Compartilhado** automaticamente',
                         inline: true
                     },
                     {
@@ -98,9 +128,10 @@ module.exports = {
                             '**Preço:** R$ 39,90/mês\n' +
                             '**Benefícios:**\n' +
                             '• Tudo do Premium\n' +
-                            '• 5 contas simultâneas\n' +
+                            '• **Todas** suas contas vinculadas\n' +
                             '• Suporte VIP 24/7\n' +
-                            '• Comandos especiais',
+                            '• Comandos especiais\n' +
+                            '• **Compartilhado** automaticamente',
                         inline: true
                     }
                 ])
@@ -108,6 +139,7 @@ module.exports = {
                     name: '📝 Informações Importantes',
                     value: 
                         '• **Duração:** Todas as assinaturas são válidas por 30 dias\n' +
+                        '• **Compartilhamento:** Uma assinatura para **todas** suas contas\n' +
                         '• **Pagamento:** PIX, cartão de crédito e outros métodos\n' +
                         '• **Ativação:** Imediata após confirmação do pagamento\n' +
                         '• **Cancelamento:** A qualquer momento\n' +
@@ -115,7 +147,7 @@ module.exports = {
                     inline: false
                 })
                 .setFooter({ 
-                    text: '💡 Recomendado: Plano Básico para começar',
+                    text: '💡 Sistema Compartilhado: Uma assinatura para todas suas contas!',
                     iconURL: interaction.client.user.displayAvatarURL()
                 })
                 .setTimestamp();

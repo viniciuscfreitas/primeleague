@@ -8,6 +8,7 @@ const NotificationWorker = require('./workers/notification-worker');
 const IPAuthHandler = require('./handlers/ip-auth-handler');
 const StatusWorker = require('./workers/status-worker');
 const SubscriptionButtonHandler = require('./handlers/subscription-button-handler');
+const DonorButtonHandler = require('./handlers/donor-button-handler');
 
 // Criar cliente Discord
 const client = new Client({
@@ -98,16 +99,31 @@ client.on('interactionCreate', async interaction => {
             await command.execute(interaction);
             
         } else if (interaction.isButton()) {
-            // Botões de autorização de IP
-            let handled = await IPAuthHandler.handleIPAuthInteraction(interaction);
+            const { customId } = interaction;
+            console.log(`[Bot] Processando botão: ${customId}`);
             
-            // Se não foi tratado pelo IPAuthHandler, tentar SubscriptionButtonHandler
+            let handled = false;
+            
+            // Verificar se é um botão de upgrade de doador (prioridade alta)
+            if (customId.startsWith('upgrade_to_') || customId.startsWith('donor_')) {
+                console.log(`[Bot] Tentando DonorButtonHandler para: ${customId}`);
+                handled = await DonorButtonHandler.handleDonorButton(interaction);
+            }
+            
+            // Se não foi tratado, tentar IPAuthHandler
             if (!handled) {
+                console.log(`[Bot] Tentando IPAuthHandler para: ${customId}`);
+                handled = await IPAuthHandler.handleIPAuthInteraction(interaction);
+            }
+            
+            // Se não foi tratado, tentar SubscriptionButtonHandler
+            if (!handled) {
+                console.log(`[Bot] Tentando SubscriptionButtonHandler para: ${customId}`);
                 handled = await SubscriptionButtonHandler.handleSubscriptionButton(interaction);
             }
             
             if (!handled) {
-                console.log(`[Bot] Interação de botão não tratada: ${interaction.customId}`);
+                console.log(`[Bot] Interação de botão não tratada: ${customId}`);
             }
         }
     } catch (error) {

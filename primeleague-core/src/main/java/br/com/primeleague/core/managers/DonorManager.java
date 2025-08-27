@@ -103,7 +103,8 @@ public final class DonorManager {
                 levelSection.getDouble("discount", 0.0),
                 levelSection.getDouble("min_donation", 0.0),
                 levelSection.getString("color", "§f"),
-                levelSection.getStringList("permissions")
+                levelSection.getStringList("permissions"),
+                levelSection.getInt("max-alt-accounts", 1)
             );
             
             donorLevels.put(levelKey, level);

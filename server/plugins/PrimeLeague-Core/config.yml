@@ -21,49 +21,39 @@ economy:
   log_level: "INFO"  # DEBUG, INFO, WARNING
 
 donors:
-  # Sistema de níveis de doador
+  # Sistema de níveis de doador configurável
   levels:
-    bronze:
-      name: "Bronze"
-      discount: 0.05      # 5% de desconto
-      min_donation: 10.0  # Doação mínima em reais
-      color: "§6"
+    0: # Nível Padrão (Apenas Acesso Prime)
+      name: "Player"
+      chat-tag: "&7"
+      discount: 0.0
+      max-alt-accounts: 1
+      min_donation: 0.0
       permissions:
-        - "primeleague.donor.bronze"
-        - "primeleague.shop.discount"
+        - "primeleague.basic.access"
     
-    silver:
-      name: "Prata"
-      discount: 0.10      # 10% de desconto
-      min_donation: 25.0  # Doação mínima em reais
-      color: "§7"
+    1:
+      name: "Apoiador"
+      chat-tag: "&7[Apoiador]"
+      discount: 0.05
+      max-alt-accounts: 3
+      min_donation: 10.0
       permissions:
-        - "primeleague.donor.silver"
-        - "primeleague.shop.discount"
-        - "primeleague.chat.color"
-    
-    gold:
-      name: "Ouro"
-      discount: 0.15      # 15% de desconto
-      min_donation: 50.0  # Doação mínima em reais
-      color: "§e"
-      permissions:
-        - "primeleague.donor.gold"
+        - "primeleague.donor.apoiador"
         - "primeleague.shop.discount"
         - "primeleague.chat.color"
-        - "primeleague.chat.format"
     
-    diamond:
-      name: "Diamante"
-      discount: 0.20      # 20% de desconto
-      min_donation: 100.0 # Doação mínima em reais
-      color: "§b"
+    2:
+      name: "Patrocinador"
+      chat-tag: "&6[Patrocinador]"
+      discount: 0.10
+      max-alt-accounts: 5
+      min_donation: 25.0
       permissions:
-        - "primeleague.donor.diamond"
+        - "primeleague.donor.patrocinador"
         - "primeleague.shop.discount"
         - "primeleague.chat.color"
         - "primeleague.chat.format"
-        - "primeleague.chat.mention"
 
 # Configurações de banco de dados
 database:
@@ -91,5 +81,10 @@ security:
   max_daily_transactions: 1000  # Limite diário de transações por jogador
   suspicious_amount_threshold: 5000.0  # Valor que dispara alerta de segurança
   enable_fraud_detection: true
+
+# Configurações da API HTTP
+api:
+  port: 8080  # Porta para o servidor HTTP da API
+  enabled: true  # Habilitar/desabilitar API HTTP
 
 
