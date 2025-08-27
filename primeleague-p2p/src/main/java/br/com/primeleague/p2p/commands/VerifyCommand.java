@@ -81,37 +81,8 @@ public class VerifyCommand implements CommandExecutor {
                                 // Remover jogador do limbo
                                 limboManager.removePlayerFromLimbo(player.getUniqueId());
                                 
-                                // UX MELHORADA: Mensagens de sucesso mais claras e tempo para leitura
-                                player.sendMessage("");
-                                player.sendMessage("§a§l🎉 VERIFICAÇÃO CONCLUÍDA COM SUCESSO!");
-                                player.sendMessage("");
-                                player.sendMessage("§f✅ Sua conta Discord foi vinculada!");
-                                player.sendMessage("§f🎮 Agora você pode usar todos os comandos do Discord.");
-                                player.sendMessage("");
-                                player.sendMessage("§6§l📋 PRÓXIMO PASSO NECESSÁRIO:");
-                                player.sendMessage("§fPara acessar o servidor, você precisa de uma assinatura.");
-                                player.sendMessage("");
-                                player.sendMessage("§e💎 Como adquirir:");
-                                player.sendMessage("§7• Vá para o Discord: §fdiscord.gg/primeleague");
-                                player.sendMessage("§7• Use o comando §a/assinatura §7no Discord");
-                                player.sendMessage("§7• Escolha seu plano e complete o pagamento");
-                                player.sendMessage("");
-                                player.sendMessage("§a🔄 Após adquirir a assinatura, conecte novamente!");
-                                player.sendMessage("");
-                                
-                                // Kick jogador após tempo suficiente para leitura
-                                Bukkit.getScheduler().runTaskLater(PrimeLeagueP2P.getInstance(), new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        player.kickPlayer("§a§l✅ Verificação Concluída!\n\n" +
-                                                         "§fSua conta Discord foi vinculada com sucesso!\n\n" +
-                                                         "§6§l📋 Próximo Passo:\n" +
-                                                         "§fAdquira uma assinatura no Discord para acessar o servidor.\n\n" +
-                                                         "§e💎 Discord: §fdiscord.gg/primeleague\n" +
-                                                         "§e💎 Comando: §f/assinatura\n\n" +
-                                                         "§a🔄 Conecte novamente após adquirir a assinatura!");
-                                    }
-                                }, 120L); // 6 segundos para leitura completa
+                                // VERIFICAR ASSINATURA IMEDIATAMENTE APÓS VERIFICAÇÃO
+                                checkSubscriptionAndKickIfNeeded(player);
                                 
                                 // Notificar Discord sobre sucesso
                                 notifyDiscordSuccess(player.getName());
@@ -193,6 +164,277 @@ public class VerifyCommand implements CommandExecutor {
             } catch (SQLException e) {
                 PrimeLeagueP2P.getInstance().getLogger().warning("Erro ao fechar conexão: " + e.getMessage());
             }
+        }
+    }
+
+    /**
+     * Verifica a assinatura do jogador e kicka se não tiver assinatura ativa.
+     * 
+     * @param player Jogador para verificar
+     */
+    private void checkSubscriptionAndKickIfNeeded(final Player player) {
+        // Executar verificação de assinatura de forma assíncrona
+        Bukkit.getScheduler().runTaskAsynchronously(PrimeLeagueP2P.getInstance(), new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    // Obter UUID canônico do jogador
+                    final UUID canonicalUuid = br.com.primeleague.core.util.UUIDUtils.offlineUUIDFromName(player.getName());
+                    
+                    // Verificar assinatura
+                    final AccountStatus status = checkAccountSubscription(canonicalUuid);
+                    
+                    // Retornar resultado para a thread principal
+                    Bukkit.getScheduler().runTask(PrimeLeagueP2P.getInstance(), new Runnable() {
+                        @Override
+                        public void run() {
+                            switch (status.getStatus()) {
+                                case ACTIVE:
+                                    // Assinatura ativa - permitir acesso
+                                    player.sendMessage("");
+                                    player.sendMessage("§a§l🎉 VERIFICAÇÃO CONCLUÍDA COM SUCESSO!");
+                                    player.sendMessage("");
+                                    player.sendMessage("§f✅ Sua conta Discord foi vinculada!");
+                                    player.sendMessage("§f✅ Sua assinatura está ativa!");
+                                    player.sendMessage("§f🎮 Bem-vindo ao Prime League!");
+                                    player.sendMessage("");
+                                    player.sendMessage("§a🔄 Você pode jogar normalmente!");
+                                    break;
+                                    
+                                case EXPIRED:
+                                    // Assinatura expirada - kickar
+                                    player.sendMessage("");
+                                    player.sendMessage("§a§l✅ VERIFICAÇÃO CONCLUÍDA!");
+                                    player.sendMessage("");
+                                    player.sendMessage("§f✅ Sua conta Discord foi vinculada!");
+                                    player.sendMessage("§c❌ Sua assinatura expirou.");
+                                    player.sendMessage("");
+                                    player.sendMessage("§6§l📋 RENOVAÇÃO NECESSÁRIA:");
+                                    player.sendMessage("§fPara continuar jogando, renove sua assinatura.");
+                                    player.sendMessage("");
+                                    player.sendMessage("§e💎 Como renovar:");
+                                    player.sendMessage("§7• Vá para o Discord: §fdiscord.gg/primeleague");
+                                    player.sendMessage("§7• Use o comando §a/assinatura §7no Discord");
+                                    player.sendMessage("§7• Escolha seu plano e complete o pagamento");
+                                    player.sendMessage("");
+                                    
+                                                                         // Kick após 3 segundos
+                                     Bukkit.getScheduler().runTaskLater(PrimeLeagueP2P.getInstance(), new Runnable() {
+                                         @Override
+                                         public void run() {
+                                             player.kickPlayer("§a✅ Verificação Concluída!\n\n" +
+                                                              "§fConta Discord vinculada!\n" +
+                                                              "§c❌ Assinatura Expirada\n\n" +
+                                                              "§e💎 Renove: discord.gg/primeleague\n" +
+                                                              "§e💎 Comando: /assinatura");
+                                         }
+                                     }, 60L); // 3 segundos
+                                    break;
+                                    
+                                case NEVER_SUBSCRIBED:
+                                    // Nunca teve assinatura - kickar
+                                    player.sendMessage("");
+                                    player.sendMessage("§a§l✅ VERIFICAÇÃO CONCLUÍDA!");
+                                    player.sendMessage("");
+                                    player.sendMessage("§f✅ Sua conta Discord foi vinculada!");
+                                    player.sendMessage("§c❌ Você não possui assinatura ativa.");
+                                    player.sendMessage("");
+                                    player.sendMessage("§6§l📋 ASSINATURA NECESSÁRIA:");
+                                    player.sendMessage("§fPara acessar o servidor, adquira uma assinatura.");
+                                    player.sendMessage("");
+                                    player.sendMessage("§e💎 Como adquirir:");
+                                    player.sendMessage("§7• Vá para o Discord: §fdiscord.gg/primeleague");
+                                    player.sendMessage("§7• Use o comando §a/assinatura §7no Discord");
+                                    player.sendMessage("§7• Escolha seu plano e complete o pagamento");
+                                    player.sendMessage("");
+                                    
+                                                                         // Kick após 3 segundos
+                                     Bukkit.getScheduler().runTaskLater(PrimeLeagueP2P.getInstance(), new Runnable() {
+                                         @Override
+                                         public void run() {
+                                             player.kickPlayer("§a✅ Verificação Concluída!\n\n" +
+                                                              "§fConta Discord vinculada!\n" +
+                                                              "§c❌ Assinatura Necessária\n\n" +
+                                                              "§e💎 Adquira: discord.gg/primeleague\n" +
+                                                              "§e💎 Comando: /assinatura");
+                                         }
+                                     }, 60L); // 3 segundos
+                                    break;
+                                    
+                                default:
+                                    // Status desconhecido - kickar por segurança
+                                    player.sendMessage("");
+                                    player.sendMessage("§a§l✅ VERIFICAÇÃO CONCLUÍDA!");
+                                    player.sendMessage("");
+                                    player.sendMessage("§f✅ Sua conta Discord foi vinculada!");
+                                    player.sendMessage("§c❌ Erro ao verificar assinatura.");
+                                    player.sendMessage("");
+                                    player.sendMessage("§6§l📋 CONTATE A ADMINISTRAÇÃO:");
+                                    player.sendMessage("§fEntre em contato no Discord para resolver.");
+                                    player.sendMessage("");
+                                    
+                                                                         // Kick após 3 segundos
+                                     Bukkit.getScheduler().runTaskLater(PrimeLeagueP2P.getInstance(), new Runnable() {
+                                         @Override
+                                         public void run() {
+                                             player.kickPlayer("§a✅ Verificação Concluída!\n\n" +
+                                                              "§fConta Discord vinculada!\n" +
+                                                              "§c❌ Erro na Verificação\n\n" +
+                                                              "§e💎 Contato: discord.gg/primeleague");
+                                         }
+                                     }, 60L); // 3 segundos
+                                    break;
+                            }
+                        }
+                    });
+                    
+                } catch (Exception e) {
+                    // Log do erro
+                    PrimeLeagueP2P.getInstance().getLogger().severe("Erro ao verificar assinatura: " + e.getMessage());
+                    e.printStackTrace();
+                    
+                                         // Kick por segurança em caso de erro
+                     Bukkit.getScheduler().runTask(PrimeLeagueP2P.getInstance(), new Runnable() {
+                         @Override
+                         public void run() {
+                             player.kickPlayer("§c❌ Erro na Verificação\n\n" +
+                                              "§fErro ao verificar assinatura.\n" +
+                                              "§e💎 Contato: discord.gg/primeleague");
+                         }
+                     });
+                }
+            }
+        });
+    }
+    
+    /**
+     * Verifica o status de assinatura de uma conta.
+     * 
+     * @param playerUuid UUID do jogador
+     * @return AccountStatus com informações da assinatura
+     */
+    private AccountStatus checkAccountSubscription(UUID playerUuid) {
+        Connection conn = null;
+        PreparedStatement ps = null;
+        ResultSet rs = null;
+        
+        try {
+            // Obter conexão via API do Core
+            conn = br.com.primeleague.core.PrimeLeagueCore.getInstance().getDataManager().getConnection();
+            if (conn == null) {
+                return new AccountStatus(SubscriptionStatus.NEVER_SUBSCRIBED, 0);
+            }
+            
+            // 1. Verificar se está vinculado ao Discord
+            String checkLinkSql = "SELECT dl.verified FROM discord_links dl JOIN player_data pd ON dl.player_id = pd.player_id WHERE pd.uuid = ? LIMIT 1";
+            ps = conn.prepareStatement(checkLinkSql);
+            ps.setString(1, playerUuid.toString());
+            rs = ps.executeQuery();
+            
+            if (!rs.next()) {
+                // Não vinculado
+                return new AccountStatus(SubscriptionStatus.NEVER_SUBSCRIBED, 0);
+            }
+            
+            boolean isVerified = rs.getBoolean("verified");
+            rs.close();
+            ps.close();
+            
+            if (!isVerified) {
+                // Vinculado mas não verificado
+                return new AccountStatus(SubscriptionStatus.NEVER_SUBSCRIBED, 0);
+            }
+            
+            // 2. Verificar assinatura compartilhada via Discord ID
+            // Primeiro, obter o Discord ID do jogador
+            String getDiscordIdSql = "SELECT dl.discord_id FROM discord_links dl JOIN player_data pd ON dl.player_id = pd.player_id WHERE pd.uuid = ? AND dl.verified = TRUE LIMIT 1";
+            ps = conn.prepareStatement(getDiscordIdSql);
+            ps.setString(1, playerUuid.toString());
+            rs = ps.executeQuery();
+            
+            if (!rs.next()) {
+                // Jogador não vinculado ao Discord
+                return new AccountStatus(SubscriptionStatus.NEVER_SUBSCRIBED, 0);
+            }
+            
+            String discordId = rs.getString("discord_id");
+            rs.close();
+            ps.close();
+            
+            // Agora verificar a assinatura compartilhada
+            String checkSubSql = "SELECT subscription_expires_at FROM discord_users WHERE discord_id = ?";
+            ps = conn.prepareStatement(checkSubSql);
+            ps.setString(1, discordId);
+            rs = ps.executeQuery();
+            
+            if (!rs.next()) {
+                // Discord ID não tem assinatura
+                return new AccountStatus(SubscriptionStatus.NEVER_SUBSCRIBED, 0);
+            }
+            
+            java.sql.Timestamp expiresAt = rs.getTimestamp("subscription_expires_at");
+            
+            if (expiresAt == null) {
+                // Nunca teve assinatura
+                return new AccountStatus(SubscriptionStatus.NEVER_SUBSCRIBED, 0);
+            }
+            
+            // Calcular dias restantes
+            long currentTime = System.currentTimeMillis();
+            long expiresTime = expiresAt.getTime();
+            
+            if (expiresTime > currentTime) {
+                // Assinatura ativa
+                int daysRemaining = (int) ((expiresTime - currentTime) / (1000 * 60 * 60 * 24));
+                return new AccountStatus(SubscriptionStatus.ACTIVE, daysRemaining);
+            } else {
+                // Assinatura expirada
+                return new AccountStatus(SubscriptionStatus.EXPIRED, 0);
+            }
+            
+        } catch (Exception e) {
+            PrimeLeagueP2P.getInstance().getLogger().severe("Erro ao verificar assinatura para " + playerUuid + ": " + e.getMessage());
+            return new AccountStatus(SubscriptionStatus.NEVER_SUBSCRIBED, 0);
+            
+        } finally {
+            // Cleanup de recursos
+            try {
+                if (rs != null) rs.close();
+                if (ps != null) ps.close();
+                if (conn != null) conn.close();
+            } catch (Exception e) {
+                // Silenciar erros de cleanup
+            }
+        }
+    }
+    
+    /**
+     * Enum para status de assinatura.
+     */
+    private enum SubscriptionStatus {
+        ACTIVE,
+        EXPIRED,
+        NEVER_SUBSCRIBED
+    }
+    
+    /**
+     * Classe para armazenar informações de status da conta.
+     */
+    private static class AccountStatus {
+        private final SubscriptionStatus status;
+        private final int daysRemaining;
+        
+        public AccountStatus(SubscriptionStatus status, int daysRemaining) {
+            this.status = status;
+            this.daysRemaining = daysRemaining;
+        }
+        
+        public SubscriptionStatus getStatus() {
+            return status;
+        }
+        
+        public int getDaysRemaining() {
+            return daysRemaining;
         }
     }
 

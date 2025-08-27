@@ -15,12 +15,7 @@ public final class UUIDUtils {
      * CORRIGIDO: Usa a mesma implementação do Node.js para compatibilidade.
      */
     public static UUID offlineUUIDFromName(String playerName) {
-        // Para o nome "vini", retornar o UUID correto que está no banco
-        if ("vini".equals(playerName)) {
-            return UUID.fromString("9b261df7-633c-3e05-9b0e-811f72be39ab");
-        }
-        
-        // Para outros nomes, usar o algoritmo padrão
+        // Usar o algoritmo padrão do Java UUID.nameUUIDFromBytes
         String source = "OfflinePlayer:" + playerName;
         return UUID.nameUUIDFromBytes(source.getBytes(UTF8));
     }

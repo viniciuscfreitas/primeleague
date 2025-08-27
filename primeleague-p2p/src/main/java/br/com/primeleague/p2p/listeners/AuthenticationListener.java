@@ -17,28 +17,21 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Timestamp;
 import java.util.UUID;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 
 /**
- * Listener de autenticação simplificada para o Sistema de Portfólio de Contas.
+ * Listener de autenticação com DEBUG COMPLETO para investigar problemas de UUID.
  * 
- * ARQUITETURA V3.0 (Gestor de Portfólio):
- * - Verificação direta e simples por conta individual
- * - Sem complexidade de slots ou clãs
- * - 1 Discord ID pode vincular N contas
- * - Cada conta tem assinatura individual (1-para-1)
- * - Fonte da verdade: discord_users.subscription_expires_at (assinatura compartilhada)
- * 
- * REFATORADO para usar DataManager normalizado:
- * - Usa loadPlayerProfileWithClan() para obter dados completos
- * - Compatível com schema normalizado sem clan_id em player_data
- * - Usa BigDecimal para operações monetárias precisas
- * 
- * FLUXO DE AUTENTICAÇÃO SIMPLIFICADO:
- * 1. AsyncPlayerPreLoginEvent: Verificação binária (conta ativa? SIM/NÃO)
- * 2. PlayerJoinEvent: Verificação de limbo se necessário
+ * SISTEMA DE DEBUG IMPLEMENTADO:
+ * - Logs detalhados em cada etapa do processo
+ * - Verificação de UUID em múltiplas fontes
+ * - Comparação entre algoritmos Java e Node.js
+ * - Análise completa do banco de dados
  * 
  * @author PrimeLeague Team
- * @version 3.1.0 (Refatorado para schema normalizado)
+ * @version 3.2.0 (Debug Completo)
  */
 public final class AuthenticationListener implements Listener {
 
@@ -49,76 +42,100 @@ public final class AuthenticationListener implements Listener {
     }
 
     /**
-     * Processa autenticação de jogadores ANTES da entrada no servidor.
-     * Nova lógica simplificada do Sistema de Portfólio.
-     * REFATORADO: Usa DataManager normalizado.
+     * Processa autenticação de jogadores com DEBUG COMPLETO.
+     * Cada etapa é logada detalhadamente para identificar problemas.
      */
     @EventHandler(priority = EventPriority.HIGH)
     public void onPlayerPreLogin(AsyncPlayerPreLoginEvent event) {
         final String playerName = event.getName();
         final String ipAddress = event.getAddress().getHostAddress();
         
+        plugin.getLogger().info("==================================================================================");
+        plugin.getLogger().info("🔍 [DEBUG-AUTH] INICIANDO AUTENTICAÇÃO PARA: " + playerName);
+        plugin.getLogger().info("🔍 [DEBUG-AUTH] IP: " + ipAddress);
+        plugin.getLogger().info("==================================================================================");
+        
         // 0. Verificar se o jogador está na whitelist (BYPASS TOTAL)
         if (isPlayerWhitelisted(playerName)) {
+            plugin.getLogger().info("🔍 [DEBUG-AUTH] ✅ Jogador na whitelist - BYPASS TOTAL");
             event.allow();
             return;
         }
         
         // ================================================================
-        // PASSO 1: VALIDAÇÃO DE NOME CANÔNICO (A MURALHA IMPENETRÁVEL)
+        // PASSO 1: ANÁLISE COMPLETA DE UUID (DEBUG DETALHADO)
         // ================================================================
-        try {
-            // Busca o nome canônico no banco de forma case-insensitive
-            String canonicalName = getCanonicalPlayerName(playerName);
-            
-            // Se um nome canônico foi encontrado, mas é diferente do nome digitado
-            if (canonicalName != null && !playerName.equals(canonicalName)) {
-                // Nega o login com a mensagem educativa
-                plugin.getLogger().warning(String.format(
-                    "[AUTH] ❌ Capitalização incorreta: '%s' -> '%s'",
-                    playerName, canonicalName
-                ));
-                event.disallow(Result.KICK_OTHER, 
-                    "§cCapitalização Incorreta!\n\n" +
-                    "§fO nome para esta conta está registrado como:\n" +
-                    "§a" + canonicalName + "§f\n\n" +
-                    "§ePor favor, utilize o nome correto para se conectar."
-                );
-                return; // Encerra o processamento aqui
-            }
-        } catch (Exception e) {
-            plugin.getLogger().warning("[AUTH] Erro na validação de nome canônico para " + playerName + ": " + e.getMessage());
-            // Continua o processamento em caso de erro na validação
-        }
+        plugin.getLogger().info("🔍 [DEBUG-UUID] PASSO 1: ANÁLISE COMPLETA DE UUID");
         
         try {
-            // 1. Obter UUID canônico do Core (Single Source of Truth)
+            // 1.1. Gerar UUID usando o método Java atual
             final UUID playerUuid = UUIDUtils.offlineUUIDFromName(playerName);
-            plugin.getLogger().info("[AUTH-DEBUG] 🔍 UUID gerado para " + playerName + ": " + playerUuid.toString());
+            plugin.getLogger().info("🔍 [DEBUG-UUID] 1.1. UUID Java gerado: " + playerUuid.toString());
             
-            // DEBUG: Verificar se o UUID gerado é o correto
-            String expectedUuid = "9b261df7-633c-3e05-9b0e-811f72be39ab";
-            boolean uuidMatches = playerUuid.toString().equals(expectedUuid);
-            plugin.getLogger().info("[AUTH-DEBUG] 🔍 UUID esperado: " + expectedUuid);
-            plugin.getLogger().info("[AUTH-DEBUG] 🔍 UUIDs são iguais: " + uuidMatches);
+            // 1.2. Gerar UUID usando algoritmo manual (para comparação)
+            UUID manualUuid = generateUUIDManually(playerName);
+            plugin.getLogger().info("🔍 [DEBUG-UUID] 1.2. UUID Manual gerado: " + manualUuid.toString());
             
-            // 2. DEBUG: Verificar se o player existe diretamente no banco
-            plugin.getLogger().info("[AUTH-DEBUG] 🔍 Verificando se player existe no banco...");
+            // 1.3. Verificar se são iguais
+            boolean uuidsMatch = playerUuid.equals(manualUuid);
+            plugin.getLogger().info("🔍 [DEBUG-UUID] 1.3. UUIDs são iguais: " + uuidsMatch);
+            
+            // 1.4. Debug detalhado do processo de geração
+            debugUUIDGeneration(playerName);
+            
+            // 1.5. Verificar UUIDs conhecidos
+            checkKnownUUIDs(playerName, playerUuid);
+            
+        } catch (Exception e) {
+            plugin.getLogger().severe("🔍 [DEBUG-UUID] ❌ Erro na análise de UUID: " + e.getMessage());
+            e.printStackTrace();
+        }
+        
+        // ================================================================
+        // PASSO 2: ANÁLISE COMPLETA DO BANCO DE DADOS
+        // ================================================================
+        plugin.getLogger().info("🔍 [DEBUG-DB] PASSO 2: ANÁLISE COMPLETA DO BANCO");
+        
+        try {
+            // 2.1. Verificar se o player existe no banco
+            boolean playerExistsInDB = checkPlayerExistsInDatabaseDetailed(playerName);
+            
+            // 2.2. Se não existe, não criar automaticamente
+            if (!playerExistsInDB) {
+                plugin.getLogger().info("🔍 [DEBUG-DB] 2.2. Player não existe - NÃO criando automaticamente");
+                plugin.getLogger().info("🔍 [DEBUG-DB] Jogador deve se registrar via Discord primeiro");
+            }
+            
+        } catch (Exception e) {
+            plugin.getLogger().severe("🔍 [DEBUG-DB] ❌ Erro na análise do banco: " + e.getMessage());
+            e.printStackTrace();
+        }
+        
+        // ================================================================
+        // PASSO 3: PROCESSO NORMAL DE AUTENTICAÇÃO
+        // ================================================================
+        plugin.getLogger().info("🔍 [DEBUG-AUTH] PASSO 3: PROCESSO NORMAL DE AUTENTICAÇÃO");
+        
+        try {
+            // 1. Obter UUID canônico do Core
+            final UUID playerUuid = UUIDUtils.offlineUUIDFromName(playerName);
+            plugin.getLogger().info("🔍 [DEBUG-AUTH] UUID final usado: " + playerUuid.toString());
+            
+            // 2. Verificar se o player existe diretamente no banco
             boolean playerExistsInDB = checkPlayerExistsInDatabase(playerUuid, playerName);
-            plugin.getLogger().info("[AUTH-DEBUG] 📊 Player existe no banco: " + (playerExistsInDB ? "SIM" : "NÃO"));
+            plugin.getLogger().info("🔍 [DEBUG-AUTH] Player existe no banco: " + (playerExistsInDB ? "SIM" : "NÃO"));
             
-            // 3. REFATORADO: Usar DataManager normalizado para carregar perfil completo
-            // NÃO criar perfil automaticamente - só carregar se existir
-            plugin.getLogger().info("[AUTH-DEBUG] 🔍 Tentando carregar perfil via DataManager...");
+            // 3. Tentar carregar perfil via DataManager
+            plugin.getLogger().info("🔍 [DEBUG-AUTH] Tentando carregar perfil via DataManager...");
             PlayerProfile profile = PrimeLeagueAPI.getDataManager().loadPlayerProfile(playerUuid);
             
             if (profile == null) {
-                plugin.getLogger().warning("[AUTH-DEBUG] ❌ DataManager retornou null para " + playerName);
-                plugin.getLogger().warning("[AUTH-DEBUG] ❌ UUID usado: " + playerUuid.toString());
-                plugin.getLogger().warning("[AUTH-DEBUG] ❌ Player existe no banco: " + (playerExistsInDB ? "SIM" : "NÃO"));
+                plugin.getLogger().warning("🔍 [DEBUG-AUTH] ❌ DataManager retornou null para " + playerName);
+                plugin.getLogger().warning("🔍 [DEBUG-AUTH] ❌ UUID usado: " + playerUuid.toString());
+                plugin.getLogger().warning("🔍 [DEBUG-AUTH] ❌ Player existe no banco: " + (playerExistsInDB ? "SIM" : "NÃO"));
                 
                 // Perfil não existe - jogador não registrado no Discord
-                plugin.getLogger().info("[AUTH] Perfil não encontrado para " + playerName + " - não registrado no Discord");
+                plugin.getLogger().info("🔍 [DEBUG-AUTH] Perfil não encontrado - não registrado no Discord");
                 event.disallow(Result.KICK_OTHER, 
                     "§c§l✖ Registro Necessário\n\n" +
                     "§fVocê precisa se registrar no Discord primeiro!\n\n" +
@@ -129,30 +146,20 @@ public final class AuthenticationListener implements Listener {
                 return;
             }
             
-            plugin.getLogger().info("[AUTH-DEBUG] ✅ Perfil carregado com sucesso para " + playerName);
+            plugin.getLogger().info("🔍 [DEBUG-AUTH] ✅ Perfil carregado com sucesso");
             
-            // 3. Verificação BINÁRIA: Esta conta específica tem assinatura ativa?
-            AccountStatus status = checkAccountSubscriptionFromProfile(profile);
-            
-            // DEBUG: Log detalhado do status
-            plugin.getLogger().info("[AUTH-DEBUG] 📊 Status final para " + playerName + ": " + status.getStatus() + " (dias: " + status.getDaysRemaining() + ")");
-            
-                         switch (status.getStatus()) {
+                         // 4. Verificação de assinatura
+             AccountStatus status = checkAccountSubscriptionFromProfile(profile);
+             plugin.getLogger().info("🔍 [DEBUG-AUTH] Status final: " + status.getStatus() + " (dias: " + status.getDaysRemaining() + ")");
+             
+             switch (status.getStatus()) {
                  case ACTIVE:
-                     // ✅ ACESSO AUTORIZADO - Assinatura ativa
-                     plugin.getLogger().info(String.format(
-                         "[AUTH] ✅ Acesso autorizado: %s (expira em %d dias)",
-                         playerName, status.getDaysRemaining()
-                     ));
+                     plugin.getLogger().info("🔍 [DEBUG-AUTH] ✅ ACESSO AUTORIZADO");
                      event.allow();
                      break;
                      
                  case EXPIRED:
-                     // ❌ ASSINATURA EXPIRADA
-                     plugin.getLogger().info(String.format(
-                         "[AUTH] ❌ Assinatura expirada: %s",
-                         playerName
-                     ));
+                     plugin.getLogger().info("🔍 [DEBUG-AUTH] ❌ ASSINATURA EXPIRADA");
                      event.disallow(Result.KICK_OTHER, 
                          "§c§l✖ Assinatura Expirada\n\n" +
                          "§fSua assinatura do Prime League expirou.\n" +
@@ -164,11 +171,7 @@ public final class AuthenticationListener implements Listener {
                      break;
                      
                  case NEVER_SUBSCRIBED:
-                     // ❌ NUNCA TEVE ASSINATURA
-                     plugin.getLogger().info(String.format(
-                         "[AUTH] ❌ Conta sem assinatura: %s",
-                         playerName
-                     ));
+                     plugin.getLogger().info("🔍 [DEBUG-AUTH] ❌ NUNCA TEVE ASSINATURA");
                      event.disallow(Result.KICK_OTHER, 
                          "§c§l✖ Assinatura Necessária\n\n" +
                          "§fEsta conta não possui assinatura ativa.\n" +
@@ -179,21 +182,8 @@ public final class AuthenticationListener implements Listener {
                      );
                      break;
                      
-                 case PENDING_VERIFICATION:
-                     // ⏳ VERIFICAÇÃO PENDENTE - PERMITIR PARA VERIFICAÇÃO
-                     plugin.getLogger().info(String.format(
-                         "[AUTH] ⏳ Verificação pendente: %s - permitindo entrada para verificação",
-                         playerName
-                     ));
-                     event.allow(); // Permitir entrada para verificação
-                     break;
-                     
                  case NOT_REGISTERED:
-                     // ❌ NÃO REGISTRADO - KICK IMEDIATO
-                     plugin.getLogger().info(String.format(
-                         "[AUTH] ❌ Não registrado: %s - kick imediato",
-                         playerName
-                     ));
+                     plugin.getLogger().info("🔍 [DEBUG-AUTH] ❌ NÃO REGISTRADO NO DISCORD");
                      event.disallow(Result.KICK_OTHER, 
                          "§c§l✖ Registro Necessário\n\n" +
                          "§fVocê precisa se registrar no Discord primeiro!\n\n" +
@@ -202,28 +192,22 @@ public final class AuthenticationListener implements Listener {
                          "§a🔄 Após o registro, use o código de verificação no servidor!"
                      );
                      break;
-                    
-                default:
-                    // ❌ STATUS DESCONHECIDO
-                    plugin.getLogger().warning("[AUTH] Status desconhecido para " + playerName + ": " + status.getStatus());
-                event.disallow(Result.KICK_OTHER, 
-                        "§cErro interno de autenticação.\n" +
-                        "§7Contate a administração."
-                    );
-                    break;
-            }
+                     
+                 case PENDING_VERIFICATION:
+                     plugin.getLogger().info("🔍 [DEBUG-AUTH] ⏳ VERIFICAÇÃO PENDENTE - PERMITINDO ENTRADA");
+                     event.allow();
+                     break;
+             }
             
         } catch (Exception e) {
-            plugin.getLogger().severe("[AUTH] Exceção crítica em autenticação para " + playerName + ": " + e.getMessage());
+            plugin.getLogger().severe("🔍 [DEBUG-AUTH] ❌ Erro no processo de autenticação: " + e.getMessage());
             e.printStackTrace();
-            
-            // Em caso de erro, negar acesso por segurança
-            event.disallow(Result.KICK_OTHER, 
-                "§cErro interno de autenticação.\n" +
-                "§7Tente novamente em instantes.\n" +
-                "§7Se persistir, contate a administração."
-            );
+            event.disallow(Result.KICK_OTHER, "§cErro interno do servidor. Tente novamente.");
         }
+        
+        plugin.getLogger().info("==================================================================================");
+        plugin.getLogger().info("🔍 [DEBUG-AUTH] FIM DA AUTENTICAÇÃO PARA: " + playerName);
+        plugin.getLogger().info("==================================================================================");
     }
 
     /**
@@ -995,6 +979,263 @@ public final class AuthenticationListener implements Listener {
                 if (conn != null) conn.close();
             } catch (Exception e) {
                 plugin.getLogger().warning("[AUTH] Erro ao fechar recursos: " + e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Gera UUID manualmente para comparação com o método Java.
+     */
+    private UUID generateUUIDManually(String playerName) {
+        try {
+            String source = "OfflinePlayer:" + playerName;
+            plugin.getLogger().info("🔍 [DEBUG-UUID] Source string: " + source);
+            
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            byte[] hash = md.digest(source.getBytes(StandardCharsets.UTF_8));
+            
+            plugin.getLogger().info("🔍 [DEBUG-UUID] MD5 hash (hex): " + bytesToHex(hash));
+            
+            // Converter para UUID usando o mesmo algoritmo do Java
+            long msb = 0;
+            long lsb = 0;
+            
+            for (int i = 0; i < 8; i++) {
+                msb = (msb << 8) | (hash[i] & 0xff);
+            }
+            for (int i = 8; i < 16; i++) {
+                lsb = (lsb << 8) | (hash[i] & 0xff);
+            }
+            
+            // Aplicar versão e variante
+            msb &= ~(0xf << 12);
+            msb |= 3 << 12; // versão 3
+            lsb &= ~(0x3L << 62);
+            lsb |= 2L << 62; // variante
+            
+            UUID uuid = new UUID(msb, lsb);
+            plugin.getLogger().info("🔍 [DEBUG-UUID] UUID manual final: " + uuid.toString());
+            
+            return uuid;
+            
+        } catch (NoSuchAlgorithmException e) {
+            plugin.getLogger().severe("🔍 [DEBUG-UUID] ❌ Erro ao gerar UUID manual: " + e.getMessage());
+            return UUID.randomUUID();
+        }
+    }
+
+    /**
+     * Debug detalhado do processo de geração de UUID.
+     */
+    private void debugUUIDGeneration(String playerName) {
+        plugin.getLogger().info("🔍 [DEBUG-UUID] === DEBUG DETALHADO DE GERAÇÃO ===");
+        
+        try {
+            String source = "OfflinePlayer:" + playerName;
+            plugin.getLogger().info("🔍 [DEBUG-UUID] 1. Source string: '" + source + "'");
+            plugin.getLogger().info("🔍 [DEBUG-UUID] 2. Bytes da source: " + bytesToHex(source.getBytes(StandardCharsets.UTF_8)));
+            
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            byte[] hash = md.digest(source.getBytes(StandardCharsets.UTF_8));
+            
+            plugin.getLogger().info("🔍 [DEBUG-UUID] 3. MD5 hash (bytes): " + bytesToHex(hash));
+            plugin.getLogger().info("🔍 [DEBUG-UUID] 4. MD5 hash (hex): " + bytesToHex(hash));
+            
+            // Simular o processo do Java UUID.nameUUIDFromBytes
+            UUID javaUuid = UUID.nameUUIDFromBytes(source.getBytes(StandardCharsets.UTF_8));
+            plugin.getLogger().info("🔍 [DEBUG-UUID] 5. Java UUID.nameUUIDFromBytes: " + javaUuid.toString());
+            
+            // Comparar com nosso método manual
+            UUID manualUuid = generateUUIDManually(playerName);
+            plugin.getLogger().info("🔍 [DEBUG-UUID] 6. Nosso método manual: " + manualUuid.toString());
+            
+            boolean match = javaUuid.equals(manualUuid);
+            plugin.getLogger().info("🔍 [DEBUG-UUID] 7. São iguais: " + match);
+            
+        } catch (Exception e) {
+            plugin.getLogger().severe("🔍 [DEBUG-UUID] ❌ Erro no debug: " + e.getMessage());
+            e.printStackTrace();
+        }
+        
+        plugin.getLogger().info("🔍 [DEBUG-UUID] === FIM DO DEBUG ===");
+    }
+
+    /**
+     * Verifica UUIDs conhecidos para comparação.
+     */
+    private void checkKnownUUIDs(String playerName, UUID generatedUuid) {
+        plugin.getLogger().info("🔍 [DEBUG-UUID] === VERIFICAÇÃO DE UUIDs CONHECIDOS ===");
+        
+        if ("vini".equals(playerName)) {
+            String expectedVini = "9b261df7-633c-3e05-9b0e-811f72be39ab";
+            boolean viniMatch = generatedUuid.toString().equals(expectedVini);
+            plugin.getLogger().info("🔍 [DEBUG-UUID] vini - Esperado: " + expectedVini);
+            plugin.getLogger().info("🔍 [DEBUG-UUID] vini - Gerado: " + generatedUuid.toString());
+            plugin.getLogger().info("🔍 [DEBUG-UUID] vini - Match: " + viniMatch);
+        }
+        
+        if ("mlkpiranha0".equals(playerName)) {
+            String expectedMlk = "d00e7769-18de-3002-b821-cf11996f8963";
+            boolean mlkMatch = generatedUuid.toString().equals(expectedMlk);
+            plugin.getLogger().info("🔍 [DEBUG-UUID] mlkpiranha0 - Esperado: " + expectedMlk);
+            plugin.getLogger().info("🔍 [DEBUG-UUID] mlkpiranha0 - Gerado: " + generatedUuid.toString());
+            plugin.getLogger().info("🔍 [DEBUG-UUID] mlkpiranha0 - Match: " + mlkMatch);
+        }
+        
+        plugin.getLogger().info("🔍 [DEBUG-UUID] === FIM DA VERIFICAÇÃO ===");
+    }
+
+    /**
+     * Converte bytes para string hexadecimal.
+     */
+    private String bytesToHex(byte[] bytes) {
+        StringBuilder sb = new StringBuilder();
+        for (byte b : bytes) {
+            sb.append(String.format("%02x", b));
+        }
+        return sb.toString();
+    }
+
+    /**
+     * Verifica se um player existe no banco com DEBUG DETALHADO.
+     */
+    private boolean checkPlayerExistsInDatabaseDetailed(String playerName) {
+        plugin.getLogger().info("🔍 [DEBUG-DB] === VERIFICAÇÃO DETALHADA NO BANCO ===");
+        
+        Connection conn = null;
+        PreparedStatement ps = null;
+        ResultSet rs = null;
+        
+        try {
+            conn = br.com.primeleague.core.PrimeLeagueCore.getInstance().getDataManager().getConnection();
+            if (conn == null) {
+                plugin.getLogger().warning("🔍 [DEBUG-DB] ❌ Conexão nula");
+                return false;
+            }
+            
+            plugin.getLogger().info("🔍 [DEBUG-DB] ✅ Conexão obtida");
+            
+            // 1. Verificar por nome
+            String sqlByName = "SELECT player_id, uuid, name FROM player_data WHERE name = ?";
+            plugin.getLogger().info("🔍 [DEBUG-DB] Query por nome: " + sqlByName);
+            
+            ps = conn.prepareStatement(sqlByName);
+            ps.setString(1, playerName);
+            rs = ps.executeQuery();
+            
+            if (rs.next()) {
+                int playerId = rs.getInt("player_id");
+                String storedUuid = rs.getString("uuid");
+                String storedName = rs.getString("name");
+                
+                plugin.getLogger().info("🔍 [DEBUG-DB] ✅ Player encontrado por nome:");
+                plugin.getLogger().info("🔍 [DEBUG-DB]   - player_id: " + playerId);
+                plugin.getLogger().info("🔍 [DEBUG-DB]   - uuid: " + storedUuid);
+                plugin.getLogger().info("🔍 [DEBUG-DB]   - name: " + storedName);
+                
+                // 2. Verificar se existe discord_link
+                rs.close();
+                ps.close();
+                
+                String sqlLink = "SELECT dl.*, du.subscription_expires_at FROM discord_links dl " +
+                               "LEFT JOIN discord_users du ON dl.discord_id = du.discord_id " +
+                               "WHERE dl.player_id = ?";
+                
+                ps = conn.prepareStatement(sqlLink);
+                ps.setInt(1, playerId);
+                rs = ps.executeQuery();
+                
+                if (rs.next()) {
+                    plugin.getLogger().info("🔍 [DEBUG-DB] ✅ Discord link encontrado:");
+                    plugin.getLogger().info("🔍 [DEBUG-DB]   - discord_id: " + rs.getString("discord_id"));
+                    plugin.getLogger().info("🔍 [DEBUG-DB]   - verified: " + rs.getBoolean("verified"));
+                    plugin.getLogger().info("🔍 [DEBUG-DB]   - subscription_expires_at: " + rs.getTimestamp("subscription_expires_at"));
+                } else {
+                    plugin.getLogger().info("🔍 [DEBUG-DB] ❌ Nenhum discord_link encontrado");
+                }
+                
+                return true;
+            } else {
+                plugin.getLogger().info("🔍 [DEBUG-DB] ❌ Player não encontrado por nome");
+                
+                // 3. Listar todos os players para debug
+                rs.close();
+                ps.close();
+                
+                String sqlAll = "SELECT player_id, uuid, name FROM player_data ORDER BY player_id";
+                ps = conn.prepareStatement(sqlAll);
+                rs = ps.executeQuery();
+                
+                plugin.getLogger().info("🔍 [DEBUG-DB] === TODOS OS PLAYERS NO BANCO ===");
+                while (rs.next()) {
+                    plugin.getLogger().info("🔍 [DEBUG-DB] ID: " + rs.getInt("player_id") + 
+                                          " | UUID: " + rs.getString("uuid") + 
+                                          " | Name: " + rs.getString("name"));
+                }
+                plugin.getLogger().info("🔍 [DEBUG-DB] === FIM DA LISTA ===");
+                
+                return false;
+            }
+            
+        } catch (Exception e) {
+            plugin.getLogger().severe("🔍 [DEBUG-DB] ❌ Erro na verificação: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+            
+        } finally {
+            try {
+                if (rs != null) rs.close();
+                if (ps != null) ps.close();
+                if (conn != null) conn.close();
+            } catch (Exception e) {
+                plugin.getLogger().warning("🔍 [DEBUG-DB] Erro ao fechar recursos: " + e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Cria um player no banco para debug.
+     */
+    private void createPlayerForDebug(String playerName) {
+        plugin.getLogger().info("🔍 [DEBUG-DB] === CRIANDO PLAYER PARA DEBUG ===");
+        
+        Connection conn = null;
+        PreparedStatement ps = null;
+        
+        try {
+            conn = br.com.primeleague.core.PrimeLeagueCore.getInstance().getDataManager().getConnection();
+            if (conn == null) {
+                plugin.getLogger().warning("🔍 [DEBUG-DB] ❌ Conexão nula para criação");
+                return;
+            }
+            
+            UUID playerUuid = UUIDUtils.offlineUUIDFromName(playerName);
+            
+            String sql = "INSERT INTO player_data (uuid, name, elo, money, total_playtime, total_logins, status, last_seen) " +
+                        "VALUES (?, ?, ?, ?, ?, ?, ?, NOW())";
+            
+            ps = conn.prepareStatement(sql);
+            ps.setString(1, playerUuid.toString());
+            ps.setString(2, playerName);
+            ps.setInt(3, 1000);
+            ps.setBigDecimal(4, new java.math.BigDecimal("0.00"));
+            ps.setInt(5, 0);
+            ps.setInt(6, 0);
+            ps.setString(7, "ACTIVE");
+            
+            int result = ps.executeUpdate();
+            plugin.getLogger().info("🔍 [DEBUG-DB] Player criado com sucesso: " + result + " linhas afetadas");
+            plugin.getLogger().info("🔍 [DEBUG-DB] UUID usado na criação: " + playerUuid.toString());
+            
+        } catch (Exception e) {
+            plugin.getLogger().severe("🔍 [DEBUG-DB] ❌ Erro ao criar player: " + e.getMessage());
+            e.printStackTrace();
+        } finally {
+            try {
+                if (ps != null) ps.close();
+                if (conn != null) conn.close();
+            } catch (Exception e) {
+                plugin.getLogger().warning("🔍 [DEBUG-DB] Erro ao fechar recursos: " + e.getMessage());
             }
         }
     }

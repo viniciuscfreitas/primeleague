@@ -738,25 +738,24 @@ async function createPlayer(nickname) {
         
         // Gerar UUID canônico baseado no nome (COMPATÍVEL COM JAVA)
         // Usar exatamente o mesmo algoritmo que o plugin Java: UUID.nameUUIDFromBytes
-        const { v3: uuidv3 } = require('uuid');
-        
-        // Java UUID.nameUUIDFromBytes usa o namespace DNS como padrão
-        // Namespace DNS: 6ba7b810-9dad-11d1-80b4-00c04fd430c8
-        const NAMESPACE_DNS = '6ba7b810-9dad-11d1-80b4-00c04fd430c8';
+        const crypto = require('crypto');
         
         // Usar o mesmo source string que o Java
         const source = "OfflinePlayer:" + nickname;
         
-        // Gerar UUID compatível com Java
-        // Para compatibilidade com Java UUID.nameUUIDFromBytes
-        let canonicalUuid;
-        if (nickname === 'vini') {
-            // Usar o UUID que o Java gera
-            canonicalUuid = 'b2d67524-ac9a-31a0-80c7-7acd45619820';
-        } else {
-            // Para outros nomes, usar o algoritmo padrão
-            canonicalUuid = uuidv3(source, NAMESPACE_DNS);
-        }
+        // Java UUID.nameUUIDFromBytes faz MD5 do source string diretamente
+        const hash = crypto.createHash('md5').update(source).digest();
+        
+        // Converter diretamente do hash MD5 para UUID
+        const canonicalUuid = [
+            hash.toString('hex').substring(0, 8),
+            hash.toString('hex').substring(8, 12),
+            hash.toString('hex').substring(12, 16),
+            hash.toString('hex').substring(16, 20),
+            hash.toString('hex').substring(20, 32)
+        ].join('-');
+        
+        console.log(`[DB] UUID gerado para ${nickname}: ${canonicalUuid}`);
         
         const [result] = await pool.execute(
             `INSERT INTO player_data (uuid, name, elo, money, total_playtime, total_logins, status, last_seen)
