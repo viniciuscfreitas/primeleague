@@ -1,8 +1,6 @@
 const { EmbedBuilder } = require('discord.js');
 const {
-    getGlobalClanStats,
-    getTopActiveClans,
-    getSystemConfig
+    getServerMetrics
 } = require('../database/mysql');
 
 /**
@@ -10,8 +8,7 @@ const {
  * 
  * Funcionalidades:
  * - Atualiza mensagem de status a cada minuto
- * - Mostra estatísticas globais de slots em uso
- * - Exibe top clãs ativos
+ * - Mostra estatísticas básicas do servidor
  * - Informações de sistema em tempo real
  */
 class StatusWorker {
@@ -86,41 +83,35 @@ class StatusWorker {
      */
     async updateStatus() {
         try {
-            // Buscar dados em paralelo para melhor performance
-            const [globalStats, topClans] = await Promise.all([
-                getGlobalClanStats(),
-                getTopActiveClans(5)
-            ]);
+            // Buscar métricas do servidor
+            const serverMetrics = await getServerMetrics();
 
             // Criar embed de status
-            const embed = await this.createStatusEmbed(globalStats, topClans);
+            const embed = await this.createStatusEmbed(serverMetrics);
 
             // Buscar ou criar mensagem de status
             const channel = await this.client.channels.fetch(this.statusChannelId);
             if (!channel) {
-                console.error(`❌ Canal ${this.statusChannelId} não encontrado`);
+                console.error('❌ Canal de status não encontrado:', this.statusChannelId);
                 return;
             }
 
-            if (this.statusMessageId) {
+            // Se não temos uma mensagem salva, criar uma nova
+            if (!this.statusMessageId) {
+                const message = await channel.send({ embeds: [embed] });
+                this.statusMessageId = message.id;
+                console.log('📝 Nova mensagem de status criada:', this.statusMessageId);
+            } else {
                 // Atualizar mensagem existente
                 try {
                     const message = await channel.messages.fetch(this.statusMessageId);
                     await message.edit({ embeds: [embed] });
                 } catch (error) {
-                    // Mensagem não encontrada, criar nova
-                    console.log('🔄 Mensagem de status não encontrada, criando nova...');
-                    this.statusMessageId = null;
+                    // Se a mensagem não existe mais, criar uma nova
+                    console.log('⚠️ Mensagem de status não encontrada, criando nova...');
+                    const message = await channel.send({ embeds: [embed] });
+                    this.statusMessageId = message.id;
                 }
-            }
-
-            if (!this.statusMessageId) {
-                // Criar nova mensagem de status
-                const message = await channel.send({ embeds: [embed] });
-                this.statusMessageId = message.id;
-                
-                // Salvar ID da mensagem no banco (opcional)
-                await this.saveMessageId(message.id);
             }
 
         } catch (error) {
@@ -129,150 +120,77 @@ class StatusWorker {
     }
 
     /**
-     * Cria o embed de status com informações atualizadas.
+     * Cria o embed de status com as informações do servidor.
      */
-    async createStatusEmbed(globalStats, topClans) {
-        const now = new Date();
-        const uptimeHours = Math.floor(process.uptime() / 3600);
-        const uptimeMinutes = Math.floor((process.uptime() % 3600) / 60);
-
+    async createStatusEmbed(serverMetrics) {
         const embed = new EmbedBuilder()
             .setColor('#4ECDC4')
-            .setTitle('⚔️ Prime League - Status do Servidor ⚔️')
-            .setDescription('**Sistema de Clãs V2.0** • Status em tempo real')
-            .setTimestamp(now);
+            .setTitle('🖥️ Status do Servidor Prime League')
+            .setDescription('Estatísticas em tempo real do servidor')
+            .setTimestamp();
 
-        // Estatísticas principais
-        const totalSlots = globalStats.total_slots || 0;
-        const usedSlots = globalStats.used_slots || 0;
-        const availableSlots = totalSlots - usedSlots;
-        const usagePercentage = totalSlots > 0 ? Math.round((usedSlots / totalSlots) * 100) : 0;
+        // Métricas básicas do servidor
+        const totalPlayers = serverMetrics.total_registered_players || 0;
+        const totalLinks = serverMetrics.total_discord_links || 0;
+        const verifiedLinks = serverMetrics.verified_links || 0;
+        const activeSubscriptions = serverMetrics.active_subscriptions || 0;
 
-        // Barra de progresso visual
-        const progressBar = this.createProgressBar(usagePercentage, 20);
+        embed.addFields(
+            {
+                name: '👥 Jogadores',
+                value: `**${totalPlayers.toLocaleString()}** registrados`,
+                inline: true
+            },
+            {
+                name: '🔗 Vínculos Discord',
+                value: `**${verifiedLinks}** verificados de **${totalLinks}** total`,
+                inline: true
+            },
+            {
+                name: '💎 Assinaturas Ativas',
+                value: `**${activeSubscriptions}** contas`,
+                inline: true
+            }
+        );
 
-        embed.addFields({
-            name: '📊 Slots Globais',
-            value: 
-                `**Em Uso:** ${usedSlots}/${totalSlots} slots\n` +
-                `**Disponíveis:** ${availableSlots} slots\n` +
-                `**Taxa de Uso:** ${usagePercentage}%\n` +
-                `${progressBar}`,
-            inline: false
-        });
+        // Status do sistema
+        const uptime = process.uptime();
+        const uptimeHours = Math.floor(uptime / 3600);
+        const uptimeMinutes = Math.floor((uptime % 3600) / 60);
 
-        // Estatísticas de clãs
-        embed.addFields({
-            name: '🏰 Estatísticas de Clãs',
-            value: 
-                `**Clãs Ativos:** ${globalStats.active_clans || 0}\n` +
-                `**Clãs Online:** ${globalStats.clans_with_sessions || 0}\n` +
-                `**Jogadores Online:** ${globalStats.total_players_online || 0}\n` +
-                `**Sessões Ativas:** ${usedSlots}`,
-            inline: true
-        });
-
-        // Distribuição por tiers
-        const tierStats = globalStats.tier_distribution || {};
-        embed.addFields({
-            name: '💎 Distribuição por Planos',
-            value: 
-                `👑 **Império:** ${tierStats.IMPERIO || 0} clãs\n` +
-                `🏛️ **Guilda:** ${tierStats.GUILDA || 0} clãs\n` +
-                `⚔️ **Esquadrão:** ${tierStats.ESQUADRAO || 0} clãs\n` +
-                `🥷 **Lutador:** ${tierStats.LUTADOR || 0} clãs`,
-            inline: true
-        });
-
-        // Top clãs ativos
-        if (topClans && topClans.length > 0) {
-            let topClansText = '';
-            topClans.forEach((clan, index) => {
-                const medal = ['🥇', '🥈', '🥉', '🏅', '🏅'][index] || '🏅';
-                const percentage = clan.max_slots > 0 ? Math.round((clan.active_sessions / clan.max_slots) * 100) : 0;
-                topClansText += `${medal} **${clan.subscription_tier}** ${clan.active_sessions}/${clan.max_slots} (${percentage}%)\n`;
-            });
-
-            embed.addFields({
-                name: '🏆 Top Clãs Ativos',
-                value: topClansText,
-                inline: false
-            });
-        }
-
-        // Informações do sistema
         embed.addFields({
             name: '⚙️ Sistema',
             value: 
-                `**Status:** 🟢 Online\n` +
                 `**Uptime:** ${uptimeHours}h ${uptimeMinutes}m\n` +
-                `**Última Atualização:** <t:${Math.floor(now.getTime() / 1000)}:R>\n` +
-                `**Versão:** Sistema de Clãs V2.0`,
+                `**Memória:** ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB\n` +
+                `**Status:** 🟢 Online`,
             inline: false
         });
 
-        // Indicador de saúde do sistema
-        let healthStatus = '🟢 Excelente';
-        if (usagePercentage > 90) {
-            healthStatus = '🔴 Sobregarga';
-        } else if (usagePercentage > 75) {
-            healthStatus = '🟡 Alto Uso';
-        } else if (usagePercentage > 50) {
-            healthStatus = '🟢 Moderado';
-        }
-
-        embed.setFooter({ 
-            text: `Saúde do Sistema: ${healthStatus} • Atualização automática a cada minuto` 
+        // Informações adicionais
+        embed.addFields({
+            name: '📊 Informações',
+            value: 
+                '• Sistema de Apoiadores ativo\n' +
+                '• Contas alternativas por tier\n' +
+                '• Verificação via Discord\n' +
+                '• API Core integrada',
+            inline: false
         });
 
         return embed;
     }
 
     /**
-     * Cria uma barra de progresso visual.
-     */
-    createProgressBar(percentage, length = 20) {
-        const filled = Math.round((percentage / 100) * length);
-        const empty = length - filled;
-        
-        const fillChar = '█';
-        const emptyChar = '▒';
-        
-        return `\`[${'█'.repeat(filled)}${'▒'.repeat(empty)}]\` ${percentage}%`;
-    }
-
-    /**
-     * Salva o ID da mensagem de status no banco.
-     */
-    async saveMessageId(messageId) {
-        try {
-            // Esta função salvaria o messageId no banco para persistência
-            // Por simplicidade, vamos apenas logar
-            console.log(`💾 ID da mensagem de status: ${messageId}`);
-        } catch (error) {
-            console.error('❌ Erro ao salvar ID da mensagem:', error);
-        }
-    }
-
-    /**
-     * Obtém status atual do worker.
+     * Retorna o status atual do worker.
      */
     getStatus() {
         return {
             isRunning: this.isRunning,
             statusChannelId: this.statusChannelId,
             statusMessageId: this.statusMessageId,
-            updateInterval: this.updateInterval,
-            nextUpdate: this.intervalId ? new Date(Date.now() + this.updateInterval) : null
+            updateInterval: this.updateInterval
         };
-    }
-
-    /**
-     * Força uma atualização imediata.
-     */
-    async forceUpdate() {
-        console.log('🔄 Forçando atualização do status...');
-        await this.updateStatus();
     }
 }
 

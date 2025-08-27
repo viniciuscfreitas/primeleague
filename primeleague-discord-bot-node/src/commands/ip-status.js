@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
-const mysql = require('../database/mysql');
+const { pool } = require('../database/mysql');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -52,7 +52,7 @@ module.exports = {
     async showSystemStats(interaction) {
         await interaction.deferReply({ ephemeral: true });
 
-        const connection = await mysql.getConnection();
+        const connection = await pool.getConnection();
         
         try {
             // Estatísticas de notificações
@@ -133,7 +133,7 @@ module.exports = {
     async showPendingNotifications(interaction) {
         await interaction.deferReply({ ephemeral: true });
 
-        const connection = await mysql.getConnection();
+        const connection = await pool.getConnection();
 
         try {
             const [notifications] = await connection.execute(`
@@ -199,7 +199,7 @@ module.exports = {
     async showPlayerIPs(interaction, playerName) {
         await interaction.deferReply({ ephemeral: true });
 
-        const connection = await mysql.getConnection();
+        const connection = await pool.getConnection();
 
         try {
             const [authorizedIPs] = await connection.execute(`

@@ -45,7 +45,7 @@ async function getPlayerByNickname(nickname) {
 async function getDiscordLink(discordId) {
     try {
         const [rows] = await pool.execute(
-            'SELECT player_id, player_name FROM discord_links WHERE discord_id = ?',
+            'SELECT player_id FROM discord_links WHERE discord_id = ?',
             [discordId]
         );
         return rows[0];
@@ -55,13 +55,37 @@ async function getDiscordLink(discordId) {
     }
 }
 
-async function createDiscordLink(discordId, playerId, playerName, verifyCode = null) {
+async function getDiscordLinkByPlayerId(playerId) {
     try {
-        const verifyExpiresAt = verifyCode ? new Date(Date.now() + 5 * 60 * 1000) : null; // 5 minutos
+        const [rows] = await pool.execute(
+            'SELECT discord_id, verified, verification_code, code_expires_at FROM discord_links WHERE player_id = ?',
+            [playerId]
+        );
+        return rows[0];
+    } catch (error) {
+        console.error('Erro ao buscar vínculo Discord por player_id:', error);
+        return null;
+    }
+}
+
+async function createDiscordLink(discordId, playerId, verifyCode = null) {
+    try {
+        // Verificar se já existe um vínculo para este player_id
+        const [existingRows] = await pool.execute(
+            'SELECT link_id FROM discord_links WHERE player_id = ?',
+            [playerId]
+        );
+        
+        if (existingRows.length > 0) {
+            console.log(`[DB] Player ID ${playerId} já possui vínculo Discord`);
+            return false;
+        }
+        
+        const codeExpiresAt = verifyCode ? new Date(Date.now() + 5 * 60 * 1000) : null; // 5 minutos
         const [result] = await pool.execute(
-            `INSERT INTO discord_links (discord_id, player_id, player_name, verified, verify_code, verify_expires_at)
-             VALUES (?, ?, ?, ?, ?, ?)`,
-            [discordId, playerId, playerName, false, verifyCode, verifyExpiresAt]
+            `INSERT INTO discord_links (discord_id, player_id, verified, verification_code, code_expires_at)
+             VALUES (?, ?, ?, ?, ?)`,
+            [discordId, playerId, false, verifyCode, codeExpiresAt]
         );
         return result.affectedRows > 0;
     } catch (error) {
@@ -73,7 +97,7 @@ async function createDiscordLink(discordId, playerId, playerName, verifyCode = n
 async function getPlayerAccountInfo(discordId) {
     try {
         const [rows] = await pool.execute(
-            `SELECT dl.player_id, dl.player_name, pd.elo, pd.money, pd.subscription_expires_at
+            `SELECT dl.player_id, pd.name, pd.elo, pd.money, pd.subscription_expires_at
              FROM discord_links dl
              JOIN player_data pd ON dl.player_id = pd.player_id
              WHERE dl.discord_id = ? AND dl.verified = TRUE`,
@@ -89,7 +113,7 @@ async function getPlayerAccountInfo(discordId) {
 async function getVerificationStatus(discordId) {
     try {
         const [rows] = await pool.execute(
-            'SELECT verified, verify_code, verify_expires_at FROM discord_links WHERE discord_id = ?',
+            'SELECT verified, verification_code, code_expires_at FROM discord_links WHERE discord_id = ?',
             [discordId]
         );
         return rows[0];
@@ -102,9 +126,10 @@ async function getVerificationStatus(discordId) {
 async function verifyDiscordLink(playerName, verifyCode) {
     try {
         const [result] = await pool.execute(
-            `UPDATE discord_links
-             SET verified = TRUE, verify_code = NULL, verify_expires_at = NULL
-             WHERE player_name = ? AND verify_code = ? AND verify_expires_at > NOW()`,
+            `UPDATE discord_links dl
+             JOIN player_data pd ON dl.player_id = pd.player_id
+             SET dl.verified = TRUE, dl.verification_code = NULL, dl.code_expires_at = NULL, dl.verified_at = NOW()
+             WHERE pd.name = ? AND dl.verification_code = ? AND dl.code_expires_at > NOW()`,
             [playerName, verifyCode]
         );
         return result.affectedRows > 0;
@@ -113,6 +138,7 @@ async function verifyDiscordLink(playerName, verifyCode) {
         return false;
     }
 }
+
 async function createServerNotification(actionType, payload) {
     try {
         const [result] = await pool.execute(
@@ -142,17 +168,18 @@ pool.getConnection()
     });
 
 // =====================================================
-// NOVAS FUNÇÕES PARA SISTEMA DE CLÃS
+// FUNÇÕES PARA SISTEMA DE CLÃS (REFATORADAS)
 // =====================================================
 
 async function getDiscordLinksById(discordId) {
     try {
         const [rows] = await pool.execute(
-            `SELECT discord_id, player_id, player_name, is_primary, verified, 
-                    verify_code, verify_expires_at, linked_at, verified_at
-             FROM discord_links 
-             WHERE discord_id = ? 
-             ORDER BY is_primary DESC, linked_at ASC`,
+            `SELECT dl.discord_id, dl.player_id, pd.name as player_name, dl.is_primary, dl.verified, 
+                    dl.verification_code, dl.code_expires_at, dl.verified_at
+             FROM discord_links dl
+             JOIN player_data pd ON dl.player_id = pd.player_id
+             WHERE dl.discord_id = ? 
+             ORDER BY dl.is_primary DESC, dl.verified_at ASC`,
             [discordId]
         );
         return rows;
@@ -164,12 +191,12 @@ async function getDiscordLinksById(discordId) {
 
 async function createClanMemberLink(discordId, playerId, playerName, verifyCode, isPrimary = false) {
     try {
-        const verifyExpiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutos
+        const codeExpiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutos
         const [result] = await pool.execute(
             `INSERT INTO discord_links 
-             (discord_id, player_id, player_name, is_primary, verified, verify_code, verify_expires_at)
-             VALUES (?, ?, ?, ?, FALSE, ?, ?)`,
-            [discordId, playerId, playerName, isPrimary, verifyCode, verifyExpiresAt]
+             (discord_id, player_id, is_primary, verified, verification_code, code_expires_at)
+             VALUES (?, ?, ?, FALSE, ?, ?)`,
+            [discordId, playerId, isPrimary, verifyCode, codeExpiresAt]
         );
         return result.affectedRows > 0;
     } catch (error) {
@@ -191,18 +218,6 @@ async function removeClanMember(playerId) {
     }
 }
 
-async function getClanSubscription(discordOwnerId) {
-    // Função removida - tabela subscriptions não existe no schema atual
-    console.log('Função getClanSubscription removida - tabela subscriptions não existe');
-    return null;
-}
-
-async function getClanActiveSessionsCount(discordOwnerId) {
-    // Função removida - tabela session_history não existe no schema atual
-    console.log('Função getClanActiveSessionsCount removida - tabela session_history não existe');
-    return 0;
-}
-
 async function getClanMemberCount(discordOwnerId) {
     try {
         const [rows] = await pool.execute(
@@ -218,52 +233,9 @@ async function getClanMemberCount(discordOwnerId) {
     }
 }
 
-async function getSubscriptionTiers() {
-    // Função removida - tabela subscription_tiers não existe no schema atual
-    console.log('Função getSubscriptionTiers removida - tabela subscription_tiers não existe');
-    return [];
-}
-
-async function updateSubscription(discordOwnerId, subscriptionTier, maxSlots, expiresAt) {
-    // Função removida - tabela subscriptions não existe no schema atual
-    console.log('Função updateSubscription removida - tabela subscriptions não existe');
-    return false;
-}
-
-async function getClanActiveSessions(discordOwnerId) {
-    // Função removida - tabela session_history não existe no schema atual
-    console.log('Função getClanActiveSessions removida - tabela session_history não existe');
-    return [];
-}
-
 // =====================================================
-// FUNÇÕES PARA SISTEMA DE STATUS GLOBAL
+// FUNÇÕES PARA SISTEMA DE STATUS GLOBAL (REFATORADAS)
 // =====================================================
-
-async function getGlobalClanStats() {
-    // Função removida - tabelas subscriptions e session_history não existem no schema atual
-    console.log('Função getGlobalClanStats removida - tabelas não existem no schema');
-    return {
-        total_slots: 0,
-        clans_with_sessions: 0,
-        total_players_online: 0,
-        used_slots: 0,
-        active_clans: 0,
-        tier_distribution: {}
-    };
-}
-
-async function getTopActiveClans(limit = 5) {
-    // Função removida - tabelas subscriptions e session_history não existem no schema atual
-    console.log('Função getTopActiveClans removida - tabelas não existem no schema');
-    return [];
-}
-
-async function getSystemConfig() {
-    // Função removida - tabela system_config não existe no schema atual
-    console.log('Função getSystemConfig removida - tabela não existe no schema');
-    return [];
-}
 
 async function getServerMetrics() {
     try {
@@ -315,9 +287,9 @@ async function getPortfolioByDiscordId(discordId) {
         const [rows] = await pool.execute(`
             SELECT 
                 dl.player_id,
-                dl.player_name,
+                pd.name as player_name,
                 dl.is_primary,
-                dl.linked_at,
+                dl.verified_at as linked_at,
                 dl.verified,
                 pd.subscription_expires_at,
                 CASE 
@@ -333,7 +305,7 @@ async function getPortfolioByDiscordId(discordId) {
             FROM discord_links dl
             LEFT JOIN player_data pd ON dl.player_id = pd.player_id
             WHERE dl.discord_id = ? AND dl.verified = TRUE
-            ORDER BY dl.is_primary DESC, dl.linked_at ASC
+            ORDER BY dl.is_primary DESC, dl.verified_at ASC
         `, [discordId]);
         
         return rows;
@@ -391,9 +363,9 @@ async function addAccountToPortfolio(discordId, playerId, playerName, isPrimary 
         }
 
         const [result] = await pool.execute(`
-            INSERT INTO discord_links (discord_id, player_id, player_name, is_primary, verified)
-            VALUES (?, ?, ?, ?, FALSE)
-        `, [discordId, playerId, playerName, isPrimary]);
+            INSERT INTO discord_links (discord_id, player_id, is_primary, verified)
+            VALUES (?, ?, ?, FALSE)
+        `, [discordId, playerId, isPrimary]);
         
         return { success: true, linkId: result.insertId };
     } catch (error) {
@@ -414,8 +386,9 @@ async function addAccountToPortfolio(discordId, playerId, playerName, isPrimary 
 async function removeAccountFromPortfolio(discordId, playerName) {
     try {
         const [result] = await pool.execute(`
-            DELETE FROM discord_links 
-            WHERE discord_id = ? AND player_name = ? AND verified = TRUE
+            DELETE dl FROM discord_links dl
+            JOIN player_data pd ON dl.player_id = pd.player_id
+            WHERE dl.discord_id = ? AND pd.name = ? AND dl.verified = TRUE
         `, [discordId, playerName]);
         
         return { 
@@ -434,43 +407,123 @@ async function removeAccountFromPortfolio(discordId, playerName) {
  */
 async function renewAccountSubscription(playerId, days = 30) {
     try {
+        console.log(`[SUBSCRIPTION] Iniciando renovação para player_id: ${playerId}, dias: ${days}`);
+        
         // Verificar se a conta existe
         const [playerCheck] = await pool.execute(
-            'SELECT subscription_expires_at FROM player_data WHERE player_id = ?',
+            'SELECT player_id, name, subscription_expires_at FROM player_data WHERE player_id = ?',
             [playerId]
         );
         
         if (playerCheck.length === 0) {
+            console.log(`[SUBSCRIPTION] ❌ Conta não encontrada para player_id: ${playerId}`);
             return { success: false, error: 'Conta não encontrada.' };
         }
 
-        const currentExpiry = playerCheck[0].subscription_expires_at;
+        const player = playerCheck[0];
+        const currentExpiry = player.subscription_expires_at;
         let newExpiry;
+
+        console.log(`[SUBSCRIPTION] Player: ${player.name} (ID: ${player.player_id})`);
+        console.log(`[SUBSCRIPTION] Assinatura atual: ${currentExpiry ? currentExpiry.toISOString() : 'NUNCA ASSINOU'}`);
 
         if (!currentExpiry || new Date(currentExpiry) < new Date()) {
             // Assinatura expirada ou inexistente - começar de agora
             newExpiry = new Date();
             newExpiry.setDate(newExpiry.getDate() + days);
+            console.log(`[SUBSCRIPTION] 🔄 Assinatura expirada/inexistente - iniciando nova assinatura`);
         } else {
             // Assinatura ativa - estender a partir da data atual de expiração
             newExpiry = new Date(currentExpiry);
             newExpiry.setDate(newExpiry.getDate() + days);
+            console.log(`[SUBSCRIPTION] ⏰ Assinatura ativa - estendendo a partir da data atual`);
         }
+
+        console.log(`[SUBSCRIPTION] Nova data de expiração: ${newExpiry.toISOString()}`);
 
         // Atualizar a assinatura
         const [result] = await pool.execute(
-            'UPDATE player_data SET subscription_expires_at = ? WHERE player_id = ?',
+            'UPDATE player_data SET subscription_expires_at = ?, updated_at = NOW() WHERE player_id = ?',
             [newExpiry, playerId]
         );
 
+        const success = result.affectedRows > 0;
+        
+        if (success) {
+            console.log(`[SUBSCRIPTION] ✅ Assinatura renovada com sucesso para ${player.name}`);
+            console.log(`[SUBSCRIPTION] 📅 Válida até: ${newExpiry.toLocaleDateString('pt-BR')} ${newExpiry.toLocaleTimeString('pt-BR')}`);
+            
+            // Verificar se a atualização foi persistida
+            const [verification] = await pool.execute(
+                'SELECT subscription_expires_at FROM player_data WHERE player_id = ?',
+                [playerId]
+            );
+            
+            if (verification.length > 0) {
+                console.log(`[SUBSCRIPTION] 🔍 Verificação: assinatura persistida como ${verification[0].subscription_expires_at}`);
+            }
+        } else {
+            console.log(`[SUBSCRIPTION] ❌ Falha ao atualizar assinatura - nenhuma linha afetada`);
+        }
+
         return { 
-            success: result.affectedRows > 0,
+            success: success,
             newExpiry: newExpiry,
-            daysAdded: days
+            daysAdded: days,
+            playerName: player.name
         };
     } catch (error) {
-        console.error('Erro ao renovar assinatura:', error);
+        console.error('[SUBSCRIPTION] ❌ Erro ao renovar assinatura:', error);
+        console.error('[SUBSCRIPTION] Stack trace:', error.stack);
         return { success: false, error: 'Erro interno do banco de dados.' };
+    }
+}
+
+/**
+ * Verifica o status atual de uma assinatura no banco de dados
+ * Útil para debugging e troubleshooting
+ */
+async function checkSubscriptionStatus(playerId) {
+    try {
+        console.log(`[SUBSCRIPTION-CHECK] 🔍 Verificando status da assinatura para player_id: ${playerId}`);
+        
+        const [rows] = await pool.execute(`
+            SELECT 
+                player_id,
+                name,
+                subscription_expires_at,
+                updated_at,
+                CASE 
+                    WHEN subscription_expires_at IS NULL THEN 'NEVER_SUBSCRIBED'
+                    WHEN subscription_expires_at < NOW() THEN 'EXPIRED'
+                    ELSE 'ACTIVE'
+                END as subscription_status,
+                CASE 
+                    WHEN subscription_expires_at > NOW() THEN 
+                        DATEDIFF(subscription_expires_at, NOW())
+                    ELSE 0 
+                END as days_remaining
+            FROM player_data 
+            WHERE player_id = ?
+        `, [playerId]);
+        
+        if (rows.length === 0) {
+            console.log(`[SUBSCRIPTION-CHECK] ❌ Player não encontrado: ${playerId}`);
+            return null;
+        }
+        
+        const player = rows[0];
+        console.log(`[SUBSCRIPTION-CHECK] 📊 Status da assinatura:`);
+        console.log(`[SUBSCRIPTION-CHECK]    Nome: ${player.name}`);
+        console.log(`[SUBSCRIPTION-CHECK]    Status: ${player.subscription_status}`);
+        console.log(`[SUBSCRIPTION-CHECK]    Expira em: ${player.subscription_expires_at ? player.subscription_expires_at.toISOString() : 'NUNCA ASSINOU'}`);
+        console.log(`[SUBSCRIPTION-CHECK]    Dias restantes: ${player.days_remaining}`);
+        console.log(`[SUBSCRIPTION-CHECK]    Última atualização: ${player.updated_at.toISOString()}`);
+        
+        return player;
+    } catch (error) {
+        console.error('[SUBSCRIPTION-CHECK] ❌ Erro ao verificar status:', error);
+        return null;
     }
 }
 
@@ -480,10 +533,12 @@ async function renewAccountSubscription(playerId, days = 30) {
 async function isNicknameAvailableForLinking(nickname) {
     try {
         // Verificar se o nickname já está vinculado a algum Discord ID
-        const [existingLinks] = await pool.execute(
-            'SELECT discord_id FROM discord_links WHERE player_name = ? AND verified = TRUE',
-            [nickname]
-        );
+        const [existingLinks] = await pool.execute(`
+            SELECT dl.discord_id 
+            FROM discord_links dl
+            JOIN player_data pd ON dl.player_id = pd.player_id
+            WHERE pd.name = ? AND dl.verified = TRUE
+        `, [nickname]);
 
         // Verificar se o player existe no banco
         const [playerExists] = await pool.execute(
@@ -515,7 +570,7 @@ async function getAccountInfoDetailed(playerName) {
                 dl.discord_id,
                 dl.is_primary,
                 dl.verified,
-                dl.linked_at,
+                dl.verified_at as linked_at,
                 CASE 
                     WHEN pd.subscription_expires_at IS NULL THEN 'NEVER_SUBSCRIBED'
                     WHEN pd.subscription_expires_at < NOW() THEN 'EXPIRED'
@@ -535,6 +590,66 @@ async function getAccountInfoDetailed(playerName) {
     } catch (error) {
         console.error('Erro ao buscar informações da conta:', error);
         return null;
+    }
+}
+
+/**
+ * Busca informações de doador via API do Core.
+ * O bot não define regras de negócio - apenas consome da fonte da verdade.
+ */
+async function getDonorInfoFromCore(discordId) {
+    // Carregar configuração
+    const config = require('../../bot-config.json');
+    
+    try {
+        // Configuração da API do Core
+        const coreApiUrl = process.env.CORE_API_URL || config.api.core.url;
+        const apiUrl = `${coreApiUrl}/api/donor-info/${discordId}`;
+        const timeout = config.api.core.timeout;
+        
+        console.log(`[API] Consultando Core: ${apiUrl}`);
+        
+        // Fazer requisição HTTP para a API do Core
+        const response = await fetch(apiUrl, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'User-Agent': 'PrimeLeague-Discord-Bot/1.0'
+            },
+            signal: AbortSignal.timeout(timeout)
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        console.log(`[API] Resposta do Core:`, data);
+        
+        return {
+            donorTier: data.donorTier || 0,
+            donorName: data.donorName || 'Player',
+            maxAccounts: data.maxAltAccounts || 1,
+            currentAccounts: data.currentAccounts || 0,
+            source: 'api'
+        };
+        
+    } catch (error) {
+        console.error('[API] Erro ao consultar Core:', error.message);
+        
+        // Não usar fallback do banco - retornar erro estruturado
+        return {
+            error: true,
+            errorType: error.name === 'TimeoutError' ? 'timeout' : 'unavailable',
+            message: error.name === 'TimeoutError' 
+                ? config.messages.errors.apiTimeout 
+                : config.messages.errors.apiUnavailable,
+            donorTier: 0,
+            donorName: 'Player',
+            maxAccounts: 1,
+            currentAccounts: 0,
+            source: 'fallback'
+        };
     }
 }
 
@@ -559,28 +674,21 @@ module.exports = {
     // Funções principais (mantidas para compatibilidade)
     getPlayerByNickname,
     getDiscordLink,
+    getDiscordLinkByPlayerId,
     createDiscordLink,
     getPlayerAccountInfo,
     getVerificationStatus,
     verifyDiscordLink,
     createServerNotification,
     generateVerifyCode,
-    // Funções do sistema de clãs (depreciadas, mantidas para rollback)
+    // Funções do sistema de clãs (refatoradas)
     getDiscordLinksById,
     createClanMemberLink,
     removeClanMember,
-    getClanSubscription,
-    getClanActiveSessionsCount,
     getClanMemberCount,
-    getSubscriptionTiers,
-    updateSubscription,
-    getClanActiveSessions,
-    // Funções do sistema de status global
-    getGlobalClanStats,
-    getTopActiveClans,
-    getSystemConfig,
+    // Funções do sistema de status global (refatoradas)
     getServerMetrics,
-    // ✨ NOVAS FUNÇÕES DO SISTEMA DE PORTFÓLIO
+    // ✨ FUNÇÕES DO SISTEMA DE PORTFÓLIO
     getPortfolioByDiscordId,
     getPortfolioStats,
     addAccountToPortfolio,
@@ -588,5 +696,9 @@ module.exports = {
     renewAccountSubscription,
     isNicknameAvailableForLinking,
     getAccountInfoDetailed,
-    formatSubscriptionStatus
+    formatSubscriptionStatus,
+    // 🆕 FUNÇÃO DO SISTEMA DE APOIADORES (AGUARDANDO API DO CORE)
+    getDonorInfoFromCore,
+    // 🔍 FUNÇÃO DE DEBUGGING
+    checkSubscriptionStatus
 };

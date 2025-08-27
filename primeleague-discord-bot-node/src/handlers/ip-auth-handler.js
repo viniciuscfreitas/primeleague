@@ -1,5 +1,5 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-const mysql = require('../database/mysql');
+const { pool } = require('../database/mysql');
 
 /**
  * Handler de Autorização de IPs
@@ -178,7 +178,7 @@ class IPAuthHandler {
      * Processa a autorização ou negação do IP.
      */
     static async processIPAuthorization(notificationId, payload, isApproval, discordUserId) {
-        const connection = await mysql.getConnection();
+        const connection = await pool.getConnection();
 
         try {
             await connection.beginTransaction();
@@ -286,7 +286,7 @@ class IPAuthHandler {
      * Cria um alerta de segurança para a staff.
      */
     static async createSecurityAlert(payload, discordUserId) {
-        const connection = await mysql.getConnection();
+        const connection = await pool.getConnection();
 
         try {
             await connection.execute(`
@@ -317,7 +317,7 @@ class IPAuthHandler {
      * Busca notificação por ID.
      */
     static async getNotificationById(notificationId) {
-        const connection = await mysql.getConnection();
+        const connection = await pool.getConnection();
 
         try {
             const [rows] = await connection.execute(`
@@ -338,13 +338,14 @@ class IPAuthHandler {
      * Busca informações do Discord do jogador.
      */
     static async getPlayerDiscordInfo(playerName) {
-        const connection = await mysql.getConnection();
+        const connection = await pool.getConnection();
 
         try {
             const [rows] = await connection.execute(`
-                SELECT discord_id, player_uuid, player_name, verified
-                FROM discord_links 
-                WHERE player_name = ? AND verified = TRUE
+                SELECT dl.discord_id, pd.uuid as player_uuid, pd.name as player_name, dl.verified
+                FROM discord_links dl
+                JOIN player_data pd ON dl.player_id = pd.player_id
+                WHERE pd.name = ? AND dl.verified = TRUE
                 LIMIT 1
             `, [playerName]);
 

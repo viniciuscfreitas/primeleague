@@ -7,7 +7,8 @@ const {
     createServerNotification,
     getVerificationStatus,
     isNicknameAvailableForLinking,
-    createDiscordLink
+    createDiscordLink,
+    getDonorInfoFromCore
 } = require('../database/mysql');
 
 /**
@@ -47,18 +48,29 @@ module.exports = {
                 });
             }
 
-            // 2. Verificar portfólio atual do usuário
+            // 2. Verificar portfólio atual e limite baseado no nível de doador
             const currentPortfolio = await getPortfolioByDiscordId(discordId);
-            const maxAccountsPerUser = parseInt(process.env.MAX_ACCOUNTS_PER_USER || '10');
+            const donorInfo = await getDonorInfoFromCore(discordId);
+            const config = require('../../bot-config.json');
             
-            if (currentPortfolio.length >= maxAccountsPerUser) {
+            // Verificar se há erro na API
+            if (donorInfo.error) {
+                return interaction.editReply({
+                    content: config.messages.errors.apiUnavailable
+                });
+            }
+            
+            if (currentPortfolio.length >= donorInfo.maxAccounts) {
                 return interaction.editReply({
                     content: `❌ **Limite de Contas Excedido**\n\n` +
-                            `Você já possui o máximo de **${maxAccountsPerUser} contas** vinculadas.\n\n` +
+                            `Você já possui o máximo de **${donorInfo.maxAccounts} contas** permitidas para seu nível.\n\n` +
+                            `**Seu Nível:** ${donorInfo.donorName} (Tier ${donorInfo.donorTier})\n` +
+                            `**Limite Atual:** ${donorInfo.maxAccounts} contas\n\n` +
                             '**Soluções:**\n' +
-                            '• Use `/minhas-contas` para gerenciar seu portfólio\n' +
+                            '• Use `/conta` para gerenciar seu portfólio\n' +
                             '• Remova contas não utilizadas primeiro\n' +
-                            '• Entre em contato com a administração para aumentar o limite'
+                            '• Faça upgrade para um nível superior para mais contas\n' +
+                            '• Entre em contato com a administração para dúvidas'
                 });
             }
 
@@ -72,17 +84,17 @@ module.exports = {
                         return interaction.editReply({
                             content: `✅ **Conta já vinculada!**\n\n` +
                                     `A conta \`${nickname}\` já está registrada no seu portfólio.\n\n` +
-                                    'Use `/minhas-contas` para ver todas as suas contas.'
+                                    'Use `/conta` para ver todas as suas contas.'
                         });
                     } else {
                         // Conta vinculada mas não verificada - mostrar código
-                        const verificationInfo = await getVerificationStatus(existingAccount.discord_id);
-                        if (verificationInfo && verificationInfo.verify_code) {
+                        const verificationInfo = await getVerificationStatus(discordId);
+                        if (verificationInfo && verificationInfo.verification_code) {
                             return interaction.editReply({
                                 content: `⏳ **Verificação Pendente**\n\n` +
                                         `A conta \`${nickname}\` está aguardando verificação.\n\n` +
                                         '**🎮 VERIFICAÇÃO NECESSÁRIA:**\n' +
-                                        `Digite \`/verify ${verificationInfo.verify_code}\` **no servidor Minecraft**\n\n` +
+                                        `Digite \`/verify ${verificationInfo.verification_code}\` **no servidor Minecraft**\n\n` +
                                         '**⏱️ Código expira em 5 minutos**'
                             });
                         }
@@ -111,8 +123,38 @@ module.exports = {
             const verifyCode = await generateVerifyCode();
             
             // Criar registro na tabela discord_links
-            const linkResult = await createDiscordLink(discordId, player.player_id, player.name, verifyCode);
+            const linkResult = await createDiscordLink(discordId, player.player_id, verifyCode);
             if (!linkResult) {
+                // Verificar se o player já está vinculado
+                const existingLink = await getDiscordLinkByPlayerId(player.player_id);
+                if (existingLink) {
+                    if (existingLink.discord_id === discordId) {
+                        // É o mesmo usuário - verificar se precisa de verificação
+                        const verificationInfo = await getVerificationStatus(discordId);
+                        if (verificationInfo && verificationInfo.verification_code) {
+                            return interaction.editReply({
+                                content: `⏳ **Verificação Pendente**\n\n` +
+                                        `A conta \`${nickname}\` está aguardando verificação.\n\n` +
+                                        '**🎮 VERIFICAÇÃO NECESSÁRIA:**\n' +
+                                        `Digite \`/verify ${verificationInfo.verification_code}\` **no servidor Minecraft**\n\n` +
+                                        '**⏱️ Código expira em 5 minutos**'
+                            });
+                        } else {
+                            return interaction.editReply({
+                                content: `✅ **Conta já vinculada!**\n\n` +
+                                        `A conta \`${nickname}\` já está registrada no seu portfólio.\n\n` +
+                                        'Use `/conta` para ver todas as suas contas.'
+                            });
+                        }
+                    } else {
+                        return interaction.editReply({
+                            content: `❌ **Conta já vinculada**\n\n` +
+                                    `A conta \`${nickname}\` já está vinculada a outro usuário Discord.\n` +
+                                    'Cada conta só pode estar vinculada a um usuário por vez.'
+                        });
+                    }
+                }
+                
                 return interaction.editReply({
                     content: '❌ **Erro:** Falha ao iniciar registro. Tente novamente.'
                 });
@@ -129,7 +171,7 @@ module.exports = {
 
             // Determinar tipo da conta
             const accountType = isFirstAccount ? '👑 Principal' : '➕ Adicional';
-            const accountPosition = `${currentPortfolio.length + 1}/${maxAccountsPerUser}`;
+            const accountPosition = `${currentPortfolio.length + 1}/${donorInfo.maxAccounts}`;
             
             return interaction.editReply({
                 content: `🔗 **Conta ${accountType} Adicionada ao Portfólio**\n\n` +
@@ -142,11 +184,13 @@ module.exports = {
                         '1. ✅ Complete a verificação no servidor\n' +
                         '2. 💎 Adquira uma assinatura individual com `/primeira-conta`\n' +
                         '3. 📋 Use `/minhas-contas` para gerenciar seu portfólio\n\n' +
+                        `**🎯 Seu Nível:** ${donorInfo.donorName} (${donorInfo.maxAccounts} contas max)\n` +
                         '**⏱️ Código expira em 5 minutos**'
             });
 
         } catch (error) {
             console.error('[REGISTRAR] Erro ao executar comando:', error);
+            console.error('[REGISTRAR] Stack trace:', error.stack);
             
             return interaction.editReply({
                 content: '❌ **Erro interno**\n\n' +

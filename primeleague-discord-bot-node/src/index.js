@@ -7,6 +7,7 @@ const path = require('path');
 const NotificationWorker = require('./workers/notification-worker');
 const IPAuthHandler = require('./handlers/ip-auth-handler');
 const StatusWorker = require('./workers/status-worker');
+const SubscriptionButtonHandler = require('./handlers/subscription-button-handler');
 
 // Criar cliente Discord
 const client = new Client({
@@ -98,7 +99,13 @@ client.on('interactionCreate', async interaction => {
             
         } else if (interaction.isButton()) {
             // Botões de autorização de IP
-            const handled = await IPAuthHandler.handleIPAuthInteraction(interaction);
+            let handled = await IPAuthHandler.handleIPAuthInteraction(interaction);
+            
+            // Se não foi tratado pelo IPAuthHandler, tentar SubscriptionButtonHandler
+            if (!handled) {
+                handled = await SubscriptionButtonHandler.handleSubscriptionButton(interaction);
+            }
+            
             if (!handled) {
                 console.log(`[Bot] Interação de botão não tratada: ${interaction.customId}`);
             }
@@ -108,7 +115,7 @@ client.on('interactionCreate', async interaction => {
         
         try {
             const errorMessage = {
-                content: '❌ **Erro interno:** Ocorreu um erro ao processar esta ação.',
+                content: '❌ **Erro interno:** Ocorreu um erro ao processar esta ação. Tente novamente.',
                 ephemeral: true
             };
 

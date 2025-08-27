@@ -1,0 +1,73 @@
+{
+  "api": {
+    "core": {
+      "url": "http://localhost:8080",
+      "timeout": 5000,
+      "retryAttempts": 2
+    }
+  },
+  "donorTiers": {
+    "fallback": {
+      "0": {
+        "name": "Player",
+        "chatTag": "&7",
+        "maxAltAccounts": 1,
+        "benefits": [
+          "Acesso ao servidor",
+          "1 conta vinculada"
+        ]
+      },
+      "1": {
+        "name": "Apoiador",
+        "chatTag": "&7[Apoiador]",
+        "maxAltAccounts": 3,
+        "benefits": [
+          "Tudo do tier Player",
+          "3 contas vinculadas no total",
+          "5% de desconto no /shop"
+        ]
+      },
+      "2": {
+        "name": "Patrocinador",
+        "chatTag": "&6[Patrocinador]",
+        "maxAltAccounts": 5,
+        "benefits": [
+          "Tudo do tier Apoiador",
+          "5 contas vinculadas no total",
+          "10% de desconto no /shop"
+        ]
+      }
+    }
+  },
+  "ui": {
+    "colors": {
+      "success": "#00FF00",
+      "error": "#FF0000",
+      "warning": "#FFB84D",
+      "info": "#4ECDC4",
+      "primary": "#FF6B35"
+    },
+    "embeds": {
+      "footer": {
+        "text": "Prime League - Sistema de Apoiadores",
+        "iconURL": "https://cdn.discordapp.com/icons/1344225249826443266/a_0123456789abcdef.gif"
+      }
+    }
+  },
+  "messages": {
+    "errors": {
+      "apiUnavailable": "❌ **Serviço Indisponível:** Não foi possível conectar aos serviços do Prime League. Tente novamente em instantes.",
+      "apiTimeout": "⏱️ **Timeout:** A consulta aos serviços demorou muito. Tente novamente.",
+      "apiError": "🔧 **Erro Técnico:** Ocorreu um erro ao consultar os serviços. Tente novamente mais tarde."
+    },
+    "success": {
+      "accountLinked": "✅ **Conta Vinculada:** Sua conta foi vinculada com sucesso!",
+      "verificationSent": "📧 **Código Enviado:** Verifique sua DM para o código de confirmação."
+    }
+  },
+  "limits": {
+    "maxAccountsPerUser": 5,
+    "verificationCodeExpiry": 300000,
+    "apiRequestTimeout": 5000
+  }
+}

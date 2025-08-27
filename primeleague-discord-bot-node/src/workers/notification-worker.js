@@ -173,13 +173,14 @@ class NotificationWorker {
         try {
             const [rows] = await connection.execute(`
                 SELECT 
-                    discord_id,
-                    player_uuid,
-                    player_name,
-                    verified
-                FROM discord_links 
-                WHERE player_name = ? 
-                  AND verified = TRUE
+                    dl.discord_id,
+                    pd.uuid as player_uuid,
+                    pd.name as player_name,
+                    dl.verified
+                FROM discord_links dl
+                JOIN player_data pd ON dl.player_id = pd.player_id
+                WHERE pd.name = ? 
+                  AND dl.verified = TRUE
                 LIMIT 1
             `, [playerName]);
 
