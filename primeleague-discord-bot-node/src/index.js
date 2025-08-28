@@ -133,6 +133,15 @@ client.on('interactionCreate', async interaction => {
                 handled = await SubscriptionButtonHandler.handleSubscriptionButton(interaction);
             }
             
+            // Se não foi tratado, tentar comando de recuperação
+            if (!handled) {
+                console.log(`[Bot] Tentando comando de recuperação para: ${customId}`);
+                const recuperacaoCommand = client.commands.get('recuperacao');
+                if (recuperacaoCommand && recuperacaoCommand.handleButton) {
+                    handled = await recuperacaoCommand.handleButton(interaction);
+                }
+            }
+            
             if (!handled) {
                 console.log(`[Bot] Interação de botão não tratada: ${customId}`);
             }
