@@ -369,7 +369,7 @@ VALUES (0, 0, 0, 0.00);
 
 DELIMITER //
 
--- Procedure para verificar vínculo Discord
+-- Procedure para verificar vínculo Discord (CORRIGIDA)
 CREATE PROCEDURE `VerifyDiscordLink`(
     IN p_player_name VARCHAR(16),
     IN p_verification_code VARCHAR(8)
@@ -386,13 +386,14 @@ BEGIN
     WHERE name = p_player_name;
     
     IF v_player_uuid IS NOT NULL THEN
-        -- Verificar código de verificação
-        SELECT discord_id INTO v_discord_id
-        FROM discord_links 
-        WHERE player_uuid = v_player_uuid 
-        AND verification_code = p_verification_code
-        AND code_expires_at > NOW()
-        AND verified = 0;
+        -- Verificar código de verificação (CORRIGIDO: usar player_id)
+        SELECT dl.discord_id INTO v_discord_id
+        FROM discord_links dl
+        JOIN player_data pd ON dl.player_id = pd.player_id
+        WHERE pd.name = p_player_name 
+        AND dl.verification_code = p_verification_code
+        AND dl.code_expires_at > NOW()
+        AND dl.verified = 0;
         
         IF v_discord_id IS NOT NULL THEN
             -- Marcar como verificado
@@ -401,8 +402,7 @@ BEGIN
                 verified_at = NOW(),
                 verification_code = NULL,
                 code_expires_at = NULL
-            WHERE player_uuid = v_player_uuid 
-            AND discord_id = v_discord_id;
+            WHERE discord_id = v_discord_id;
             
             SET v_success = TRUE;
             SET v_message = 'Verificação realizada com sucesso!';

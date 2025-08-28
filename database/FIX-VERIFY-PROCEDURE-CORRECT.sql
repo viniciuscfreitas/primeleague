@@ -2,13 +2,15 @@
 -- CORREÇÃO DA PROCEDURE VerifyDiscordLink
 -- =====================================================
 -- Problema: Procedure usando nomes de colunas incorretos
--- Solução: Recriar a procedure com nomes corretos
+-- Solução: Recriar a procedure com nomes corretos para a estrutura atual
 -- =====================================================
+
+USE `primeleague`;
 
 -- 1. REMOVER PROCEDURE ANTIGA
 DROP PROCEDURE IF EXISTS `VerifyDiscordLink`;
 
--- 2. CRIAR PROCEDURE CORRIGIDA
+-- 2. CRIAR PROCEDURE CORRIGIDA (usando player_id)
 DELIMITER $$
 
 CREATE PROCEDURE `VerifyDiscordLink`(
@@ -21,11 +23,11 @@ BEGIN
     DECLARE v_player_uuid CHAR(36);
     
     -- Verificar código válido e não expirado
-    -- 🔧 CORREÇÃO: Usar player_uuid em vez de player_id
+    -- 🔧 CORREÇÃO: Usar player_id (estrutura atual)
     SELECT dl.discord_id, pd.uuid
     INTO v_discord_id, v_player_uuid
     FROM discord_links dl
-    JOIN player_data pd ON dl.player_uuid = pd.uuid
+    JOIN player_data pd ON dl.player_id = pd.player_id
     WHERE pd.name = p_player_name 
       AND dl.verification_code = p_verify_code
       AND dl.code_expires_at > NOW()
@@ -59,13 +61,13 @@ SELECT
     'DADOS ATUAIS' as info,
     dl.link_id,
     dl.discord_id,
-    dl.player_uuid,
+    dl.player_id,
     pd.name as player_name,
     dl.verification_code,
     dl.code_expires_at,
     dl.verified
 FROM discord_links dl
-JOIN player_data pd ON dl.player_uuid = pd.uuid;
+JOIN player_data pd ON dl.player_id = pd.player_id;
 
 -- =====================================================
 -- RESULTADO ESPERADO:

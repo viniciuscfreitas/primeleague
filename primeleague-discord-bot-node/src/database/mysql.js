@@ -744,15 +744,22 @@ async function createPlayer(nickname) {
         const source = "OfflinePlayer:" + nickname;
         
         // Java UUID.nameUUIDFromBytes faz MD5 do source string diretamente
-        const hash = crypto.createHash('md5').update(source).digest();
+        const hash = crypto.createHash('md5').update(source, 'utf-8').digest();
         
-        // Converter diretamente do hash MD5 para UUID
+        // 🔧 CORREÇÃO RFC 4122: Ajustar bits de versão e variante como o Java faz
+        // No 7º byte (índice 6), define a versão para 3
+        hash[6] = (hash[6] & 0x0f) | 0x30;
+        
+        // No 9º byte (índice 8), define a variante para RFC 4122
+        hash[8] = (hash[8] & 0x3f) | 0x80;
+        
+        // Converter o Buffer modificado para UUID no formato 8-4-4-4-12
         const canonicalUuid = [
-            hash.toString('hex').substring(0, 8),
-            hash.toString('hex').substring(8, 12),
-            hash.toString('hex').substring(12, 16),
-            hash.toString('hex').substring(16, 20),
-            hash.toString('hex').substring(20, 32)
+            hash.toString('hex', 0, 4),
+            hash.toString('hex', 4, 6),
+            hash.toString('hex', 6, 8),
+            hash.toString('hex', 8, 10),
+            hash.toString('hex', 10, 16)
         ].join('-');
         
         console.log(`[DB] UUID gerado para ${nickname}: ${canonicalUuid}`);
