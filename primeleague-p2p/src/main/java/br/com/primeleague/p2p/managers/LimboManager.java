@@ -170,8 +170,7 @@ public final class LimboManager implements Listener {
                                     int otherAccounts = rs2.getInt(1);
                                     boolean hasOtherAccounts = otherAccounts > 0;
                                     
-                                    plugin.getLogger().info("UX-DEBUG: " + playerName + " - Discord ID: " + discordId + 
-                                                          " - Contas existentes: " + otherAccounts + " - Retornando: " + hasOtherAccounts);
+
                                     
                                     return hasOtherAccounts;
                                 }
@@ -184,7 +183,7 @@ public final class LimboManager implements Listener {
             plugin.getLogger().warning("Erro ao verificar contas existentes para " + player.getName() + ": " + e.getMessage());
         }
         
-        plugin.getLogger().info("UX-DEBUG: " + player.getName() + " - Retornando false (novo usuário)");
+
         return false; // Em caso de erro ou não encontrado, assume que é novo usuário
     }
 

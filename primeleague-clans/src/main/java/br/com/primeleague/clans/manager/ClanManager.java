@@ -1464,7 +1464,7 @@ public class ClanManager {
 
             // Obter pontos de penalidade baseados na severidade
             int penaltyPoints = getPenaltyPointsForSeverity(severity);
-            plugin.getLogger().info("DEBUG: Severidade " + severity.getDisplayName() + " gera " + penaltyPoints + " pontos");
+    
             if (penaltyPoints <= 0) {
                 plugin.getLogger().info("Severidade " + severity.getDisplayName() + " não gera pontos de penalidade");
                 return true; // Não é erro, apenas não gera pontos
@@ -1474,7 +1474,7 @@ public class ClanManager {
             int currentPoints = clan.getPenaltyPoints();
             String details = "Punição " + severity.getDisplayName() + " (+" + penaltyPoints + " pontos)";
             
-            plugin.getLogger().info("DEBUG: Aplicando " + penaltyPoints + " pontos ao clã " + clan.getTag() + " (atual: " + currentPoints + ")");
+    
             
             boolean success = clanDAO.addPenaltyPointsAndLog(
                 clan.getId(), currentPoints, penaltyPoints,
@@ -1486,7 +1486,7 @@ public class ClanManager {
                 return false;
             }
             
-            plugin.getLogger().info("DEBUG: Transação de pontos executada com sucesso");
+    
 
             // Atualizar cache
             clan.setPenaltyPoints(currentPoints + penaltyPoints);

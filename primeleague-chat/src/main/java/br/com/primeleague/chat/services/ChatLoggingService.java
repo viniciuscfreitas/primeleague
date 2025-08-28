@@ -333,13 +333,13 @@ public class ChatLoggingService implements LoggingService {
                 if (clan != null) {
                     java.lang.reflect.Method getIdMethod = clan.getClass().getMethod("getId");
                     Integer clanId = (Integer) getIdMethod.invoke(clan);
-                    plugin.getLogger().info("🏰 [CHAT-LOG] Clan ID obtido: " + clanId + " para " + player.getName());
+            
                     return clanId;
                 } else {
-                    plugin.getLogger().info("🏰 [CHAT-LOG] Jogador " + player.getName() + " não pertence a nenhum clã");
+            
                 }
             } else {
-                plugin.getLogger().info("🏰 [CHAT-LOG] Plugin PrimeLeague-Clans não disponível");
+        
             }
         } catch (Exception e) {
             plugin.getLogger().warning("⚠️ [CHAT-LOG] Erro ao obter clan ID: " + e.getMessage());
@@ -367,34 +367,34 @@ public class ChatLoggingService implements LoggingService {
      * Usa o UUID canônico do banco de dados através do mapeamento.
      */
     private UUID getPlayerUuidFromDataManager(Player player) {
-        plugin.getLogger().info("🔍 [CHAT-LOG] Iniciando busca do UUID correto para " + player.getName());
+
         
         try {
             // Obter o DataManager do Core
             org.bukkit.plugin.Plugin corePlugin = plugin.getServer().getPluginManager().getPlugin("PrimeLeague-Core");
             if (corePlugin != null && corePlugin.isEnabled()) {
-                plugin.getLogger().info("🔍 [CHAT-LOG] Core plugin encontrado e habilitado");
+        
                 
                 Class<?> coreMainClass = Class.forName("br.com.primeleague.core.PrimeLeagueCore");
-                plugin.getLogger().info("🔍 [CHAT-LOG] Classe Core encontrada");
+        
                 
                 java.lang.reflect.Method getInstanceMethod = coreMainClass.getMethod("getInstance");
                 Object coreInstance = getInstanceMethod.invoke(null);
-                plugin.getLogger().info("🔍 [CHAT-LOG] Instância do Core obtida");
+        
                 
                 java.lang.reflect.Method getDataManagerMethod = coreMainClass.getMethod("getDataManager");
                 Object dataManager = getDataManagerMethod.invoke(coreInstance);
-                plugin.getLogger().info("🔍 [CHAT-LOG] DataManager obtido");
+        
                 
                 // REFATORADO: Obter UUID canônico através do DataManager em vez de usar UUID do Bukkit diretamente
                 UUID bukkitUuid = player.getUniqueId();
                 java.lang.reflect.Method getCanonicalUuidMethod = dataManager.getClass().getMethod("getCanonicalUuid", UUID.class);
                 UUID canonicalUuid = (UUID) getCanonicalUuidMethod.invoke(dataManager, bukkitUuid);
                 
-                plugin.getLogger().info("🔍 [CHAT-LOG] UUID Bukkit: " + bukkitUuid + " → UUID Canônico: " + canonicalUuid);
+        
                 
                 if (canonicalUuid != null && !canonicalUuid.equals(bukkitUuid)) {
-                    plugin.getLogger().info("🔍 [CHAT-LOG] UUID correto obtido via tradutor: " + canonicalUuid + " para " + player.getName());
+            
                     return canonicalUuid;
                 } else {
                     plugin.getLogger().warning("⚠️ [CHAT-LOG] Tradutor não encontrou mapeamento para " + player.getName() + " (Bukkit UUID: " + bukkitUuid + ")");
@@ -445,7 +445,7 @@ public class ChatLoggingService implements LoggingService {
                         try (java.sql.ResultSet rs = stmt.executeQuery()) {
                             if (rs.next()) {
                                 int playerId = rs.getInt("player_id");
-                                plugin.getLogger().info("🔍 [CHAT-LOG] Player ID obtido via banco: " + playerId + " para " + playerName);
+                        
                                 return playerId;
                             }
                         }

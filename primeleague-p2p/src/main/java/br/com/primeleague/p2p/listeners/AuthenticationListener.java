@@ -74,49 +74,8 @@ public final class AuthenticationListener implements Listener {
                 }
             }
             
-            // Processar autenticação normal
-            AuthenticationStatus status = plugin.getAuthenticationManager().authenticatePlayer(playerUuid);
-            
-            switch (status.getStatus()) {
-                case ACTIVE:
-                    event.allow();
-                    break;
-                    
-                case EXPIRED:
-                    event.disallow(Result.KICK_OTHER, 
-                        "§c§l❌ Assinatura Expirada\n\n" +
-                        "§fSua assinatura expirou há " + status.getDaysRemaining() + " dia(s).\n\n" +
-                        "§e📱 Discord: §fdiscord.gg/primeleague\n" +
-                        "§e💬 Comando: §f/assinatura\n\n" +
-                        "§a💡 Renove sua assinatura para continuar jogando!");
-                    break;
-                    
-                case NEVER_SUBSCRIBED:
-                    event.disallow(Result.KICK_OTHER, 
-                        "§c§l❌ Assinatura Necessária\n\n" +
-                        "§fVocê precisa adquirir uma assinatura para jogar.\n\n" +
-                        "§e📱 Discord: §fdiscord.gg/primeleague\n" +
-                        "§e💬 Comando: §f/assinatura\n\n" +
-                        "§a💡 Adquira sua assinatura para começar a jogar!");
-                    break;
-                    
-                case NOT_REGISTERED:
-                    event.disallow(Result.KICK_OTHER, 
-                        "§c§l❌ Registro Necessário\n\n" +
-                        "§fVocê precisa se registrar no Discord primeiro!\n\n" +
-                        "§e📱 Discord: §fdiscord.gg/primeleague\n" +
-                        "§e💬 Comando: §f/registrar " + playerName + "\n\n" +
-                        "§a💡 Após o registro, use o código de verificação no servidor!");
-                    break;
-                    
-                case PENDING_VERIFICATION:
-                    event.allow();
-                    break;
-                    
-                default:
-                    event.disallow(Result.KICK_OTHER, "§c§l❌ Erro de autenticação");
-                    break;
-            }
+            // Permitir entrada - autenticação será verificada no onPlayerJoin
+            event.allow();
             
         } catch (Exception e) {
             plugin.getLogger().severe("Erro na autenticação de " + playerName + ": " + e.getMessage());

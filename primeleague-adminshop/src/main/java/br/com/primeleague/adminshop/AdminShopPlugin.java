@@ -36,8 +36,7 @@ public class AdminShopPlugin extends JavaPlugin {
         instance = this;
         logger = getLogger();
         
-        logger.info("=== PRIME LEAGUE ADMIN SHOP ===");
-        logger.info("Iniciando módulo de loja administrativa...");
+
         
         try {
             // Verificar dependência do Core
@@ -56,9 +55,7 @@ public class AdminShopPlugin extends JavaPlugin {
             // Registrar listeners
             registerListeners();
             
-            logger.info("✅ Módulo Admin Shop carregado com sucesso!");
-            logger.info("📦 Categorias carregadas: " + configManager.getCategoryCount());
-            logger.info("🛍️ Itens disponíveis: " + configManager.getTotalItemCount());
+
             
         } catch (Exception e) {
             logger.severe("❌ Erro fatal ao inicializar Admin Shop: " + e.getMessage());
@@ -69,13 +66,13 @@ public class AdminShopPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        logger.info("=== DESABILITANDO ADMIN SHOP ===");
+
         
         if (shopManager != null) {
             shopManager.clearCache();
         }
         
-        logger.info("✅ Módulo Admin Shop desabilitado com sucesso!");
+
     }
 
     /**

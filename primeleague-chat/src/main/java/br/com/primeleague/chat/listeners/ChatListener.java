@@ -72,9 +72,7 @@ public class ChatListener implements Listener {
         // Obter o canal ativo do jogador
         ChatChannel activeChannel = channelManager.getPlayerChannel(player);
         
-        plugin.getLogger().info("📤 [CHAT-EVENT] Canal ativo do jogador:");
-        plugin.getLogger().info("   👤 Jogador: " + player.getName());
-        plugin.getLogger().info("   📡 Canal: " + activeChannel.name());
+
         
         // Processar a mensagem baseada no canal
         switch (activeChannel) {

@@ -165,11 +165,7 @@ public class ShopManager {
             }
             player.sendMessage(successMessage);
             
-            // 8. Log da compra
-            logger.info("💰 Compra realizada: " + player.getName() + " comprou " + 
-                item.getName() + " por $" + String.format("%.2f", finalPrice) + 
-                " (Tier: " + profile.getDonorTier() + ", Desconto: " + 
-                String.format("%.1f%%", discount * 100) + ")");
+
             
             return true;
             

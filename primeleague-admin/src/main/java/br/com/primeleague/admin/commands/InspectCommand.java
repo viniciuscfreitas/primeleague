@@ -286,8 +286,7 @@ public class InspectCommand implements CommandExecutor {
         String logMessage = String.format("[ADMIN] %s usou %s em %s",
             author.getName(), action, targetName);
 
-        // Log para console
-        Bukkit.getLogger().info(logMessage);
+
 
         // Notificar outros staffs
         String notification = ChatColor.YELLOW + "[ADMIN] " + ChatColor.WHITE +

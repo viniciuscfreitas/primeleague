@@ -433,7 +433,7 @@ public final class DataManager {
             stmt.setString(8, profile.getStatus().name());
             
             int affectedRows = stmt.executeUpdate();
-            plugin.getLogger().info("[DEBUG] Perfil salvo no banco: " + affectedRows + " linhas afetadas");
+    
             
         } catch (SQLException e) {
             plugin.getLogger().severe("Falha ao salvar novo perfil: " + profile.getUuid() + " - " + e.getMessage());
