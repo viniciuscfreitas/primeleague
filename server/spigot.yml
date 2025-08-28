@@ -22,15 +22,15 @@ listeners:
   netty: true
 settings:
   netty-threads: 3
+  log-filters:
+  - ^(.*)(/login)(.*)$
   bungeecord-addresses:
   - 127.0.0.1
   bungeecord: true
-  log-filters:
-  - ^(.*)(/login)(.*)$
-  prevent-proxies: false
   timeout-time: 60
   restart-on-crash: true
   restart-script: ./start.sh
+  prevent-proxies: false
 messages:
   whitelist: You are not whitelisted on this server!
   unknown-command: Unknown command. Type "help" for help.
@@ -43,6 +43,15 @@ world-settings:
     merge-radius:
       exp: 3.0
       item: 2.5
+    mob-spawn-range: 4
+    growth:
+      cactus-modifier: 100
+      cane-modifier: 100
+      melon-modifier: 100
+      mushroom-modifier: 100
+      pumpkin-modifier: 100
+      sapling-modifier: 100
+      wheat-modifier: 100
     anti-xray:
       enabled: true
       engine-mode: 1
@@ -62,16 +71,6 @@ world-settings:
       - 82
       - 129
       - 130
-    mob-spawn-range: 4
-    growth:
-      cactus-modifier: 100
-      cane-modifier: 100
-      melon-modifier: 100
-      mushroom-modifier: 100
-      pumpkin-modifier: 100
-      sapling-modifier: 100
-      wheat-modifier: 100
-    random-light-updates: false
     entity-tracking-range:
       players: 48
       animals: 48
@@ -85,3 +84,4 @@ world-settings:
     ticks-per:
       hopper-check: 8
       hopper-transfer: 8
+    random-light-updates: false

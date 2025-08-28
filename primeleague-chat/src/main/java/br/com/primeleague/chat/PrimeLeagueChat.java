@@ -38,7 +38,7 @@ public class PrimeLeagueChat extends JavaPlugin {
         // Registrar comandos
         registerCommands();
         
-        getLogger().info("✅ PrimeLeague Chat habilitado");
+        getLogger().info("§a[Chat] PrimeLeague Chat habilitado");
     }
 
     @Override
@@ -48,7 +48,7 @@ public class PrimeLeagueChat extends JavaPlugin {
             loggingService.shutdown();
         }
         
-        getLogger().info("✅ PrimeLeague Chat desabilitado");
+        getLogger().info("§a[Chat] PrimeLeague Chat desabilitado");
         
         instance = null;
     }

@@ -43,14 +43,14 @@ for (const file of commandFiles) {
 
 // Evento ready
 client.once('ready', async () => {
-    console.log(`✅ Bot iniciado como ${client.user.tag}`);
+    console.log(`§9[Bot] Bot iniciado como ${client.user.tag}`);
 
     try {
         // Registrar comandos no servidor específico
         const guild = client.guilds.cache.get(GUILD_ID);
 
         if (!guild) {
-            console.error(`❌ Erro: Bot não está no servidor ${GUILD_ID}`);
+            console.error(`§c[Bot] Erro: Bot não está no servidor ${GUILD_ID}`);
             return;
         }
 
@@ -69,7 +69,7 @@ client.once('ready', async () => {
         statusWorker.start();
 
     } catch (error) {
-        console.error('❌ Erro ao registrar comandos:', error);
+        console.error('§c[Bot] Erro ao registrar comandos:', error);
     }
 });
 

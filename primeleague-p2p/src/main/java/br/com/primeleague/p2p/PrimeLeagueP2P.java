@@ -52,7 +52,7 @@ public final class PrimeLeagueP2P extends JavaPlugin {
         registerCommands();
         startCleanupTask();
 
-        getLogger().info("✅ PrimeLeague P2P habilitado");
+        getLogger().info("§5[P2P] PrimeLeague P2P habilitado");
     }
 
     @Override
@@ -62,7 +62,7 @@ public final class PrimeLeagueP2P extends JavaPlugin {
             webhookManager.stopServer();
         }
 
-        getLogger().info("✅ PrimeLeague P2P desabilitado");
+        getLogger().info("§5[P2P] PrimeLeague P2P desabilitado");
     }
 
     /**

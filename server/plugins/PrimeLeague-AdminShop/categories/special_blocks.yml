@@ -1,0 +1,66 @@
+# ========================================
+# CATEGORIA: BLOCOS ESPECIAIS
+# ========================================
+# 
+# Blocos raros e decorativos para construcao
+
+items:
+  - id: "gold_block"
+    name: "§6Bloco de Ouro"
+    description: "Bloco de ouro puro"
+    material: "GOLD_BLOCK"
+    price: 1000.0
+    amount: 64
+    lore:
+      - "§7Bloco decorativo"
+      - "§7Quantidade: 64"
+      
+  - id: "diamond_block"
+    name: "§bBloco de Diamante"
+    description: "Bloco de diamante puro"
+    material: "DIAMOND_BLOCK"
+    price: 5000.0
+    amount: 16
+    lore:
+      - "§7Bloco raro"
+      - "§7Quantidade: 16"
+      
+  - id: "emerald_block"
+    name: "§aBloco de Esmeralda"
+    description: "Bloco de esmeralda pura"
+    material: "EMERALD_BLOCK"
+    price: 3000.0
+    amount: 32
+    lore:
+      - "§7Bloco valioso"
+      - "§7Quantidade: 32"
+      
+  - id: "obsidian_block"
+    name: "§8Bloco de Obsidian"
+    description: "Bloco resistente a explosoes"
+    material: "OBSIDIAN"
+    price: 800.0
+    amount: 16
+    lore:
+      - "§7Bloco resistente"
+      - "§7Quantidade: 16"
+      
+  - id: "glowstone_block"
+    name: "§eBloco de Pedra Luminosa"
+    description: "Bloco que emite luz"
+    material: "GLOWSTONE"
+    price: 400.0
+    amount: 64
+    lore:
+      - "§7Bloco iluminado"
+      - "§7Quantidade: 64"
+      
+  - id: "bookshelf_block"
+    name: "§6Estante de Livros"
+    description: "Estante decorativa"
+    material: "BOOKSHELF"
+    price: 600.0
+    amount: 32
+    lore:
+      - "§7Estante decorativa"
+      - "§7Quantidade: 32"

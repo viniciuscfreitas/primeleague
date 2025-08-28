@@ -115,7 +115,7 @@ public final class PrimeLeagueCore extends JavaPlugin {
         // Registra listeners
         getServer().getPluginManager().registerEvents(new ProfileListener(this.dataManager), this);
         
-        logger.info("✅ PrimeLeague Core habilitado");
+        logger.info("§9[Core] PrimeLeague Core habilitado");
     }
 
     @Override
@@ -133,7 +133,7 @@ public final class PrimeLeagueCore extends JavaPlugin {
             donorManager.clearAllCache();
         }
         
-        logger.info("✅ PrimeLeague Core desabilitado");
+        logger.info("§9[Core] PrimeLeague Core desabilitado");
     }
 
     public static PrimeLeagueCore getInstance() {

@@ -65,7 +65,7 @@ public class PrimeLeagueAdmin extends JavaPlugin {
         // Limpar banimentos nativos conflitantes
         cleanupNativeBans();
 
-        getLogger().info("✅ PrimeLeague Admin habilitado");
+        getLogger().info("§c[Admin] PrimeLeague Admin habilitado");
     }
 
     @Override
@@ -78,7 +78,7 @@ public class PrimeLeagueAdmin extends JavaPlugin {
         // Desabilitar API
         AdminAPI.shutdown();
 
-        getLogger().info("✅ PrimeLeague Admin desabilitado");
+        getLogger().info("§c[Admin] PrimeLeague Admin desabilitado");
     }
 
     /**
