@@ -2,6 +2,7 @@ package br.com.primeleague.p2p;
 
 import br.com.primeleague.core.api.PrimeLeagueAPI;
 import br.com.primeleague.p2p.commands.VerifyCommand;
+import br.com.primeleague.p2p.commands.RecuperarCommand;
 import br.com.primeleague.p2p.listeners.AuthenticationListener;
 import br.com.primeleague.p2p.listeners.BypassListener;
 import br.com.primeleague.p2p.managers.LimboManager;
@@ -152,7 +153,8 @@ public final class PrimeLeagueP2P extends JavaPlugin {
         // Comando de verificação /verify (integrado com LimboManager)
         getCommand("verify").setExecutor(new VerifyCommand(limboManager));
 
-
+        // Comando de recuperação de conta /recuperar
+        getCommand("recuperar").setExecutor(new RecuperarCommand(this));
 
         getLogger().info("Comandos registrados.");
     }

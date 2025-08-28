@@ -79,6 +79,23 @@ public final class AuthenticationListener implements Listener {
                 }
             }
             
+            // VERIFICAÇÃO DE PENDING_RELINK (FASE 2)
+            if (isPlayerPendingRelink(playerName)) {
+                plugin.getLogger().info("[PENDING-RELINK] ⏳ Jogador em processo de recuperação: " + playerName);
+                
+                event.disallow(Result.KICK_OTHER,
+                    "§c§l🛡️ Processo de Recuperação Ativo\n\n" +
+                    "§fSua conta está em processo de recuperação.\n\n" +
+                    "§e📱 Acesse o Discord para finalizar a recuperação:\n" +
+                    "§e💬 Discord: §fdiscord.gg/primeleague\n" +
+                    "§e🔑 Use: §f/recuperacao §7para gerar códigos\n" +
+                    "§e🔗 Use: §f/vincular <nickname> <codigo> §7para re-vincular\n\n" +
+                    "§a💡 Após re-vincular, você poderá entrar novamente!"
+                );
+                
+                return;
+            }
+            
             // VERIFICAÇÃO DE IP (CORREÇÃO ARQUITETURAL)
             if (!isIpAuthorized(playerName, playerIp)) {
                 plugin.getLogger().info("[IP-AUTH] ❌ IP não autorizado detectado: " + playerName + " (" + playerIp + ")");
@@ -1303,5 +1320,53 @@ public final class AuthenticationListener implements Listener {
         } catch (Exception e) {
             plugin.getLogger().severe("[IP-AUTH] Erro ao enviar webhook: " + e.getMessage());
         }
+    }
+
+    /**
+     * Verifica se o jogador está em estado PENDING_RELINK (processo de recuperação).
+     * 
+     * @param playerName Nome do jogador
+     * @return true se o jogador está em processo de recuperação
+     */
+    private boolean isPlayerPendingRelink(String playerName) {
+        Connection conn = null;
+        PreparedStatement ps = null;
+        ResultSet rs = null;
+        
+        try {
+            conn = br.com.primeleague.core.PrimeLeagueCore.getInstance().getDataManager().getConnection();
+            
+            String sql = "SELECT dl.status FROM discord_links dl " +
+                        "JOIN player_data pd ON dl.player_id = pd.player_id " +
+                        "WHERE pd.name = ? AND dl.verified = TRUE LIMIT 1";
+            
+            ps = conn.prepareStatement(sql);
+            ps.setString(1, playerName);
+            rs = ps.executeQuery();
+            
+            if (rs.next()) {
+                String status = rs.getString("status");
+                boolean isPending = "PENDING_RELINK".equals(status);
+                
+                if (isPending) {
+                    plugin.getLogger().info("[PENDING-RELINK] Jogador " + playerName + " está em estado PENDING_RELINK");
+                }
+                
+                return isPending;
+            }
+            
+        } catch (Exception e) {
+            plugin.getLogger().severe("[PENDING-RELINK] Erro ao verificar estado PENDING_RELINK: " + e.getMessage());
+        } finally {
+            try {
+                if (rs != null) rs.close();
+                if (ps != null) ps.close();
+                if (conn != null) conn.close();
+            } catch (Exception e) {
+                // Ignorar erros de fechamento
+            }
+        }
+        
+        return false;
     }
 }

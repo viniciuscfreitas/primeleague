@@ -22,6 +22,11 @@ commands:
     usage: /verify <código>
     permission: primeleague.verify
     permission-message: §cVocê não tem permissão para usar este comando.
+  recuperar:
+    description: Iniciar processo de recuperação de conta
+    usage: /recuperar
+    permission: primeleague.recuperar
+    permission-message: §cVocê não tem permissão para usar este comando.
 
 
 permissions:
@@ -36,5 +41,8 @@ permissions:
     default: "op"
   primeleague.verify:
     description: Permissão para verificar código do Discord
+    default: "true"
+  primeleague.recuperar:
+    description: Permissão para usar comando de recuperação de conta
     default: "true"
 
