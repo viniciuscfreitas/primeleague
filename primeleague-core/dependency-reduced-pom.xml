@@ -53,13 +53,13 @@
       <artifactId>bukkit</artifactId>
       <version>1.5.2-R1.0</version>
       <scope>system</scope>
-      <systemPath>C:\Users\vini\Desktop\primeleague\primeleague-core/../lib/craftbukkit-1.5.2-R1.0.jar</systemPath>
+      <systemPath>C:\Users\Dell - INSP\primeleague\primeleague\primeleague-core/../lib/craftbukkit-1.5.2-R1.0.jar</systemPath>
     </dependency>
   </dependencies>
   <properties>
+    <maven.compiler.target>1.8</maven.compiler.target>
     <maven.compiler.source>1.8</maven.compiler.source>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <maven.compiler.target>1.8</maven.compiler.target>
   </properties>
 </project>
 

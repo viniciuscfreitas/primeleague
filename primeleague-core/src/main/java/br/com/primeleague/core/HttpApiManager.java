@@ -50,6 +50,7 @@ public class HttpApiManager {
             // Registrar endpoints
             server.createContext("/api/donor-info", new DonorInfoHandler());
             server.createContext("/api/health", new HealthHandler());
+            server.createContext("/api/player-created", new PlayerCreatedHandler());
             
             // Configurar executor
             server.setExecutor(Executors.newFixedThreadPool(10));
@@ -61,6 +62,7 @@ public class HttpApiManager {
             logger.info("📡 Endpoints disponíveis:");
             logger.info("   - GET /api/donor-info/{discordId}");
             logger.info("   - GET /api/health");
+            logger.info("   - POST /api/player-created");
             
         } catch (IOException e) {
             logger.severe("❌ Erro ao iniciar API HTTP: " + e.getMessage());
@@ -161,6 +163,57 @@ public class HttpApiManager {
             } catch (Exception e) {
                 logger.severe("Erro ao buscar informações de doador: " + e.getMessage());
                 return new DonorInfoResponse(0, "Player", 1, 0);
+            }
+        }
+    }
+    
+    /**
+     * Handler para notificação de player criado
+     * POST /api/player-created
+     */
+    private class PlayerCreatedHandler implements HttpHandler {
+        
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            // Configurar CORS
+            exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
+            exchange.getResponseHeaders().add("Access-Control-Allow-Methods", "POST, OPTIONS");
+            exchange.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type");
+            
+            if (exchange.getRequestMethod().equalsIgnoreCase("OPTIONS")) {
+                exchange.sendResponseHeaders(200, -1);
+                return;
+            }
+            
+            if (!exchange.getRequestMethod().equalsIgnoreCase("POST")) {
+                sendErrorResponse(exchange, 405, "Método não permitido");
+                return;
+            }
+            
+            try {
+                // Ler dados do request
+                String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+                
+                // Executar limpeza de cache de forma assíncrona
+                Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+                    try {
+                        // Limpar cache do DataManager
+                        dataManager.clearCache();
+                        logger.info("🔄 Cache limpo automaticamente após criação de player via Discord");
+                        
+                        // Enviar resposta de sucesso
+                        String response = "{\"success\":true,\"message\":\"Cache limpo com sucesso\"}";
+                        sendJsonResponse(exchange, 200, response);
+                        
+                    } catch (Exception e) {
+                        logger.severe("Erro ao limpar cache: " + e.getMessage());
+                        sendErrorResponse(exchange, 500, "Erro interno do servidor");
+                    }
+                });
+                
+            } catch (Exception e) {
+                logger.severe("Erro no handler de player criado: " + e.getMessage());
+                sendErrorResponse(exchange, 500, "Erro interno do servidor");
             }
         }
     }

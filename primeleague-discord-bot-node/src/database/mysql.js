@@ -773,6 +773,42 @@ async function createPlayer(nickname) {
         const playerId = result.insertId;
         console.log(`[DB] Player criado com sucesso: ${nickname} (UUID: ${canonicalUuid}, ID: ${playerId})`);
         
+        // 🔄 NOTIFICAÇÃO AUTOMÁTICA: Limpar cache do servidor Minecraft
+        try {
+            const https = require('https');
+            const data = JSON.stringify({
+                playerName: nickname,
+                playerId: playerId,
+                uuid: canonicalUuid,
+                timestamp: new Date().toISOString()
+            });
+            
+            const options = {
+                hostname: 'localhost',
+                port: 8080,
+                path: '/api/player-created',
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Content-Length': Buffer.byteLength(data)
+                }
+            };
+            
+            const req = https.request(options, (res) => {
+                console.log(`[API] Notificação enviada: ${res.statusCode}`);
+            });
+            
+            req.on('error', (error) => {
+                console.log(`[API] Erro ao notificar servidor (não crítico): ${error.message}`);
+            });
+            
+            req.write(data);
+            req.end();
+            
+        } catch (error) {
+            console.log(`[API] Erro ao notificar servidor (não crítico): ${error.message}`);
+        }
+        
         // Retornar o player criado
         return {
             player_id: playerId,

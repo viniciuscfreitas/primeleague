@@ -61,7 +61,7 @@ database:
   port: 3306
   name: primeleague
   user: root
-  password: 123456
+  password: root
   pool:
     maximumPoolSize: 10
     minimumIdle: 2

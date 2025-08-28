@@ -23,6 +23,7 @@ import br.com.primeleague.core.commands.ReplyCommand;
 import br.com.primeleague.core.commands.MoneyCommand;
 import br.com.primeleague.core.commands.PayCommand;
 import br.com.primeleague.core.commands.EcoCommand;
+import br.com.primeleague.core.commands.CacheCommand;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.UUID;
@@ -109,6 +110,9 @@ public final class PrimeLeagueCore extends JavaPlugin {
         getCommand("money").setExecutor(new MoneyCommand(this));
         getCommand("pagar").setExecutor(new PayCommand(this));
         getCommand("eco").setExecutor(new EcoCommand(this));
+        
+        // Registra comando de cache
+        getCommand("cache").setExecutor(new CacheCommand(this));
         
         // Registra listeners
         getServer().getPluginManager().registerEvents(new ProfileListener(this.dataManager), this);
