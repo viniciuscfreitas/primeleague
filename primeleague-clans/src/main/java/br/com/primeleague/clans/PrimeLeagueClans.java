@@ -71,18 +71,12 @@ public class PrimeLeagueClans extends JavaPlugin {
         // Registrar handler para placeholder {clan_tag} no TagManager do Core
         registerTagHandlers();
         
-        getLogger().info("=== Prime League Clans v1.0.0 ===");
-        getLogger().info("Sistema de clãs inicializado com sucesso!");
-        getLogger().info("Comandos disponíveis:");
-        getLogger().info("  /clan - Comandos principais do sistema de clãs");
-        getLogger().info("=====================================");
+        getLogger().info("✅ PrimeLeague Clans habilitado");
     }
 
     @Override
     public void onDisable() {
-        getLogger().info("=== Prime League Clans v1.0.0 ===");
-        getLogger().info("Sistema de clãs desligado.");
-        getLogger().info("=====================================");
+        getLogger().info("✅ PrimeLeague Clans desabilitado");
         
         // Salvar dados (quando integração com Core estiver pronta)
         // saveData();
@@ -114,8 +108,6 @@ public class PrimeLeagueClans extends JavaPlugin {
         
         // REFATORADO: Listener para gerenciamento de status online/offline
         getServer().getPluginManager().registerEvents(new br.com.primeleague.clans.listeners.PlayerConnectionListener(clanManager), this);
-        
-        getLogger().info("Listeners registrados: PlayerStatsListener, DamageListener, PunishmentListener, PlayerConnectionListener");
     }
 
     /**

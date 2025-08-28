@@ -115,19 +115,11 @@ public final class PrimeLeagueCore extends JavaPlugin {
         // Registra listeners
         getServer().getPluginManager().registerEvents(new ProfileListener(this.dataManager), this);
         
-        logger.info("✅ [CORE] PrimeLeague Core V2.0 habilitado com sucesso!");
-        logger.info("✅ [CORE] Sistema de identidade: ATIVO");
-        logger.info("✅ [CORE] Sistema de doadores: ATIVO");
-        logger.info("✅ [CORE] Sistema econômico: ATIVO");
-        if (httpApiManager != null) {
-            logger.info("✅ [CORE] API HTTP: ATIVA");
-        }
+        logger.info("✅ PrimeLeague Core habilitado");
     }
 
     @Override
     public void onDisable() {
-        logger.info("🔄 [CORE] PrimeLeague Core sendo desabilitado...");
-        
         // Parar API HTTP
         if (httpApiManager != null) {
             httpApiManager.stop();
@@ -141,7 +133,7 @@ public final class PrimeLeagueCore extends JavaPlugin {
             donorManager.clearAllCache();
         }
         
-        logger.info("✅ [CORE] PrimeLeague Core desabilitado com sucesso!");
+        logger.info("✅ PrimeLeague Core desabilitado");
     }
 
     public static PrimeLeagueCore getInstance() {

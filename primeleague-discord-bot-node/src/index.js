@@ -43,45 +43,30 @@ for (const file of commandFiles) {
 
 // Evento ready
 client.once('ready', async () => {
-    console.log(`Bot iniciado como ${client.user.tag}`);
+    console.log(`✅ Bot iniciado como ${client.user.tag}`);
 
     try {
         // Registrar comandos no servidor específico
         const guild = client.guilds.cache.get(GUILD_ID);
 
         if (!guild) {
-            console.error(`Erro: Bot não está no servidor ${GUILD_ID}`);
+            console.error(`❌ Erro: Bot não está no servidor ${GUILD_ID}`);
             return;
         }
 
-        console.log('Registrando comandos...');
-
         const commands = [];
         client.commands.forEach(command => {
-            console.log(`- Registrando comando: /${command.data.name}`);
             commands.push(command.data.toJSON());
         });
 
         await guild.commands.set(commands);
-        console.log('✅ Comandos registrados com sucesso!');
-
-        // Listar comandos disponíveis
-        const registeredCommands = await guild.commands.fetch();
-        console.log('\nComandos disponíveis:');
-        registeredCommands.forEach(cmd => {
-            console.log(`- /${cmd.name}`);
-        });
 
         // Inicializar workers do sistema
-        console.log('\n🔄 Iniciando sistema de autorização de IPs...');
         notificationWorker = new NotificationWorker(client);
         notificationWorker.start();
-        console.log('✅ Sistema de autorização de IPs iniciado!');
 
-        console.log('\n📊 Iniciando sistema de status global...');
         statusWorker = new StatusWorker(client);
         statusWorker.start();
-        console.log('✅ Sistema de status global iniciado!');
 
     } catch (error) {
         console.error('❌ Erro ao registrar comandos:', error);

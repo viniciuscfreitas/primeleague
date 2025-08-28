@@ -52,7 +52,7 @@ public final class PrimeLeagueP2P extends JavaPlugin {
         registerCommands();
         startCleanupTask();
 
-        getLogger().info("Módulo P2P inicializado com sucesso!");
+        getLogger().info("✅ PrimeLeague P2P habilitado");
     }
 
     @Override
@@ -60,10 +60,9 @@ public final class PrimeLeagueP2P extends JavaPlugin {
         // Parar o servidor webhook
         if (webhookManager != null) {
             webhookManager.stopServer();
-            getLogger().info("Servidor webhook encerrado.");
         }
 
-        getLogger().info("Módulo P2P desabilitado.");
+        getLogger().info("✅ PrimeLeague P2P desabilitado");
     }
 
     /**
@@ -95,7 +94,6 @@ public final class PrimeLeagueP2P extends JavaPlugin {
             if (webhookManager == null) {
                 webhookManager = new PortfolioWebhookManager(secret);
                 webhookManager.startServer(port);
-                getLogger().info("Servidor webhook do portfólio iniciado na porta " + port);
             }
         } catch (Exception e) {
             getLogger().severe("Falha ao inicializar servidor webhook: " + e.getMessage());
@@ -117,7 +115,6 @@ public final class PrimeLeagueP2P extends JavaPlugin {
             // Inicializar AuthenticationListener (simplificado, sem SessionManager)
             authenticationListener = new AuthenticationListener();
             
-            getLogger().info("Managers inicializados com sucesso.");
         } catch (Exception e) {
             getLogger().severe("Erro ao inicializar managers: " + e.getMessage());
             e.printStackTrace();

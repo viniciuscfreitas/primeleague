@@ -56,7 +56,6 @@ public class PrimeLeagueAdmin extends JavaPlugin {
                 if (getServer().getPluginManager().getPlugin("PrimeLeague-P2P") != null) {
                     // Aqui você faz o "gancho" na API do P2P
                     // Ex: p2pApi = PrimeLeagueP2P.getApi();
-                    getLogger().info("Integração com o PrimeLeague-P2P estabelecida com sucesso.");
                 } else {
                     getLogger().warning("PrimeLeague-P2P não foi encontrado. A integração de punições P2P estará desabilitada.");
                 }
@@ -66,7 +65,7 @@ public class PrimeLeagueAdmin extends JavaPlugin {
         // Limpar banimentos nativos conflitantes
         cleanupNativeBans();
 
-        getLogger().info("Prime League Admin habilitado com sucesso!");
+        getLogger().info("✅ PrimeLeague Admin habilitado");
     }
 
     @Override
@@ -79,7 +78,7 @@ public class PrimeLeagueAdmin extends JavaPlugin {
         // Desabilitar API
         AdminAPI.shutdown();
 
-        getLogger().info("Prime League Admin desabilitado!");
+        getLogger().info("✅ PrimeLeague Admin desabilitado");
     }
 
     /**
@@ -99,13 +98,9 @@ public class PrimeLeagueAdmin extends JavaPlugin {
      */
     private void cleanupNativeBans() {
         try {
-            // Avisar sobre limpeza de banimentos nativos
-            getLogger().info("Limpando banimentos nativos para usar sistema customizado...");
-
             // Não vamos remover banimentos nativos automaticamente para não causar problemas
             // Apenas avisar que o sistema customizado está ativo
             getLogger().info("Sistema de banimento customizado ativo!");
-            getLogger().info("Use /unban para remover qualquer banimento nativo conflitante.");
 
         } catch (Exception e) {
             getLogger().warning("Erro ao limpar banimentos nativos: " + e.getMessage());

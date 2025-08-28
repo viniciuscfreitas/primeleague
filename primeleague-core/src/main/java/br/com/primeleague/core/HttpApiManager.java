@@ -59,10 +59,6 @@ public class HttpApiManager {
             server.start();
             
             logger.info("✅ API HTTP iniciada na porta " + port);
-            logger.info("📡 Endpoints disponíveis:");
-            logger.info("   - GET /api/donor-info/{discordId}");
-            logger.info("   - GET /api/health");
-            logger.info("   - POST /api/player-created");
             
         } catch (IOException e) {
             logger.severe("❌ Erro ao iniciar API HTTP: " + e.getMessage());

@@ -55,7 +55,7 @@ public class AdminShopPlugin extends JavaPlugin {
             // Registrar listeners
             registerListeners();
             
-
+            logger.info("✅ PrimeLeague AdminShop habilitado");
             
         } catch (Exception e) {
             logger.severe("❌ Erro fatal ao inicializar Admin Shop: " + e.getMessage());
@@ -66,21 +66,17 @@ public class AdminShopPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
-
-        
         if (shopManager != null) {
             shopManager.clearCache();
         }
         
-
+        logger.info("✅ PrimeLeague AdminShop desabilitado");
     }
 
     /**
      * Inicializa os gerenciadores principais do plugin.
      */
     private void initializeManagers() {
-        logger.info("🔧 Inicializando gerenciadores...");
-        
         // Configuração
         configManager = new ShopConfigManager(this);
         if (!configManager.loadConfiguration()) {
@@ -90,31 +86,21 @@ public class AdminShopPlugin extends JavaPlugin {
         // Gerenciador da loja
         shopManager = new ShopManager(this, configManager);
         shopListener = new ShopListener(this, shopManager);
-        
-        logger.info("✅ Gerenciadores inicializados com sucesso!");
     }
 
     /**
      * Registra os comandos do plugin.
      */
     private void registerCommands() {
-        logger.info("🔧 Registrando comandos...");
-        
         getCommand("shop").setExecutor(new ShopCommand(this));
         getCommand("adminshop").setExecutor(new AdminShopCommand(this));
-        
-        logger.info("✅ Comandos registrados com sucesso!");
     }
 
     /**
      * Registra os listeners do plugin.
      */
     private void registerListeners() {
-        logger.info("🔧 Registrando listeners...");
-        
         getServer().getPluginManager().registerEvents(shopListener, this);
-        
-        logger.info("✅ Listeners registrados com sucesso!");
     }
 
 
@@ -125,12 +111,9 @@ public class AdminShopPlugin extends JavaPlugin {
      * @return true se o reload foi bem-sucedido
      */
     public boolean reloadConfiguration() {
-        logger.info("🔄 Recarregando configuração da loja...");
-        
         try {
             if (configManager.reloadConfiguration()) {
                 // shopManager.updateConfiguration(configManager);
-                logger.info("✅ Configuração recarregada com sucesso!");
                 return true;
             } else {
                 logger.severe("❌ Falha ao recarregar configuração!");

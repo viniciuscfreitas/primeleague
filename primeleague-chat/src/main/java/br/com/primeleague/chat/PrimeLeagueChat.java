@@ -38,26 +38,17 @@ public class PrimeLeagueChat extends JavaPlugin {
         // Registrar comandos
         registerCommands();
         
-        getLogger().info("=== Prime League Chat v1.0.0 ===");
-        getLogger().info("Sistema de chat inicializado com sucesso!");
-        getLogger().info("Canais disponíveis:");
-        getLogger().info("  Global - Chat público para todos");
-        getLogger().info("  /c - Chat do clã");
-        getLogger().info("  /a - Chat da aliança");
-        getLogger().info("  Local - Chat por proximidade");
-        getLogger().info("=====================================");
+        getLogger().info("✅ PrimeLeague Chat habilitado");
     }
 
     @Override
     public void onDisable() {
-        getLogger().info("=== Prime League Chat v1.0.0 ===");
-        getLogger().info("Sistema de chat desligado.");
-        getLogger().info("=====================================");
-        
         // Salvar logs pendentes
         if (loggingService != null) {
             loggingService.shutdown();
         }
+        
+        getLogger().info("✅ PrimeLeague Chat desabilitado");
         
         instance = null;
     }
@@ -74,7 +65,6 @@ public class PrimeLeagueChat extends JavaPlugin {
         
         // Registrar no LoggingServiceRegistry para comunicação inter-módulo
         LoggingServiceRegistry.register(this.loggingService);
-        getLogger().info("🔧 ChatLoggingService registrado no LoggingServiceRegistry");
     }
 
     /**
@@ -83,8 +73,6 @@ public class PrimeLeagueChat extends JavaPlugin {
     private void registerListeners() {
         // Listener principal para interceptar chat
         getServer().getPluginManager().registerEvents(new ChatListener(this), this);
-        
-        getLogger().info("Listeners registrados: ChatListener");
     }
 
     /**
