@@ -16,6 +16,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import org.bukkit.entity.Player;
+import java.sql.Timestamp;
 
 /**
  * Gerenciador central de dados do Prime League Core.
@@ -1052,6 +1053,58 @@ public final class DataManager {
     }
     
     /**
+     * Busca o Discord ID de um jogador pelo nome.
+     * Suporte para a API HTTP do Core.
+     * 
+     * @param playerName Nome do jogador
+     * @return Discord ID ou null se não encontrado
+     */
+    public String getDiscordIdByPlayerName(String playerName) {
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(
+                     "SELECT dl.discord_id FROM discord_links dl " +
+                     "JOIN player_data pd ON dl.player_id = pd.player_id " +
+                     "WHERE pd.name = ? AND dl.verified = TRUE LIMIT 1")) {
+            
+            stmt.setString(1, playerName);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getString("discord_id");
+                }
+            }
+            
+        } catch (SQLException e) {
+            plugin.getLogger().severe("🚨 [DATA-MANAGER] Erro ao buscar Discord ID por nome: " + e.getMessage());
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Atualiza o status de um link Discord.
+     * Suporte para a API HTTP do Core.
+     * 
+     * @param discordId Discord ID do usuário
+     * @param status Novo status
+     */
+    public void updateDiscordLinkStatus(String discordId, String status) {
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(
+                     "UPDATE discord_links SET status = ?, updated_at = NOW() " +
+                     "WHERE discord_id = ?")) {
+            
+            stmt.setString(1, status);
+            stmt.setString(2, discordId);
+            stmt.executeUpdate();
+            
+            plugin.getLogger().info("[DATA-MANAGER] Status Discord atualizado para " + discordId + ": " + status);
+            
+        } catch (SQLException e) {
+            plugin.getLogger().severe("🚨 [DATA-MANAGER] Erro ao atualizar status Discord: " + e.getMessage());
+        }
+    }
+    
+    /**
      * Conta quantas contas estão vinculadas a um Discord ID.
      * Suporte para a API HTTP do Core.
      * 
@@ -1127,6 +1180,419 @@ public final class DataManager {
         }
         
         return null;
+    }
+    
+    /**
+     * Busca o Discord ID vinculado a um player_id.
+     * 
+     * @param playerId ID do jogador
+     * @return Discord ID ou null se não encontrado
+     */
+    public String getDiscordIdByPlayerId(Integer playerId) {
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(
+                     "SELECT discord_id FROM discord_links WHERE player_id = ? AND verified = TRUE LIMIT 1")) {
+            
+            stmt.setInt(1, playerId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getString("discord_id");
+                }
+            }
+            
+        } catch (SQLException e) {
+            plugin.getLogger().severe("🚨 [DATA-MANAGER] Erro ao buscar Discord ID por player_id: " + e.getMessage());
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Autoriza um IP permanentemente para um player.
+     * Suporte para autorização via Discord.
+     * 
+     * @param playerName Nome do player
+     * @param ipAddress Endereço IP a ser autorizado
+     * @throws SQLException se houver erro no banco de dados
+     */
+    public void authorizeIpPermanently(String playerName, String ipAddress) throws SQLException {
+        // Primeiro, buscar o player_id pelo nome
+        Integer playerId = getPlayerIdByName(playerName);
+        if (playerId == null) {
+            throw new SQLException("Player não encontrado: " + playerName);
+        }
+        
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(
+                     "INSERT INTO player_authorized_ips (player_id, ip_address, authorized_at) " +
+                     "VALUES (?, ?, NOW()) " +
+                     "ON DUPLICATE KEY UPDATE authorized_at = NOW()")) {
+            
+            stmt.setInt(1, playerId);
+            stmt.setString(2, ipAddress);
+            stmt.executeUpdate();
+            
+            plugin.getLogger().info("[IP-AUTH] IP " + ipAddress + " autorizado permanentemente para " + playerName + " (ID: " + playerId + ")");
+        }
+    }
+    
+    /**
+     * Verifica se um IP está autorizado para um player.
+     * 
+     * @param playerName Nome do player
+     * @param ipAddress Endereço IP a verificar
+     * @return true se autorizado, false caso contrário
+     */
+    public boolean isIpAuthorized(String playerName, String ipAddress) {
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(
+                     "SELECT 1 FROM player_authorized_ips pai " +
+                     "JOIN player_data pd ON pai.player_id = pd.player_id " +
+                     "WHERE pd.name = ? AND pai.ip_address = ? LIMIT 1")) {
+            
+            stmt.setString(1, playerName);
+            stmt.setString(2, ipAddress);
+            
+            try (ResultSet rs = stmt.executeQuery()) {
+                return rs.next();
+            }
+            
+        } catch (SQLException e) {
+            plugin.getLogger().severe("🚨 [DATA-MANAGER] Erro ao verificar autorização de IP: " + e.getMessage());
+        }
+        
+        return false;
+    }
+    
+    // =====================================================
+    // SISTEMA DE TRANSFERÊNCIA DE ASSINATURAS (FASE 2)
+    // =====================================================
+    
+    /**
+     * Transfere assinatura de um Discord ID para outro de forma atômica.
+     * Implementa lógica de negócio centrada no cliente.
+     * 
+     * @param playerName Nome do jogador
+     * @param newDiscordId Novo Discord ID
+     * @param ipAddress IP de origem da operação
+     * @return Resultado da transferência
+     */
+    public TransferResult transferSubscription(String playerName, String newDiscordId, String ipAddress) {
+        Connection conn = null;
+        try {
+            conn = dataSource.getConnection();
+            conn.setAutoCommit(false); // Iniciar transação
+            
+            // 1. Buscar player_id e discord_id atual
+            Integer playerId = getPlayerIdByName(playerName);
+            if (playerId == null) {
+                conn.rollback();
+                return TransferResult.error("Jogador não encontrado: " + playerName);
+            }
+            
+            String oldDiscordId = getDiscordIdByPlayerId(playerId);
+            if (oldDiscordId == null) {
+                conn.rollback();
+                return TransferResult.error("Jogador não possui vínculo Discord ativo");
+            }
+            
+            if (oldDiscordId.equals(newDiscordId)) {
+                conn.rollback();
+                return TransferResult.error("Novo Discord ID é igual ao atual");
+            }
+            
+            // 2. Buscar dados das assinaturas
+            SubscriptionData oldSubscription = getSubscriptionData(conn, oldDiscordId);
+            if (oldSubscription == null) {
+                conn.rollback();
+                return TransferResult.error("Assinatura atual não encontrada");
+            }
+            
+            SubscriptionData newSubscription = getSubscriptionData(conn, newDiscordId);
+            
+            // 3. Executar transferência com lógica de negócio refinada
+            boolean transferSuccess = executeTransferWithBusinessLogic(conn, oldSubscription, newSubscription, newDiscordId);
+            if (!transferSuccess) {
+                conn.rollback();
+                return TransferResult.error("Falha na transferência da assinatura");
+            }
+            
+            // 4. Atualizar vínculo Discord
+            boolean linkSuccess = updateDiscordLink(conn, playerId, newDiscordId);
+            if (!linkSuccess) {
+                conn.rollback();
+                return TransferResult.error("Falha na atualização do vínculo Discord");
+            }
+            
+            // 5. Registrar auditoria
+            logTransferAction(conn, playerId, oldDiscordId, newDiscordId, oldSubscription, newSubscription, ipAddress);
+            
+            conn.commit();
+            return TransferResult.success("Transferência realizada com sucesso");
+            
+        } catch (SQLException e) {
+            if (conn != null) {
+                try { conn.rollback(); } catch (SQLException ex) {}
+            }
+            plugin.getLogger().severe("🚨 [TRANSFER] Erro na transferência: " + e.getMessage());
+            return TransferResult.error("Erro interno: " + e.getMessage());
+        } finally {
+            if (conn != null) {
+                try { conn.close(); } catch (SQLException e) {}
+            }
+        }
+    }
+    
+    /**
+     * Executa transferência seguindo as regras de negócio centradas no cliente.
+     */
+    private boolean executeTransferWithBusinessLogic(Connection conn, SubscriptionData oldSub, SubscriptionData newSub, String newDiscordId) throws SQLException {
+        // Cenário A: Nenhuma assinatura no destino
+        if (newSub == null) {
+            return copySubscription(conn, oldSub, newDiscordId);
+        }
+        
+        // Cenário B: Tiers iguais - Somar durações
+        if (oldSub.getSubscriptionType().equals(newSub.getSubscriptionType()) && 
+            oldSub.getDonorTier().equals(newSub.getDonorTier())) {
+            return mergeEqualTiers(conn, oldSub, newSub, newDiscordId);
+        }
+        
+        // Cenário C: Tier origem > Tier destino - Sobrescrever
+        if (isSubscriptionHigher(oldSub, newSub)) {
+            return copySubscription(conn, oldSub, newDiscordId);
+        }
+        
+        // Cenário D: Tier origem < Tier destino - Manter maior e somar duração
+        return extendHigherTier(conn, oldSub, newSub, newDiscordId);
+    }
+    
+    /**
+     * Verifica se a assinatura de origem é superior à de destino.
+     */
+    private boolean isSubscriptionHigher(SubscriptionData oldSub, SubscriptionData newSub) {
+        // Comparar subscription_type (VIP > PREMIUM > BASIC)
+        int oldTypeValue = getSubscriptionTypeValue(oldSub.getSubscriptionType());
+        int newTypeValue = getSubscriptionTypeValue(newSub.getSubscriptionType());
+        
+        if (oldTypeValue > newTypeValue) return true;
+        if (oldTypeValue < newTypeValue) return false;
+        
+        // Se tipos iguais, comparar donor_tier
+        return oldSub.getDonorTier() > newSub.getDonorTier();
+    }
+    
+    /**
+     * Obtém valor numérico do tipo de assinatura.
+     */
+    private int getSubscriptionTypeValue(String subscriptionType) {
+        switch (subscriptionType.toUpperCase()) {
+            case "VIP": return 3;
+            case "PREMIUM": return 2;
+            case "BASIC": return 1;
+            default: return 0;
+        }
+    }
+    
+    /**
+     * Copia assinatura completa para o destino.
+     */
+    private boolean copySubscription(Connection conn, SubscriptionData source, String targetDiscordId) throws SQLException {
+        String sql = "INSERT INTO discord_users (discord_id, donor_tier, donor_tier_expires_at, subscription_expires_at, subscription_type) " +
+                     "VALUES (?, ?, ?, ?, ?) " +
+                     "ON DUPLICATE KEY UPDATE " +
+                     "donor_tier = VALUES(donor_tier), " +
+                     "donor_tier_expires_at = VALUES(donor_tier_expires_at), " +
+                     "subscription_expires_at = VALUES(subscription_expires_at), " +
+                     "subscription_type = VALUES(subscription_type)";
+        
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, targetDiscordId);
+            stmt.setInt(2, source.getDonorTier());
+            stmt.setTimestamp(3, source.getDonorTierExpiresAt());
+            stmt.setTimestamp(4, source.getSubscriptionExpiresAt());
+            stmt.setString(5, source.getSubscriptionType());
+            return stmt.executeUpdate() > 0;
+        }
+    }
+    
+    /**
+     * Soma durações de tiers iguais.
+     */
+    private boolean mergeEqualTiers(Connection conn, SubscriptionData oldSub, SubscriptionData newSub, String targetDiscordId) throws SQLException {
+        // Calcular novas durações somadas
+        Timestamp newDonorExpiry = addTimestamps(oldSub.getDonorTierExpiresAt(), newSub.getDonorTierExpiresAt());
+        Timestamp newSubscriptionExpiry = addTimestamps(oldSub.getSubscriptionExpiresAt(), newSub.getSubscriptionExpiresAt());
+        
+        String sql = "UPDATE discord_users SET " +
+                     "donor_tier_expires_at = ?, " +
+                     "subscription_expires_at = ? " +
+                     "WHERE discord_id = ?";
+        
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setTimestamp(1, newDonorExpiry);
+            stmt.setTimestamp(2, newSubscriptionExpiry);
+            stmt.setString(3, targetDiscordId);
+            return stmt.executeUpdate() > 0;
+        }
+    }
+    
+    /**
+     * Estende duração mantendo o tier mais alto.
+     */
+    private boolean extendHigherTier(Connection conn, SubscriptionData oldSub, SubscriptionData newSub, String targetDiscordId) throws SQLException {
+        // Manter o tier mais alto e somar a duração do tier menor
+        Timestamp extendedDonorExpiry = addTimestamps(oldSub.getDonorTierExpiresAt(), newSub.getDonorTierExpiresAt());
+        Timestamp extendedSubscriptionExpiry = addTimestamps(oldSub.getSubscriptionExpiresAt(), newSub.getSubscriptionExpiresAt());
+        
+        String sql = "UPDATE discord_users SET " +
+                     "donor_tier_expires_at = ?, " +
+                     "subscription_expires_at = ? " +
+                     "WHERE discord_id = ?";
+        
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setTimestamp(1, extendedDonorExpiry);
+            stmt.setTimestamp(2, extendedSubscriptionExpiry);
+            stmt.setString(3, targetDiscordId);
+            return stmt.executeUpdate() > 0;
+        }
+    }
+    
+    /**
+     * Soma duas durações de timestamp, considerando valores nulos.
+     */
+    private Timestamp addTimestamps(Timestamp t1, Timestamp t2) {
+        if (t1 == null && t2 == null) return null;
+        if (t1 == null) return t2;
+        if (t2 == null) return t1;
+        
+        // Calcular diferença em milissegundos desde agora
+        long now = System.currentTimeMillis();
+        long diff1 = Math.max(0, t1.getTime() - now);
+        long diff2 = Math.max(0, t2.getTime() - now);
+        
+        // Somar as durações restantes
+        return new Timestamp(now + diff1 + diff2);
+    }
+    
+    /**
+     * Busca dados de assinatura de um Discord ID.
+     */
+    private SubscriptionData getSubscriptionData(Connection conn, String discordId) throws SQLException {
+        String sql = "SELECT donor_tier, donor_tier_expires_at, subscription_expires_at, subscription_type " +
+                     "FROM discord_users WHERE discord_id = ?";
+        
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, discordId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return new SubscriptionData(
+                        discordId,
+                        rs.getInt("donor_tier"),
+                        rs.getTimestamp("donor_tier_expires_at"),
+                        rs.getTimestamp("subscription_expires_at"),
+                        rs.getString("subscription_type")
+                    );
+                }
+            }
+        }
+        return null;
+    }
+    
+    /**
+     * Atualiza vínculo Discord para novo ID.
+     */
+    private boolean updateDiscordLink(Connection conn, Integer playerId, String newDiscordId) throws SQLException {
+        String sql = "UPDATE discord_links SET discord_id = ? WHERE player_id = ?";
+        
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, newDiscordId);
+            stmt.setInt(2, playerId);
+            return stmt.executeUpdate() > 0;
+        }
+    }
+    
+    /**
+     * Registra auditoria da transferência.
+     */
+    private void logTransferAction(Connection conn, Integer playerId, String oldDiscordId, String newDiscordId, 
+                                  SubscriptionData oldSub, SubscriptionData newSub, String ipAddress) throws SQLException {
+        String sql = "INSERT INTO discord_link_history (action, player_id, discord_id_old, discord_id_new, details, ip_address) " +
+                     "VALUES (?, ?, ?, ?, ?, ?)";
+        
+        String details = String.format("{\"old_subscription\":\"%s\",\"new_subscription\":\"%s\",\"timestamp\":\"%s\"}", 
+                                      oldSub != null ? oldSub.getSubscriptionType() : "NONE",
+                                      newSub != null ? newSub.getSubscriptionType() : "NONE",
+                                      new java.sql.Timestamp(System.currentTimeMillis()));
+        
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, "TRANSFER_SUB");
+            stmt.setInt(2, playerId);
+            stmt.setString(3, oldDiscordId);
+            stmt.setString(4, newDiscordId);
+            stmt.setString(5, details);
+            stmt.setString(6, ipAddress);
+            stmt.executeUpdate();
+        }
+    }
+    
+    // =====================================================
+    // CLASSES DE SUPORTE PARA TRANSFERÊNCIA
+    // =====================================================
+    
+    /**
+     * DTO para dados de assinatura.
+     */
+    public static class SubscriptionData {
+        private final String discordId;
+        private final Integer donorTier;
+        private final java.sql.Timestamp donorTierExpiresAt;
+        private final java.sql.Timestamp subscriptionExpiresAt;
+        private final String subscriptionType;
+        
+        public SubscriptionData(String discordId, Integer donorTier, java.sql.Timestamp donorTierExpiresAt, 
+                               java.sql.Timestamp subscriptionExpiresAt, String subscriptionType) {
+            this.discordId = discordId;
+            this.donorTier = donorTier;
+            this.donorTierExpiresAt = donorTierExpiresAt;
+            this.subscriptionExpiresAt = subscriptionExpiresAt;
+            this.subscriptionType = subscriptionType;
+        }
+        
+        // Getters
+        public String getDiscordId() { return discordId; }
+        public Integer getDonorTier() { return donorTier; }
+        public java.sql.Timestamp getDonorTierExpiresAt() { return donorTierExpiresAt; }
+        public java.sql.Timestamp getSubscriptionExpiresAt() { return subscriptionExpiresAt; }
+        public String getSubscriptionType() { return subscriptionType; }
+    }
+    
+    /**
+     * Resultado da transferência.
+     */
+    public static class TransferResult {
+        private final boolean success;
+        private final String message;
+        private final String details;
+        
+        private TransferResult(boolean success, String message, String details) {
+            this.success = success;
+            this.message = message;
+            this.details = details;
+        }
+        
+        public static TransferResult success(String details) {
+            return new TransferResult(true, "Transferência realizada com sucesso", details);
+        }
+        
+        public static TransferResult error(String message) {
+            return new TransferResult(false, message, null);
+        }
+        
+        // Getters
+        public boolean isSuccess() { return success; }
+        public String getMessage() { return message; }
+        public String getDetails() { return details; }
     }
 }
 

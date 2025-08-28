@@ -166,6 +166,28 @@ CREATE TABLE `staff_vanish` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =====================================================
+-- TABELA DE AUTORIZAÇÃO DE IPs (P2P)
+-- =====================================================
+
+CREATE TABLE `player_authorized_ips` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `player_id` INT NOT NULL,
+  `ip_address` VARCHAR(45) NOT NULL,
+  `description` VARCHAR(100) NULL,
+  `authorized_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `last_used` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_player_ip` (`player_id`, `ip_address`),
+  KEY `idx_player_authorized_ips_player_id` (`player_id`),
+  KEY `idx_player_authorized_ips_ip_address` (`ip_address`),
+  KEY `idx_player_authorized_ips_authorized_at` (`authorized_at`),
+  CONSTRAINT `fk_player_authorized_ips_player`
+    FOREIGN KEY (`player_id`)
+    REFERENCES `player_data` (`player_id`)
+    ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
 -- TABELA DE WHITELIST (ACESSO ADMINISTRATIVO)
 -- =====================================================
 

@@ -5,6 +5,7 @@ import br.com.primeleague.p2p.commands.VerifyCommand;
 import br.com.primeleague.p2p.listeners.AuthenticationListener;
 import br.com.primeleague.p2p.listeners.BypassListener;
 import br.com.primeleague.p2p.managers.LimboManager;
+import br.com.primeleague.p2p.managers.IpAuthCache;
 import br.com.primeleague.p2p.services.P2PServiceImpl;
 import br.com.primeleague.p2p.tasks.CleanupTask;
 import br.com.primeleague.p2p.web.PortfolioWebhookManager;
@@ -29,6 +30,7 @@ public final class PrimeLeagueP2P extends JavaPlugin {
     private PortfolioWebhookManager webhookManager;
     private LimboManager limboManager;
     private AuthenticationListener authenticationListener;
+    private IpAuthCache ipAuthCache;
     private static PrimeLeagueP2P instance;
 
     @Override
@@ -108,6 +110,9 @@ public final class PrimeLeagueP2P extends JavaPlugin {
         try {
             // Inicializar LimboManager
             limboManager = new LimboManager();
+            
+            // Inicializar cache de IPs autorizados
+            ipAuthCache = new IpAuthCache();
             
             // Registrar P2PService na API
             P2PServiceRegistry.register(new P2PServiceImpl(limboManager));
@@ -189,6 +194,14 @@ public final class PrimeLeagueP2P extends JavaPlugin {
      */
     public AuthenticationListener getAuthenticationListener() {
         return authenticationListener;
+    }
+    
+    /**
+     * Obtém o cache de IPs autorizados.
+     * @return O IpAuthCache ou null se não estiver inicializado
+     */
+    public IpAuthCache getIpAuthCache() {
+        return ipAuthCache;
     }
     
 

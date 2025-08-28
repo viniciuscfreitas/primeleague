@@ -18,6 +18,7 @@ import br.com.primeleague.core.services.DAOServiceImpl;
 import br.com.primeleague.core.managers.PrivateMessageManager;
 import br.com.primeleague.core.managers.MessageManager;
 import br.com.primeleague.core.managers.EconomyManager;
+import br.com.primeleague.core.managers.RecoveryCodeManager;
 import br.com.primeleague.core.commands.PrivateMessageCommand;
 import br.com.primeleague.core.commands.ReplyCommand;
 import br.com.primeleague.core.commands.MoneyCommand;
@@ -40,6 +41,7 @@ public final class PrimeLeagueCore extends JavaPlugin {
     private PrivateMessageManager privateMessageManager;
     private EconomyManager economyManager;
     private HttpApiManager httpApiManager;
+    private RecoveryCodeManager recoveryCodeManager;
 
     @Override
     public void onEnable() {
@@ -68,6 +70,9 @@ public final class PrimeLeagueCore extends JavaPlugin {
         
         // Inicializa o EconomyManager (após DonorManager para integração)
         this.economyManager = new EconomyManager(this);
+        
+        // Inicializa o RecoveryCodeManager (sistema de recuperação de conta P2P)
+        this.recoveryCodeManager = new RecoveryCodeManager(this, this.dataManager.getDataSource());
         
         // Inicializa API HTTP (para integração com bot Discord)
         if (getConfig().getBoolean("api.enabled", true)) {
@@ -170,6 +175,10 @@ public final class PrimeLeagueCore extends JavaPlugin {
     
     public HttpApiManager getHttpApiManager() {
         return httpApiManager;
+    }
+    
+    public RecoveryCodeManager getRecoveryCodeManager() {
+        return recoveryCodeManager;
     }
 }
 

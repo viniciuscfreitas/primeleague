@@ -53,6 +53,16 @@ public class HttpApiManager {
             server.createContext("/api/donor-info", new DonorInfoHandler());
             server.createContext("/api/health", new HealthHandler());
             server.createContext("/api/player-created", new PlayerCreatedHandler());
+            server.createContext("/api/v1/ip-authorize", new IpAuthorizeHandler());
+            
+            // Endpoints de recuperação de conta P2P
+            server.createContext("/api/v1/recovery/backup/generate", new RecoveryBackupGenerateHandler());
+            server.createContext("/api/v1/recovery/verify", new RecoveryVerifyHandler());
+            server.createContext("/api/v1/recovery/status", new RecoveryStatusHandler());
+            server.createContext("/api/v1/recovery/audit", new RecoveryAuditHandler());
+            
+            // Endpoints de transferência de assinaturas (FASE 2)
+            server.createContext("/api/v1/discord/transfer", new DiscordTransferHandler());
             
             // Configurar executor
             server.setExecutor(Executors.newFixedThreadPool(10));
@@ -83,12 +93,20 @@ public class HttpApiManager {
     private boolean authenticateRequest(HttpExchange exchange) {
         String authHeader = exchange.getRequestHeaders().getFirst("Authorization");
         
+        logger.info("[AUTH] Verificando autenticação para: " + exchange.getRequestURI().getPath());
+        logger.info("[AUTH] Authorization header: " + (authHeader != null ? "presente" : "ausente"));
+        
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            logger.warning("[AUTH] Header Authorization inválido ou ausente");
             return false;
         }
         
         String token = authHeader.substring(7); // Remove "Bearer "
-        return bearerToken.equals(token);
+        boolean isValid = bearerToken.equals(token);
+        
+        logger.info("[AUTH] Token válido: " + isValid);
+        
+        return isValid;
     }
     
     /**
@@ -110,6 +128,18 @@ public class HttpApiManager {
                 return;
             }
             
+            // Verificar método HTTP
+            if (!exchange.getRequestMethod().equalsIgnoreCase("GET")) {
+                sendErrorResponse(exchange, 405, "Método não permitido");
+                return;
+            }
+            
+            // Verificar autenticação
+            if (!authenticateRequest(exchange)) {
+                sendErrorResponse(exchange, 401, "Unauthorized - Invalid or missing Bearer token");
+                return;
+            }
+            
             try {
                 // Extrair discordId da URL
                 String path = exchange.getRequestURI().getPath();
@@ -121,12 +151,6 @@ public class HttpApiManager {
                 }
                 
                 String discordId = pathParts[3];
-                
-                // Verificar autenticação (exceto para health)
-                if (!path.equals("/api/health") && !authenticateRequest(exchange)) {
-                    sendErrorResponse(exchange, 401, "Unauthorized - Invalid or missing Bearer token");
-                    return;
-                }
                 
                 // Executar lógica de negócio de forma assíncrona
                 Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
@@ -209,8 +233,15 @@ public class HttpApiManager {
             }
             
             try {
-                // Ler dados do request
-                String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+                // Ler dados do request (compatível com Java 7)
+                java.io.InputStream inputStream = exchange.getRequestBody();
+                java.io.ByteArrayOutputStream result = new java.io.ByteArrayOutputStream();
+                byte[] buffer = new byte[1024];
+                int length;
+                while ((length = inputStream.read(buffer)) != -1) {
+                    result.write(buffer, 0, length);
+                }
+                String requestBody = result.toString("UTF-8");
                 
                 // Executar limpeza de cache de forma assíncrona
                 Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
@@ -259,6 +290,12 @@ public class HttpApiManager {
                 return;
             }
             
+            // Verificar autenticação
+            if (!authenticateRequest(exchange)) {
+                sendErrorResponse(exchange, 401, "Unauthorized - Invalid or missing Bearer token");
+                return;
+            }
+            
             String response = "{\"status\":\"ok\",\"service\":\"PrimeLeague Core API v2.0\",\"timestamp\":\"" + System.currentTimeMillis() + "\"}";
             sendJsonResponse(exchange, 200, response);
         }
@@ -294,6 +331,294 @@ public class HttpApiManager {
     }
     
     /**
+     * Envia resposta simples
+     */
+    private void sendResponse(HttpExchange exchange, int statusCode, String response) {
+        try {
+            byte[] responseBytes = response.getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(statusCode, responseBytes.length);
+            
+            try (OutputStream os = exchange.getResponseBody()) {
+                os.write(responseBytes);
+            }
+        } catch (IOException e) {
+            logger.severe("Erro ao enviar resposta: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Configura headers CORS
+     */
+    private void setCorsHeaders(HttpExchange exchange) {
+        exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
+        exchange.getResponseHeaders().add("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+        exchange.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    }
+    
+    /**
+     * Lê o corpo da requisição HTTP (compatível com Java 7)
+     */
+    private String readRequestBody(HttpExchange exchange) {
+        try {
+            java.io.InputStream inputStream = exchange.getRequestBody();
+            java.io.ByteArrayOutputStream result = new java.io.ByteArrayOutputStream();
+            byte[] buffer = new byte[1024];
+            int length;
+            while ((length = inputStream.read(buffer)) != -1) {
+                result.write(buffer, 0, length);
+            }
+            return result.toString("UTF-8");
+        } catch (IOException e) {
+            logger.severe("Erro ao ler corpo da requisição: " + e.getMessage());
+            return null;
+        }
+    }
+    
+    /**
+     * Obtém o IP do cliente
+     */
+    private String getClientIpAddress(HttpExchange exchange) {
+        String xForwardedFor = exchange.getRequestHeaders().getFirst("X-Forwarded-For");
+        if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
+            return xForwardedFor.split(",")[0].trim();
+        }
+        
+        String xRealIp = exchange.getRequestHeaders().getFirst("X-Real-IP");
+        if (xRealIp != null && !xRealIp.isEmpty()) {
+            return xRealIp;
+        }
+        
+        return exchange.getRemoteAddress().getAddress().getHostAddress();
+    }
+    
+    /**
+     * Extrai valor de campo JSON simples
+     */
+    private String extractJsonValue(String json, String field) {
+        try {
+            String pattern = "\"" + field + "\"\\s*:\\s*\"([^\"]+)\"";
+            java.util.regex.Pattern p = java.util.regex.Pattern.compile(pattern);
+            java.util.regex.Matcher m = p.matcher(json);
+            
+            if (m.find()) {
+                return m.group(1);
+            }
+            
+            // Tentar extrair boolean
+            pattern = "\"" + field + "\"\\s*:\\s*(true|false)";
+            p = java.util.regex.Pattern.compile(pattern);
+            m = p.matcher(json);
+            
+            if (m.find()) {
+                return m.group(1);
+            }
+            
+            return null;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+    
+    /**
+     * Handler para autorização de IP via Discord
+     * POST /api/v1/ip-authorize
+     */
+    private class IpAuthorizeHandler implements HttpHandler {
+        
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            // Configurar CORS
+            exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
+            exchange.getResponseHeaders().add("Access-Control-Allow-Methods", "POST, OPTIONS");
+            exchange.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type, Authorization");
+            
+            if (exchange.getRequestMethod().equalsIgnoreCase("OPTIONS")) {
+                exchange.sendResponseHeaders(200, -1);
+                return;
+            }
+            
+            // Verificar método HTTP
+            if (!exchange.getRequestMethod().equalsIgnoreCase("POST")) {
+                sendErrorResponse(exchange, 405, "Método não permitido");
+                return;
+            }
+            
+            // Verificar autenticação
+            if (!authenticateRequest(exchange)) {
+                sendErrorResponse(exchange, 401, "Unauthorized - Invalid or missing Bearer token");
+                return;
+            }
+            
+            try {
+                // Ler dados do request (compatível com Java 7)
+                java.io.InputStream inputStream = exchange.getRequestBody();
+                java.io.ByteArrayOutputStream result = new java.io.ByteArrayOutputStream();
+                byte[] buffer = new byte[1024];
+                int length;
+                while ((length = inputStream.read(buffer)) != -1) {
+                    result.write(buffer, 0, length);
+                }
+                String requestBody = result.toString("UTF-8");
+                
+                // Executar autorização de forma assíncrona
+                Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+                    try {
+                        IpAuthorizeRequest request = parseIpAuthorizeRequest(requestBody);
+                        
+                        if (request == null) {
+                            sendErrorResponse(exchange, 400, "Payload inválido");
+                            return;
+                        }
+                        
+                        // Processar autorização
+                        boolean success = processIpAuthorization(request);
+                        
+                        // ==========================================================
+                        //  CORREÇÃO OBRIGATÓRIA: Verificar retorno do processamento
+                        // ==========================================================
+                        if (success) {
+                            String response = "{\"success\":true,\"message\":\"IP autorizado com sucesso\"}";
+                            sendJsonResponse(exchange, 200, response);
+                        } else {
+                            // Se processIpAuthorization retornou false, envie um erro 500
+                            sendErrorResponse(exchange, 500, "Erro interno ao processar a autorização no servidor.");
+                        }
+                        // ==========================================================
+                        //  FIM DA CORREÇÃO OBRIGATÓRIA
+                        // ==========================================================
+                        
+                    } catch (Exception e) {
+                        logger.severe("Erro ao processar autorização de IP: " + e.getMessage());
+                        sendErrorResponse(exchange, 500, "Erro interno do servidor");
+                    }
+                });
+                
+            } catch (Exception e) {
+                logger.severe("Erro no handler de autorização de IP: " + e.getMessage());
+                sendErrorResponse(exchange, 500, "Erro interno do servidor");
+            }
+        }
+        
+        /**
+         * Processa autorização de IP
+         * CORREÇÃO: Tratamento correto de exceções SQL para garantir consistência
+         */
+        private boolean processIpAuthorization(IpAuthorizeRequest request) {
+            try {
+                if (request.isAuthorized()) {
+                    // Autorizar IP permanentemente no banco
+                    dataManager.authorizeIpPermanently(request.getPlayerName(), request.getIpAddress());
+                    logger.info("[IP-AUTH] IP " + request.getIpAddress() + " autorizado para " + request.getPlayerName() + " via Discord");
+                    
+                    // ATUALIZAR CACHE EM TEMPO REAL (CORREÇÃO CRÍTICA)
+                    updateP2PCache(request.getPlayerName(), request.getIpAddress());
+                    
+                } else {
+                    // Registrar rejeição (para auditoria)
+                    logger.info("[IP-AUTH] IP " + request.getIpAddress() + " rejeitado para " + request.getPlayerName() + " via Discord");
+                }
+                
+                return true;
+                
+            } catch (java.sql.SQLException e) {
+                logger.severe("🚨 [IP-AUTH] Erro SQL ao processar autorização de IP: " + e.getMessage());
+                return false;
+            } catch (Exception e) {
+                logger.severe("🚨 [IP-AUTH] Erro inesperado ao processar autorização de IP: " + e.getMessage());
+                return false;
+            }
+        }
+        
+        /**
+         * Atualiza o cache do P2P em tempo real
+         * CORREÇÃO: Resolve race condition entre Core e P2P usando reflexão
+         */
+        private void updateP2PCache(String playerName, String ipAddress) {
+            try {
+                // Buscar plugin P2P via Bukkit usando reflexão para evitar dependência circular
+                org.bukkit.plugin.Plugin p2pPlugin = Bukkit.getPluginManager().getPlugin("PrimeLeague-P2P");
+                if (p2pPlugin != null) {
+                    // Usar reflexão para acessar métodos do P2P
+                    Class<?> p2pClass = p2pPlugin.getClass();
+                    java.lang.reflect.Method getCacheMethod = p2pClass.getMethod("getIpAuthCache");
+                    Object ipAuthCache = getCacheMethod.invoke(p2pPlugin);
+                    
+                    if (ipAuthCache != null) {
+                        // Usar reflexão para chamar addAuthorizedIp
+                        Class<?> cacheClass = ipAuthCache.getClass();
+                        java.lang.reflect.Method addMethod = cacheClass.getMethod("addAuthorizedIp", String.class, String.class);
+                        addMethod.invoke(ipAuthCache, playerName, ipAddress);
+                        
+                        logger.info("[IP-AUTH] ✅ Cache P2P atualizado em tempo real: " + playerName + " (" + ipAddress + ")");
+                    } else {
+                        logger.warning("[IP-AUTH] ⚠️ Cache P2P não disponível para atualização");
+                    }
+                } else {
+                    logger.warning("[IP-AUTH] ⚠️ Plugin P2P não encontrado para atualização de cache");
+                }
+                
+            } catch (Exception e) {
+                logger.severe("[IP-AUTH] ❌ Erro ao atualizar cache P2P: " + e.getMessage());
+            }
+        }
+        
+        /**
+         * Parse do JSON de autorização de IP
+         */
+        private IpAuthorizeRequest parseIpAuthorizeRequest(String json) {
+            try {
+                // Parse simples do JSON (sem dependências externas)
+                if (!json.contains("\"playerName\"") || !json.contains("\"ipAddress\"") || 
+                    !json.contains("\"authorized\"") || !json.contains("\"discordId\"")) {
+                    return null;
+                }
+                
+                // Extrair valores usando regex simples
+                String playerName = extractJsonValue(json, "playerName");
+                String ipAddress = extractJsonValue(json, "ipAddress");
+                String authorizedStr = extractJsonValue(json, "authorized");
+                String discordId = extractJsonValue(json, "discordId");
+                
+                if (playerName == null || ipAddress == null || authorizedStr == null || discordId == null) {
+                    return null;
+                }
+                
+                boolean authorized = Boolean.parseBoolean(authorizedStr);
+                
+                return new IpAuthorizeRequest(playerName, ipAddress, authorized, discordId);
+                
+            } catch (Exception e) {
+                logger.severe("Erro ao fazer parse do JSON de autorização: " + e.getMessage());
+                return null;
+            }
+        }
+        
+    }
+    
+    /**
+     * Classe de requisição para autorização de IP
+     */
+    public static class IpAuthorizeRequest {
+        private final String playerName;
+        private final String ipAddress;
+        private final boolean authorized;
+        private final String discordId;
+        
+        public IpAuthorizeRequest(String playerName, String ipAddress, boolean authorized, String discordId) {
+            this.playerName = playerName;
+            this.ipAddress = ipAddress;
+            this.authorized = authorized;
+            this.discordId = discordId;
+        }
+        
+        // Getters
+        public String getPlayerName() { return playerName; }
+        public String getIpAddress() { return ipAddress; }
+        public boolean isAuthorized() { return authorized; }
+        public String getDiscordId() { return discordId; }
+    }
+    
+    /**
      * Classe de resposta para informações de doador
      */
     public static class DonorInfoResponse {
@@ -321,5 +646,661 @@ public class HttpApiManager {
         public String getDonorName() { return donorName; }
         public int getMaxAltAccounts() { return maxAltAccounts; }
         public int getCurrentAccounts() { return currentAccounts; }
+    }
+    
+    // =====================================================
+    // HANDLERS DE RECUPERAÇÃO DE CONTA P2P
+    // =====================================================
+    
+    /**
+     * Handler para geração de códigos de backup
+     */
+    private class RecoveryBackupGenerateHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            // Configurar CORS
+            setCorsHeaders(exchange);
+            
+            if (exchange.getRequestMethod().equals("OPTIONS")) {
+                sendResponse(exchange, 200, "");
+                return;
+            }
+            
+            // Verificar autenticação
+            if (!authenticateRequest(exchange)) {
+                sendErrorResponse(exchange, 401, "Token de autenticação inválido");
+                return;
+            }
+            
+            // Verificar método HTTP
+            if (!exchange.getRequestMethod().equals("POST")) {
+                sendErrorResponse(exchange, 405, "Método não permitido");
+                return;
+            }
+            
+            try {
+                // Ler dados do request (compatível com Java 7)
+                java.io.InputStream inputStream = exchange.getRequestBody();
+                java.io.ByteArrayOutputStream result = new java.io.ByteArrayOutputStream();
+                byte[] buffer = new byte[1024];
+                int length;
+                while ((length = inputStream.read(buffer)) != -1) {
+                    result.write(buffer, 0, length);
+                }
+                String requestBody = result.toString("UTF-8");
+                
+                // Executar geração de forma assíncrona
+                Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+                    try {
+                        RecoveryBackupGenerateRequest request = parseRecoveryBackupGenerateRequest(requestBody);
+                        if (request == null) {
+                            sendErrorResponse(exchange, 400, "Dados de requisição inválidos");
+                            return;
+                        }
+                        
+                        // Processar geração de códigos
+                        boolean success = processRecoveryBackupGeneration(request);
+                        
+                        if (success) {
+                            String response = "{\"success\":true,\"message\":\"Códigos de backup gerados com sucesso\"}";
+                            sendJsonResponse(exchange, 200, response);
+                        } else {
+                            // Verificar se é erro de Discord ID não encontrado
+                            Integer playerId = dataManager.getPlayerIdByDiscordId(request.getDiscordId());
+                            if (playerId == null) {
+                                sendErrorResponse(exchange, 404, "Discord ID não encontrado");
+                            } else {
+                                sendErrorResponse(exchange, 500, "Erro interno ao gerar códigos de backup");
+                            }
+                        }
+                        
+                    } catch (Exception e) {
+                        logger.severe("[RECOVERY] Erro ao processar geração de códigos: " + e.getMessage());
+                        sendErrorResponse(exchange, 500, "Erro interno ao processar a requisição");
+                    }
+                });
+                
+            } catch (Exception e) {
+                logger.severe("[RECOVERY] Erro ao ler requisição: " + e.getMessage());
+                sendErrorResponse(exchange, 500, "Erro interno ao ler a requisição");
+            }
+        }
+        
+        /**
+         * Processa geração de códigos de backup
+         */
+        private boolean processRecoveryBackupGeneration(RecoveryBackupGenerateRequest request) {
+            try {
+                // Buscar player_id pelo discord_id
+                Integer playerId = dataManager.getPlayerIdByDiscordId(request.getDiscordId());
+                if (playerId == null) {
+                    logger.warning("[RECOVERY] Discord ID não encontrado: " + request.getDiscordId());
+                    return false;
+                }
+                
+                // Gerar códigos de backup
+                java.util.List<String> codes = plugin.getRecoveryCodeManager().generateBackupCodes(
+                    playerId, request.getDiscordId(), request.getIpAddress());
+                
+                logger.info("[RECOVERY] Códigos de backup gerados para Discord ID: " + request.getDiscordId());
+                return true;
+                
+            } catch (Exception e) {
+                logger.severe("[RECOVERY] Erro ao gerar códigos: " + e.getMessage());
+                return false;
+            }
+        }
+        
+        /**
+         * Faz parse da requisição de geração de códigos
+         */
+        private RecoveryBackupGenerateRequest parseRecoveryBackupGenerateRequest(String json) {
+            try {
+                String discordId = extractJsonValue(json, "discordId");
+                String ipAddress = extractJsonValue(json, "ipAddress");
+                
+                if (discordId == null || ipAddress == null) {
+                    return null;
+                }
+                
+                return new RecoveryBackupGenerateRequest(discordId, ipAddress);
+                
+            } catch (Exception e) {
+                logger.severe("Erro ao fazer parse do JSON de geração: " + e.getMessage());
+                return null;
+            }
+        }
+    }
+    
+    /**
+     * Handler para verificação de códigos de recuperação
+     */
+    private class RecoveryVerifyHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            // Configurar CORS
+            setCorsHeaders(exchange);
+            
+            if (exchange.getRequestMethod().equals("OPTIONS")) {
+                sendResponse(exchange, 200, "");
+                return;
+            }
+            
+            // Verificar autenticação
+            if (!authenticateRequest(exchange)) {
+                sendErrorResponse(exchange, 401, "Token de autenticação inválido");
+                return;
+            }
+            
+            // Verificar método HTTP
+            if (!exchange.getRequestMethod().equals("POST")) {
+                sendErrorResponse(exchange, 405, "Método não permitido");
+                return;
+            }
+            
+            try {
+                // Ler dados do request (compatível com Java 7)
+                java.io.InputStream inputStream = exchange.getRequestBody();
+                java.io.ByteArrayOutputStream result = new java.io.ByteArrayOutputStream();
+                byte[] buffer = new byte[1024];
+                int length;
+                while ((length = inputStream.read(buffer)) != -1) {
+                    result.write(buffer, 0, length);
+                }
+                String requestBody = result.toString("UTF-8");
+                
+                // Executar verificação de forma assíncrona
+                Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+                    try {
+                        RecoveryVerifyRequest request = parseRecoveryVerifyRequest(requestBody);
+                        if (request == null) {
+                            sendErrorResponse(exchange, 400, "Dados de requisição inválidos");
+                            return;
+                        }
+                        
+                        // Processar verificação de código
+                        boolean success = processRecoveryVerification(request);
+                        
+                        if (success) {
+                            String response = "{\"success\":true,\"message\":\"Código validado com sucesso. A conta está pronta para ser revinculada.\"}";
+                            sendJsonResponse(exchange, 200, response);
+                        } else {
+                            sendErrorResponse(exchange, 400, "Código inválido, expirado ou já utilizado");
+                        }
+                        
+                    } catch (Exception e) {
+                        logger.severe("[RECOVERY] Erro ao processar verificação: " + e.getMessage());
+                        sendErrorResponse(exchange, 500, "Erro interno ao processar a requisição");
+                    }
+                });
+                
+            } catch (Exception e) {
+                logger.severe("[RECOVERY] Erro ao ler requisição: " + e.getMessage());
+                sendErrorResponse(exchange, 500, "Erro interno ao ler a requisição");
+            }
+        }
+        
+        /**
+         * Processa verificação de código de recuperação
+         */
+        private boolean processRecoveryVerification(RecoveryVerifyRequest request) {
+            try {
+                // Verificar código
+                boolean isValid = plugin.getRecoveryCodeManager().verifyCode(
+                    request.getPlayerName(), request.getBackupCode(), request.getIpAddress());
+                
+                if (isValid) {
+                    // Buscar discord_id do jogador
+                    String discordId = dataManager.getDiscordIdByPlayerName(request.getPlayerName());
+                    if (discordId != null) {
+                        // Marcar estado como PENDING_RELINK
+                        dataManager.updateDiscordLinkStatus(discordId, "PENDING_RELINK");
+                        logger.info("[RECOVERY] Estado alterado para PENDING_RELINK para: " + request.getPlayerName());
+                    }
+                }
+                
+                return isValid;
+                
+            } catch (Exception e) {
+                logger.severe("[RECOVERY] Erro ao verificar código: " + e.getMessage());
+                return false;
+            }
+        }
+        
+        /**
+         * Faz parse da requisição de verificação
+         */
+        private RecoveryVerifyRequest parseRecoveryVerifyRequest(String json) {
+            try {
+                String playerName = extractJsonValue(json, "playerName");
+                String backupCode = extractJsonValue(json, "backupCode");
+                String ipAddress = extractJsonValue(json, "ipAddress");
+                
+                if (playerName == null || backupCode == null || ipAddress == null) {
+                    return null;
+                }
+                
+                return new RecoveryVerifyRequest(playerName, backupCode, ipAddress);
+                
+            } catch (Exception e) {
+                logger.severe("Erro ao fazer parse do JSON de verificação: " + e.getMessage());
+                return null;
+            }
+        }
+    }
+    
+    /**
+     * Handler para status de códigos de recuperação
+     */
+    private class RecoveryStatusHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            // Configurar CORS
+            setCorsHeaders(exchange);
+            
+            if (exchange.getRequestMethod().equals("OPTIONS")) {
+                sendResponse(exchange, 200, "");
+                return;
+            }
+            
+            // Verificar autenticação
+            if (!authenticateRequest(exchange)) {
+                sendErrorResponse(exchange, 400, "Token de autenticação inválido");
+                return;
+            }
+            
+            // Verificar método HTTP
+            if (!exchange.getRequestMethod().equals("GET")) {
+                sendErrorResponse(exchange, 405, "Método não permitido");
+                return;
+            }
+            
+            try {
+                // Extrair discord_id da URL
+                String path = exchange.getRequestURI().getPath();
+                String discordId = path.substring(path.lastIndexOf("/") + 1);
+                
+                if (discordId == null || discordId.isEmpty()) {
+                    sendErrorResponse(exchange, 400, "Discord ID não fornecido");
+                    return;
+                }
+                
+                // Executar consulta de status de forma assíncrona
+                Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+                    try {
+                        RecoveryStatusResponse status = getRecoveryStatus(discordId);
+                        
+                        if (status != null) {
+                            String response = String.format(
+                                "{\"success\":true,\"hasActiveBackupCodes\":%s,\"codesGeneratedAt\":\"%s\",\"activeCodeCount\":%d}",
+                                status.hasActiveBackupCodes(), status.getCodesGeneratedAt(), status.getActiveCodeCount()
+                            );
+                            sendJsonResponse(exchange, 200, response);
+                        } else {
+                            sendErrorResponse(exchange, 404, "Discord ID não encontrado");
+                        }
+                        
+                    } catch (Exception e) {
+                        logger.severe("[RECOVERY] Erro ao consultar status: " + e.getMessage());
+                        sendErrorResponse(exchange, 500, "Erro interno ao consultar status");
+                    }
+                });
+                
+            } catch (Exception e) {
+                logger.severe("[RECOVERY] Erro ao processar requisição: " + e.getMessage());
+                sendErrorResponse(exchange, 500, "Erro interno ao processar a requisição");
+            }
+        }
+        
+        /**
+         * Obtém status dos códigos de recuperação
+         */
+        private RecoveryStatusResponse getRecoveryStatus(String discordId) {
+            try {
+                // Buscar player_id pelo discord_id
+                Integer playerId = dataManager.getPlayerIdByDiscordId(discordId);
+                if (playerId == null) {
+                    return null;
+                }
+                
+                // Consultar códigos ativos
+                try (java.sql.Connection conn = dataManager.getDataSource().getConnection();
+                     java.sql.PreparedStatement stmt = conn.prepareStatement(
+                         "SELECT COUNT(*) as count, MAX(created_at) as last_created " +
+                         "FROM recovery_codes " +
+                         "WHERE player_id = ? AND status = 'ACTIVE' AND code_type = 'BACKUP'")) {
+                    
+                    stmt.setInt(1, playerId);
+                    
+                    try (java.sql.ResultSet rs = stmt.executeQuery()) {
+                        if (rs.next()) {
+                            int count = rs.getInt("count");
+                            java.sql.Timestamp lastCreated = rs.getTimestamp("last_created");
+                            
+                            return new RecoveryStatusResponse(
+                                count > 0,
+                                lastCreated != null ? lastCreated.toString() : null,
+                                count
+                            );
+                        }
+                    }
+                }
+                
+                return new RecoveryStatusResponse(false, null, 0);
+                
+            } catch (Exception e) {
+                logger.severe("[RECOVERY] Erro ao consultar status: " + e.getMessage());
+                return null;
+            }
+        }
+    }
+    
+    /**
+     * Handler para auditoria de códigos de recuperação
+     */
+    private class RecoveryAuditHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            // Configurar CORS
+            setCorsHeaders(exchange);
+            
+            if (exchange.getRequestMethod().equals("OPTIONS")) {
+                sendResponse(exchange, 200, "");
+                return;
+            }
+            
+            // Verificar autenticação
+            if (!authenticateRequest(exchange)) {
+                sendErrorResponse(exchange, 401, "Token de autenticação inválido");
+                return;
+            }
+            
+            // Verificar método HTTP
+            if (!exchange.getRequestMethod().equals("GET")) {
+                sendErrorResponse(exchange, 405, "Método não permitido");
+                return;
+            }
+            
+            try {
+                // Extrair discord_id da URL
+                String path = exchange.getRequestURI().getPath();
+                String discordId = path.substring(path.lastIndexOf("/") + 1);
+                
+                if (discordId == null || discordId.isEmpty()) {
+                    sendErrorResponse(exchange, 400, "Discord ID não fornecido");
+                    return;
+                }
+                
+                // Executar consulta de auditoria de forma assíncrona
+                Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+                    try {
+                        String auditData = getRecoveryAudit(discordId);
+                        
+                        if (auditData != null) {
+                            sendJsonResponse(exchange, 200, auditData);
+                        } else {
+                            sendErrorResponse(exchange, 404, "Discord ID não encontrado");
+                        }
+                        
+                    } catch (Exception e) {
+                        logger.severe("[RECOVERY] Erro ao consultar auditoria: " + e.getMessage());
+                        sendErrorResponse(exchange, 500, "Erro interno ao consultar auditoria");
+                    }
+                });
+                
+            } catch (Exception e) {
+                logger.severe("[RECOVERY] Erro ao processar requisição: " + e.getMessage());
+                sendErrorResponse(exchange, 500, "Erro interno ao processar a requisição");
+            }
+        }
+        
+        /**
+         * Obtém dados de auditoria
+         */
+        private String getRecoveryAudit(String discordId) {
+            try {
+                // Buscar player_id pelo discord_id
+                Integer playerId = dataManager.getPlayerIdByDiscordId(discordId);
+                if (playerId == null) {
+                    return null;
+                }
+                
+                // Consultar tentativas recentes
+                try (java.sql.Connection conn = dataManager.getDataSource().getConnection();
+                     java.sql.PreparedStatement stmt = conn.prepareStatement(
+                         "SELECT rc.*, pd.name as player_name " +
+                         "FROM recovery_codes rc " +
+                         "JOIN player_data pd ON rc.player_id = pd.player_id " +
+                         "WHERE rc.player_id = ? " +
+                         "ORDER BY rc.created_at DESC " +
+                         "LIMIT 10")) {
+                    
+                    stmt.setInt(1, playerId);
+                    
+                    StringBuilder json = new StringBuilder();
+                    json.append("{\"success\":true,\"recentAttempts\":[");
+                    
+                    boolean first = true;
+                    try (java.sql.ResultSet rs = stmt.executeQuery()) {
+                        while (rs.next()) {
+                            if (!first) json.append(",");
+                            first = false;
+                            
+                            json.append("{");
+                            json.append("\"id\":").append(rs.getLong("id")).append(",");
+                            json.append("\"codeType\":\"").append(rs.getString("code_type")).append("\",");
+                            json.append("\"status\":\"").append(rs.getString("status")).append("\",");
+                            json.append("\"createdAt\":\"").append(rs.getTimestamp("created_at")).append("\",");
+                            json.append("\"usedAt\":\"").append(rs.getTimestamp("used_at")).append("\",");
+                            json.append("\"attempts\":").append(rs.getInt("attempts")).append(",");
+                            json.append("\"ipAddress\":\"").append(rs.getString("ip_address")).append("\"");
+                            json.append("}");
+                        }
+                    }
+                    
+                    json.append("]}");
+                    return json.toString();
+                    
+                }
+                
+            } catch (Exception e) {
+                logger.severe("[RECOVERY] Erro ao consultar auditoria: " + e.getMessage());
+                return null;
+            }
+        }
+    }
+    
+    // =====================================================
+    // CLASSES DE REQUISIÇÃO E RESPOSTA
+    // =====================================================
+    
+    /**
+     * Classe de requisição para geração de códigos de backup
+     */
+    public static class RecoveryBackupGenerateRequest {
+        private final String discordId;
+        private final String ipAddress;
+        
+        public RecoveryBackupGenerateRequest(String discordId, String ipAddress) {
+            this.discordId = discordId;
+            this.ipAddress = ipAddress;
+        }
+        
+        // Getters
+        public String getDiscordId() { return discordId; }
+        public String getIpAddress() { return ipAddress; }
+    }
+    
+    /**
+     * Classe de requisição para verificação de código
+     */
+    public static class RecoveryVerifyRequest {
+        private final String playerName;
+        private final String backupCode;
+        private final String ipAddress;
+        
+        public RecoveryVerifyRequest(String playerName, String backupCode, String ipAddress) {
+            this.playerName = playerName;
+            this.backupCode = backupCode;
+            this.ipAddress = ipAddress;
+        }
+        
+        // Getters
+        public String getPlayerName() { return playerName; }
+        public String getBackupCode() { return backupCode; }
+        public String getIpAddress() { return ipAddress; }
+    }
+    
+    /**
+     * Classe de resposta para status de códigos
+     */
+    public static class RecoveryStatusResponse {
+        private final boolean hasActiveBackupCodes;
+        private final String codesGeneratedAt;
+        private final int activeCodeCount;
+        
+        public RecoveryStatusResponse(boolean hasActiveBackupCodes, String codesGeneratedAt, int activeCodeCount) {
+            this.hasActiveBackupCodes = hasActiveBackupCodes;
+            this.codesGeneratedAt = codesGeneratedAt;
+            this.activeCodeCount = activeCodeCount;
+        }
+        
+        // Getters
+        public boolean hasActiveBackupCodes() { return hasActiveBackupCodes; }
+        public String getCodesGeneratedAt() { return codesGeneratedAt; }
+        public int getActiveCodeCount() { return activeCodeCount; }
+    }
+    
+    // =====================================================
+    // HANDLER DE TRANSFERÊNCIA DE ASSINATURAS (FASE 2)
+    // =====================================================
+    
+    /**
+     * Handler para transferência de assinaturas entre Discord IDs
+     * POST /api/v1/discord/transfer
+     */
+    private class DiscordTransferHandler implements HttpHandler {
+        
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            setCorsHeaders(exchange);
+            
+            if (exchange.getRequestMethod().equals("OPTIONS")) {
+                sendResponse(exchange, 200, "");
+                return;
+            }
+            
+            if (!authenticateRequest(exchange)) {
+                sendErrorResponse(exchange, 401, "Token de autenticação inválido");
+                return;
+            }
+            
+            if (!exchange.getRequestMethod().equals("POST")) {
+                sendErrorResponse(exchange, 405, "Método não permitido");
+                return;
+            }
+            
+            // Ler corpo da requisição
+            String requestBody = readRequestBody(exchange);
+            if (requestBody == null) {
+                sendErrorResponse(exchange, 400, "Corpo da requisição inválido");
+                return;
+            }
+            
+            // Processar em thread assíncrona
+            Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+                try {
+                    DiscordTransferRequest request = parseDiscordTransferRequest(requestBody);
+                    if (request == null) {
+                        sendErrorResponse(exchange, 400, "Dados de requisição inválidos");
+                        return;
+                    }
+                    
+                    // Obter IP de origem
+                    String ipAddress = getClientIpAddress(exchange);
+                    
+                    // Executar transferência
+                    DataManager.TransferResult result = dataManager.transferSubscription(
+                        request.getPlayerName(), 
+                        request.getNewDiscordId(), 
+                        ipAddress
+                    );
+                    
+                    if (result.isSuccess()) {
+                        String response = "{\"success\":true,\"message\":\"" + result.getMessage() + "\"}";
+                        sendJsonResponse(exchange, 200, response);
+                    } else {
+                        sendErrorResponse(exchange, 400, result.getMessage());
+                    }
+                    
+                } catch (Exception e) {
+                    logger.severe("[TRANSFER] Erro ao processar transferência: " + e.getMessage());
+                    sendErrorResponse(exchange, 500, "Erro interno ao processar a requisição");
+                }
+            });
+        }
+        
+        /**
+         * Processa requisição de transferência
+         */
+        private boolean processDiscordTransfer(DiscordTransferRequest request) {
+            try {
+                // Obter IP de origem (simulado para teste)
+                String ipAddress = "127.0.0.1";
+                
+                DataManager.TransferResult result = dataManager.transferSubscription(
+                    request.getPlayerName(), 
+                    request.getNewDiscordId(), 
+                    ipAddress
+                );
+                
+                return result.isSuccess();
+                
+            } catch (Exception e) {
+                logger.severe("[TRANSFER] Erro ao processar transferência: " + e.getMessage());
+                return false;
+            }
+        }
+        
+        /**
+         * Parse da requisição de transferência
+         */
+        private DiscordTransferRequest parseDiscordTransferRequest(String requestBody) {
+            try {
+                String playerName = extractJsonValue(requestBody, "playerName");
+                String newDiscordId = extractJsonValue(requestBody, "newDiscordId");
+                
+                if (playerName == null || newDiscordId == null) {
+                    return null;
+                }
+                
+                return new DiscordTransferRequest(playerName, newDiscordId);
+                
+            } catch (Exception e) {
+                logger.severe("[TRANSFER] Erro ao fazer parse da requisição: " + e.getMessage());
+                return null;
+            }
+        }
+    }
+    
+    // =====================================================
+    // CLASSES DE REQUISIÇÃO PARA TRANSFERÊNCIA
+    // =====================================================
+    
+    /**
+     * Classe de requisição para transferência de assinatura
+     */
+    public static class DiscordTransferRequest {
+        private final String playerName;
+        private final String newDiscordId;
+        
+        public DiscordTransferRequest(String playerName, String newDiscordId) {
+            this.playerName = playerName;
+            this.newDiscordId = newDiscordId;
+        }
+        
+        // Getters
+        public String getPlayerName() { return playerName; }
+        public String getNewDiscordId() { return newDiscordId; }
     }
 }

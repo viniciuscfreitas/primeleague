@@ -11,8 +11,10 @@
   "author": "Prime League Team",
   "license": "ISC",
   "dependencies": {
+    "cors": "^2.8.5",
     "discord.js": "^14.13.0",
     "dotenv": "^16.3.1",
+    "express": "^5.1.0",
     "mysql2": "^3.6.0",
     "uuid": "^11.1.0"
   },

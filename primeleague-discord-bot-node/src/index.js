@@ -2,6 +2,8 @@ require('dotenv').config();
 const { Client, Collection, GatewayIntentBits } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
+const express = require('express');
+const cors = require('cors');
 
 // Importar sistema de autorização de IPs e status
 const NotificationWorker = require('./workers/notification-worker');
@@ -9,6 +11,7 @@ const IPAuthHandler = require('./handlers/ip-auth-handler');
 const StatusWorker = require('./workers/status-worker');
 const SubscriptionButtonHandler = require('./handlers/subscription-button-handler');
 const DonorButtonHandler = require('./handlers/donor-button-handler');
+const IpAuthWebhookHandler = require('./handlers/ip-auth-webhook');
 
 // Criar cliente Discord
 const client = new Client({
@@ -17,6 +20,23 @@ const client = new Client({
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent
     ]
+});
+
+// Configurar servidor Express para webhooks
+const app = express();
+const PORT = process.env.WEBHOOK_PORT || 3000;
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+
+// Inicializar webhook handler
+const ipAuthWebhook = new IpAuthWebhookHandler(client);
+ipAuthWebhook.setupWebhook(app);
+
+// Iniciar servidor Express
+app.listen(PORT, () => {
+    console.log(`[Webhook] Servidor webhook iniciado na porta ${PORT}`);
 });
 
 // Coleção de comandos
@@ -99,6 +119,12 @@ client.on('interactionCreate', async interaction => {
             if (!handled) {
                 console.log(`[Bot] Tentando IPAuthHandler para: ${customId}`);
                 handled = await IPAuthHandler.handleIPAuthInteraction(interaction);
+            }
+            
+            // Se não foi tratado, tentar webhook IP auth
+            if (!handled) {
+                console.log(`[Bot] Tentando IpAuthWebhook para: ${customId}`);
+                handled = await ipAuthWebhook.handleButtonInteraction(interaction);
             }
             
             // Se não foi tratado, tentar SubscriptionButtonHandler

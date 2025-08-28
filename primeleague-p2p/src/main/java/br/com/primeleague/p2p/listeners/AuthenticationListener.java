@@ -43,13 +43,18 @@ public final class AuthenticationListener implements Listener {
 
     /**
      * Processa autenticação de jogadores.
+     * CORREÇÃO ARQUITETURAL: Verificação de IP movida para AsyncPlayerPreLoginEvent
      */
     @EventHandler(priority = EventPriority.HIGH)
     public void onPlayerPreLogin(AsyncPlayerPreLoginEvent event) {
         final String playerName = event.getName();
+        final String playerIp = event.getAddress().getHostAddress();
+        
+        plugin.getLogger().info("[IP-AUTH] 🔍 Verificando IP para " + playerName + " (" + playerIp + ")");
         
         // Verificar se o jogador está na whitelist
         if (isPlayerWhitelisted(playerName)) {
+            plugin.getLogger().info("[IP-AUTH] ✅ Jogador na whitelist - bypass de IP");
             event.allow();
             return;
         }
@@ -74,11 +79,30 @@ public final class AuthenticationListener implements Listener {
                 }
             }
             
-            // Permitir entrada - autenticação será verificada no onPlayerJoin
+            // VERIFICAÇÃO DE IP (CORREÇÃO ARQUITETURAL)
+            if (!isIpAuthorized(playerName, playerIp)) {
+                plugin.getLogger().info("[IP-AUTH] ❌ IP não autorizado detectado: " + playerName + " (" + playerIp + ")");
+                
+                // Kick imediato com mensagem sobre DM
+                event.disallow(Result.KICK_OTHER,
+                    "§c§l🔐 IP Não Autorizado\n\n" +
+                    "§fDetectamos uma tentativa de conexão de um IP não autorizado.\n\n" +
+                    "§e📱 Verifique sua DM no Discord para autorizar este IP.\n" +
+                    "§e💬 Discord: §fdiscord.gg/primeleague\n\n" +
+                    "§a💡 Após autorizar, tente conectar novamente!"
+                );
+                
+                // Notificar Bot Discord de forma assíncrona (já estamos em thread assíncrona)
+                notifyBotAboutUnauthorizedIp(playerName, playerIp);
+                
+                return;
+            }
+            
+            plugin.getLogger().info("[IP-AUTH] ✅ IP autorizado para " + playerName + " (" + playerIp + ")");
             event.allow();
             
         } catch (Exception e) {
-            plugin.getLogger().severe("Erro na autenticação de " + playerName + ": " + e.getMessage());
+            plugin.getLogger().severe("[IP-AUTH] ❌ Erro na verificação de IP para " + playerName + ": " + e.getMessage());
             event.disallow(Result.KICK_OTHER, "§c§l❌ Erro interno do servidor");
         }
     }
@@ -1110,6 +1134,174 @@ public final class AuthenticationListener implements Listener {
             } catch (Exception e) {
                 plugin.getLogger().warning("🔍 [DEBUG-DB] Erro ao fechar recursos: " + e.getMessage());
             }
+        }
+    }
+    
+    /**
+     * Verifica se um IP está autorizado para um player
+     * CORREÇÃO: Verifica primeiro o cache em memória, depois o banco
+     */
+    private boolean isIpAuthorized(String playerName, String ipAddress) {
+        try {
+            // Primeiro verificar cache em memória (mais rápido)
+            if (plugin.getIpAuthCache() != null && plugin.getIpAuthCache().isIpAuthorized(playerName, ipAddress)) {
+                plugin.getLogger().info("[IP-AUTH] ✅ IP autorizado via cache: " + playerName + " (" + ipAddress + ")");
+                return true;
+            }
+            
+            // Se não está no cache, verificar banco de dados
+            boolean authorized = br.com.primeleague.core.PrimeLeagueCore.getInstance()
+                .getDataManager()
+                .isIpAuthorized(playerName, ipAddress);
+            
+            // Se autorizado no banco, adicionar ao cache
+            if (authorized && plugin.getIpAuthCache() != null) {
+                plugin.getIpAuthCache().addAuthorizedIp(playerName, ipAddress);
+                plugin.getLogger().info("[IP-AUTH] ✅ IP autorizado via banco e adicionado ao cache: " + playerName + " (" + ipAddress + ")");
+            }
+            
+            return authorized;
+            
+        } catch (Exception e) {
+            plugin.getLogger().severe("[IP-AUTH] Erro ao verificar autorização de IP: " + e.getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Notifica o Bot Discord sobre IP não autorizado de forma assíncrona
+     */
+    private void notifyBotAboutUnauthorizedIp(final String playerName, final String ipAddress) {
+        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    // Buscar Discord ID do player
+                    String discordId = getDiscordIdByPlayerName(playerName);
+                    if (discordId == null) {
+                        plugin.getLogger().warning("[IP-AUTH] Discord ID não encontrado para " + playerName);
+                        return;
+                    }
+                    
+                    // Preparar payload para o webhook
+                    String payload = String.format(
+                        "{\"playerName\":\"%s\",\"playerId\":%d,\"ipAddress\":\"%s\",\"discordId\":\"%s\",\"timestamp\":%d,\"serverName\":\"PrimeLeague\"}",
+                        playerName,
+                        getPlayerIdByName(playerName),
+                        ipAddress,
+                        discordId,
+                        System.currentTimeMillis()
+                    );
+                    
+                    // Enviar para webhook do Bot
+                    sendWebhookNotification(payload);
+                    
+                    plugin.getLogger().info("[IP-AUTH] Notificação enviada para Bot Discord: " + playerName + " (" + ipAddress + ")");
+                    
+                } catch (Exception e) {
+                    plugin.getLogger().severe("[IP-AUTH] Erro ao notificar Bot Discord: " + e.getMessage());
+                }
+            }
+        });
+    }
+    
+    /**
+     * Busca Discord ID por nome do player
+     */
+    private String getDiscordIdByPlayerName(String playerName) {
+        Connection conn = null;
+        PreparedStatement ps = null;
+        ResultSet rs = null;
+        
+        try {
+            conn = br.com.primeleague.core.PrimeLeagueCore.getInstance().getDataManager().getConnection();
+            
+            String sql = "SELECT dl.discord_id FROM discord_links dl " +
+                        "JOIN player_data pd ON dl.player_id = pd.player_id " +
+                        "WHERE pd.name = ? AND dl.verified = TRUE LIMIT 1";
+            
+            ps = conn.prepareStatement(sql);
+            ps.setString(1, playerName);
+            rs = ps.executeQuery();
+            
+            if (rs.next()) {
+                return rs.getString("discord_id");
+            }
+            
+        } catch (Exception e) {
+            plugin.getLogger().severe("[IP-AUTH] Erro ao buscar Discord ID: " + e.getMessage());
+        } finally {
+            try {
+                if (rs != null) rs.close();
+                if (ps != null) ps.close();
+                if (conn != null) conn.close();
+            } catch (Exception e) {
+                // Ignorar erros de fechamento
+            }
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Busca player ID por nome
+     */
+    private int getPlayerIdByName(String playerName) {
+        Connection conn = null;
+        PreparedStatement ps = null;
+        ResultSet rs = null;
+        
+        try {
+            conn = br.com.primeleague.core.PrimeLeagueCore.getInstance().getDataManager().getConnection();
+            
+            String sql = "SELECT player_id FROM player_data WHERE name = ? LIMIT 1";
+            
+            ps = conn.prepareStatement(sql);
+            ps.setString(1, playerName);
+            rs = ps.executeQuery();
+            
+            if (rs.next()) {
+                return rs.getInt("player_id");
+            }
+            
+        } catch (Exception e) {
+            plugin.getLogger().severe("[IP-AUTH] Erro ao buscar player ID: " + e.getMessage());
+        } finally {
+            try {
+                if (rs != null) rs.close();
+                if (ps != null) ps.close();
+                if (conn != null) conn.close();
+            } catch (Exception e) {
+                // Ignorar erros de fechamento
+            }
+        }
+        
+        return 0;
+    }
+    
+    /**
+     * Envia notificação para webhook do Bot Discord
+     */
+    private void sendWebhookNotification(String payload) {
+        try {
+            java.net.URL url = new java.net.URL("http://localhost:3000/webhooks/ip-auth-notification");
+            java.net.HttpURLConnection connection = (java.net.HttpURLConnection) url.openConnection();
+            
+            connection.setRequestMethod("POST");
+            connection.setRequestProperty("Content-Type", "application/json");
+            connection.setRequestProperty("Authorization", "Bearer primeleague_api_token_2024");
+            connection.setDoOutput(true);
+            
+            try (java.io.OutputStream os = connection.getOutputStream()) {
+                byte[] input = payload.getBytes("UTF-8");
+                os.write(input, 0, input.length);
+            }
+            
+            int responseCode = connection.getResponseCode();
+            plugin.getLogger().info("[IP-AUTH] Webhook response code: " + responseCode);
+            
+        } catch (Exception e) {
+            plugin.getLogger().severe("[IP-AUTH] Erro ao enviar webhook: " + e.getMessage());
         }
     }
 }
