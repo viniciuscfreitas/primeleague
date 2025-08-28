@@ -29,18 +29,16 @@ class StatusWorker {
      */
     async start() {
         try {
-            if (this.isRunning) {
-                console.log('⚠️ StatusWorker já está rodando');
-                return;
-            }
+                    if (this.isRunning) {
+            return;
+        }
 
             // Carregar configurações
             await this.loadConfig();
             
-            if (!this.statusChannelId) {
-                console.log('⚠️ Canal de status não configurado. Use STATUS_CHANNEL_ID no .env');
-                return;
-            }
+                    if (!this.statusChannelId) {
+            return;
+        }
 
             // Primeira atualização imediata
             await this.updateStatus();
@@ -48,9 +46,6 @@ class StatusWorker {
             // Agendar atualizações periódicas
             this.intervalId = setInterval(this.updateStatus, this.updateInterval);
             this.isRunning = true;
-
-            console.log(`✅ StatusWorker iniciado - Canal: ${this.statusChannelId}`);
-            console.log(`📊 Atualizações a cada ${this.updateInterval / 1000}s`);
 
         } catch (error) {
             console.error('❌ Erro ao iniciar StatusWorker:', error);
@@ -67,7 +62,6 @@ class StatusWorker {
         }
         
         this.isRunning = false;
-        console.log('⏹️ StatusWorker parado');
     }
 
     /**
@@ -99,8 +93,7 @@ class StatusWorker {
             // Se não temos uma mensagem salva, criar uma nova
             if (!this.statusMessageId) {
                 const message = await channel.send({ embeds: [embed] });
-                this.statusMessageId = message.id;
-                console.log('📝 Nova mensagem de status criada:', this.statusMessageId);
+                            this.statusMessageId = message.id;
             } else {
                 // Atualizar mensagem existente
                 try {
@@ -108,7 +101,6 @@ class StatusWorker {
                     await message.edit({ embeds: [embed] });
                 } catch (error) {
                     // Se a mensagem não existe mais, criar uma nova
-                    console.log('⚠️ Mensagem de status não encontrada, criando nova...');
                     const message = await channel.send({ embeds: [embed] });
                     this.statusMessageId = message.id;
                 }

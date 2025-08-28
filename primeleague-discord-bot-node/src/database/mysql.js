@@ -16,19 +16,12 @@ const dbConfig = {
     }
 };
 
-console.log('Conectando ao MySQL:', {
-    host: dbConfig.host,
-    port: dbConfig.port,
-    user: dbConfig.user,
-    database: dbConfig.database
-});
+
 
 const pool = mysql.createPool(dbConfig);
 
 async function getPlayerByNickname(nickname) {
     try {
-        console.log(`[DB] Buscando player por nickname: "${nickname}"`);
-        
         const [rows] = await pool.execute(
             `SELECT pd.player_id, pd.name, pd.elo, pd.money,
                     dl.discord_id, dl.verified
@@ -37,9 +30,6 @@ async function getPlayerByNickname(nickname) {
              WHERE pd.name = ?`,
             [nickname]
         );
-        
-        console.log(`[DB] Resultado da busca:`, rows);
-        console.log(`[DB] Primeiro resultado:`, rows[0]);
         
         return rows[0];
     } catch (error) {
@@ -89,7 +79,6 @@ async function createDiscordLink(discordId, playerId, verifyCode = null) {
         );
         
         if (existingRows.length > 0) {
-            console.log(`[DB] Player ID ${playerId} já possui vínculo Discord`);
             return false;
         }
         
@@ -181,11 +170,10 @@ async function generateVerifyCode() {
 // Testar conexão ao iniciar
 pool.getConnection()
     .then(conn => {
-        console.log('✅ Conexão com MySQL estabelecida!');
         conn.release();
     })
     .catch(err => {
-        console.error('❌ Erro ao conectar com MySQL:', err);
+        console.error('Erro ao conectar com MySQL:', err);
     });
 
 // =====================================================
@@ -734,26 +722,14 @@ function formatSubscriptionStatus(status, daysRemaining = 0) {
 
 async function createPlayer(nickname) {
     try {
-        console.log(`[DB] Criando player: "${nickname}"`);
-        
-        // Gerar UUID canônico baseado no nome (COMPATÍVEL COM JAVA)
-        // Usar exatamente o mesmo algoritmo que o plugin Java: UUID.nameUUIDFromBytes
         const crypto = require('crypto');
-        
-        // Usar o mesmo source string que o Java
         const source = "OfflinePlayer:" + nickname;
-        
-        // Java UUID.nameUUIDFromBytes faz MD5 do source string diretamente
         const hash = crypto.createHash('md5').update(source, 'utf-8').digest();
         
-        // 🔧 CORREÇÃO RFC 4122: Ajustar bits de versão e variante como o Java faz
-        // No 7º byte (índice 6), define a versão para 3
+        // RFC 4122: Ajustar bits de versão e variante
         hash[6] = (hash[6] & 0x0f) | 0x30;
-        
-        // No 9º byte (índice 8), define a variante para RFC 4122
         hash[8] = (hash[8] & 0x3f) | 0x80;
         
-        // Converter o Buffer modificado para UUID no formato 8-4-4-4-12
         const canonicalUuid = [
             hash.toString('hex', 0, 4),
             hash.toString('hex', 4, 6),
@@ -762,8 +738,6 @@ async function createPlayer(nickname) {
             hash.toString('hex', 10, 16)
         ].join('-');
         
-        console.log(`[DB] UUID gerado para ${nickname}: ${canonicalUuid}`);
-        
         const [result] = await pool.execute(
             `INSERT INTO player_data (uuid, name, elo, money, total_playtime, total_logins, status, last_seen)
              VALUES (?, ?, ?, ?, ?, ?, ?, NOW())`,
@@ -771,9 +745,8 @@ async function createPlayer(nickname) {
         );
         
         const playerId = result.insertId;
-        console.log(`[DB] Player criado com sucesso: ${nickname} (UUID: ${canonicalUuid}, ID: ${playerId})`);
         
-        // 🔄 NOTIFICAÇÃO AUTOMÁTICA: Limpar cache do servidor Minecraft
+        // Notificação automática para limpar cache do servidor
         try {
             const https = require('https');
             const data = JSON.stringify({
@@ -794,19 +767,13 @@ async function createPlayer(nickname) {
                 }
             };
             
-            const req = https.request(options, (res) => {
-                console.log(`[API] Notificação enviada: ${res.statusCode}`);
-            });
-            
-            req.on('error', (error) => {
-                console.log(`[API] Erro ao notificar servidor (não crítico): ${error.message}`);
-            });
-            
+            const req = https.request(options, () => {});
+            req.on('error', () => {});
             req.write(data);
             req.end();
             
         } catch (error) {
-            console.log(`[API] Erro ao notificar servidor (não crítico): ${error.message}`);
+            // Erro não crítico - ignorar silenciosamente
         }
         
         // Retornar o player criado

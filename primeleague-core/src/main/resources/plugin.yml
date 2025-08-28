@@ -22,9 +22,7 @@ commands:
   eco:
     description: Comando administrativo para gerenciar economia
     usage: /eco <give|take|set> <jogador> <quantia>
-  cache:
-    description: Comando administrativo para gerenciar cache do sistema
-    usage: /cache <clear|stats|clearplayer> [jogador]
+
 permissions:
   primeleague.money:
     description: Permite usar o comando /money
@@ -35,8 +33,6 @@ permissions:
   primeleague.admin.eco:
     description: Permite usar comandos administrativos de economia
     default: op
-  primeleague.admin.cache:
-    description: Permite usar comandos administrativos de cache
-    default: op
+
 
 

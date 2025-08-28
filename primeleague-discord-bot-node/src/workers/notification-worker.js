@@ -24,12 +24,10 @@ class NotificationWorker {
      */
     start() {
         if (this.isRunning) {
-            console.log('[NotificationWorker] Worker já está em execução');
             return;
         }
 
         this.isRunning = true;
-        console.log('[NotificationWorker] Iniciando worker de notificações...');
 
         // Processar imediatamente
         this.processNotifications();
@@ -38,8 +36,6 @@ class NotificationWorker {
         this.intervalId = setInterval(() => {
             this.processNotifications();
         }, this.pollingInterval);
-
-        console.log(`[NotificationWorker] Worker iniciado - polling a cada ${this.pollingInterval}ms`);
     }
 
     /**
@@ -47,7 +43,6 @@ class NotificationWorker {
      */
     stop() {
         if (!this.isRunning) {
-            console.log('[NotificationWorker] Worker já está parado');
             return;
         }
 
@@ -58,7 +53,7 @@ class NotificationWorker {
             this.intervalId = null;
         }
 
-        console.log('[NotificationWorker] Worker de notificações parado');
+
     }
 
     /**
@@ -73,7 +68,7 @@ class NotificationWorker {
                 return; // Nenhuma notificação pendente
             }
 
-            console.log(`[NotificationWorker] Processando ${notifications.length} notificação(ões)`);
+
 
             // Processar cada notificação
             for (const notification of notifications) {
@@ -126,7 +121,7 @@ class NotificationWorker {
         this.processingSet.add(notificationId);
 
         try {
-            console.log(`[NotificationWorker] Processando notificação ID: ${notificationId}`);
+
 
             // Parse do payload JSON
             const payload = JSON.parse(notification.payload);

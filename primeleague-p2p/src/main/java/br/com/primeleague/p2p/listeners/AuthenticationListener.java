@@ -42,172 +42,86 @@ public final class AuthenticationListener implements Listener {
     }
 
     /**
-     * Processa autenticação de jogadores com DEBUG COMPLETO.
-     * Cada etapa é logada detalhadamente para identificar problemas.
+     * Processa autenticação de jogadores.
      */
     @EventHandler(priority = EventPriority.HIGH)
     public void onPlayerPreLogin(AsyncPlayerPreLoginEvent event) {
         final String playerName = event.getName();
-        final String ipAddress = event.getAddress().getHostAddress();
         
-        plugin.getLogger().info("==================================================================================");
-        plugin.getLogger().info("🔍 [DEBUG-AUTH] INICIANDO AUTENTICAÇÃO PARA: " + playerName);
-        plugin.getLogger().info("🔍 [DEBUG-AUTH] IP: " + ipAddress);
-        plugin.getLogger().info("==================================================================================");
-        
-        // 0. Verificar se o jogador está na whitelist (BYPASS TOTAL)
+        // Verificar se o jogador está na whitelist
         if (isPlayerWhitelisted(playerName)) {
-            plugin.getLogger().info("🔍 [DEBUG-AUTH] ✅ Jogador na whitelist - BYPASS TOTAL");
             event.allow();
             return;
         }
         
-        // ================================================================
-        // PASSO 1: ANÁLISE COMPLETA DE UUID (DEBUG DETALHADO)
-        // ================================================================
-        plugin.getLogger().info("🔍 [DEBUG-UUID] PASSO 1: ANÁLISE COMPLETA DE UUID");
-        
         try {
-            // 1.1. Gerar UUID usando o método Java atual
             final UUID playerUuid = UUIDUtils.offlineUUIDFromName(playerName);
-            plugin.getLogger().info("🔍 [DEBUG-UUID] 1.1. UUID Java gerado: " + playerUuid.toString());
             
-            // 1.2. Gerar UUID usando algoritmo manual (para comparação)
-            UUID manualUuid = generateUUIDManually(playerName);
-            plugin.getLogger().info("🔍 [DEBUG-UUID] 1.2. UUID Manual gerado: " + manualUuid.toString());
-            
-            // 1.3. Verificar se são iguais
-            boolean uuidsMatch = playerUuid.equals(manualUuid);
-            plugin.getLogger().info("🔍 [DEBUG-UUID] 1.3. UUIDs são iguais: " + uuidsMatch);
-            
-            // 1.4. Debug detalhado do processo de geração
-            debugUUIDGeneration(playerName);
-            
-            // 1.5. Verificar UUIDs conhecidos
-            checkKnownUUIDs(playerName, playerUuid);
-            
-        } catch (Exception e) {
-            plugin.getLogger().severe("🔍 [DEBUG-UUID] ❌ Erro na análise de UUID: " + e.getMessage());
-            e.printStackTrace();
-        }
-        
-        // ================================================================
-        // PASSO 2: ANÁLISE COMPLETA DO BANCO DE DADOS
-        // ================================================================
-        plugin.getLogger().info("🔍 [DEBUG-DB] PASSO 2: ANÁLISE COMPLETA DO BANCO");
-        
-        try {
-            // 2.1. Verificar se o player existe no banco
-            boolean playerExistsInDB = checkPlayerExistsInDatabaseDetailed(playerName);
-            
-            // 2.2. Se não existe, não criar automaticamente
-            if (!playerExistsInDB) {
-                plugin.getLogger().info("🔍 [DEBUG-DB] 2.2. Player não existe - NÃO criando automaticamente");
-                plugin.getLogger().info("🔍 [DEBUG-DB] Jogador deve se registrar via Discord primeiro");
-            }
-            
-        } catch (Exception e) {
-            plugin.getLogger().severe("🔍 [DEBUG-DB] ❌ Erro na análise do banco: " + e.getMessage());
-            e.printStackTrace();
-        }
-        
-        // ================================================================
-        // PASSO 3: PROCESSO NORMAL DE AUTENTICAÇÃO
-        // ================================================================
-        plugin.getLogger().info("🔍 [DEBUG-AUTH] PASSO 3: PROCESSO NORMAL DE AUTENTICAÇÃO");
-        
-        try {
-            // 1. Obter UUID canônico do Core
-            final UUID playerUuid = UUIDUtils.offlineUUIDFromName(playerName);
-            plugin.getLogger().info("🔍 [DEBUG-AUTH] UUID final usado: " + playerUuid.toString());
-            
-            // 2. Verificar se o player existe diretamente no banco
+            // Verificar se o player existe no banco
             boolean playerExistsInDB = checkPlayerExistsInDatabase(playerUuid, playerName);
-            plugin.getLogger().info("🔍 [DEBUG-AUTH] Player existe no banco: " + (playerExistsInDB ? "SIM" : "NÃO"));
             
-            // 3. Tentar carregar perfil via DataManager
-            plugin.getLogger().info("🔍 [DEBUG-AUTH] Tentando carregar perfil via DataManager...");
-            PlayerProfile profile = PrimeLeagueAPI.getDataManager().loadPlayerProfile(playerUuid);
-            
-            if (profile == null) {
-                plugin.getLogger().warning("🔍 [DEBUG-AUTH] ❌ DataManager retornou null para " + playerName);
-                plugin.getLogger().warning("🔍 [DEBUG-AUTH] ❌ UUID usado: " + playerUuid.toString());
-                plugin.getLogger().warning("🔍 [DEBUG-AUTH] ❌ Player existe no banco: " + (playerExistsInDB ? "SIM" : "NÃO"));
+            if (!playerExistsInDB) {
+                PlayerProfile profile = PrimeLeagueAPI.getDataManager().loadOfflinePlayerProfile(playerName);
                 
-                // Perfil não existe - jogador não registrado no Discord
-                plugin.getLogger().info("🔍 [DEBUG-AUTH] Perfil não encontrado - não registrado no Discord");
-                event.disallow(Result.KICK_OTHER, 
-                    "§c§l✖ Registro Necessário\n\n" +
-                    "§fVocê precisa se registrar no Discord primeiro!\n\n" +
-                    "§e📱 Discord: §fdiscord.gg/primeleague\n" +
-                    "§e📱 Comando: §f/registrar " + playerName + "\n\n" +
-                    "§a🔄 Após o registro, use o código de verificação no servidor!"
-                );
-                return;
+                if (profile == null) {
+                    event.disallow(Result.KICK_OTHER, 
+                        "§c§l❌ Registro Necessário\n\n" +
+                        "§fVocê precisa se registrar no Discord primeiro!\n\n" +
+                        "§e📱 Discord: §fdiscord.gg/primeleague\n" +
+                        "§e💬 Comando: §f/registrar " + playerName + "\n\n" +
+                        "§a💡 Após o registro, use o código de verificação no servidor!");
+                    return;
+                }
             }
             
-            plugin.getLogger().info("🔍 [DEBUG-AUTH] ✅ Perfil carregado com sucesso");
+            // Processar autenticação normal
+            AuthenticationStatus status = plugin.getAuthenticationManager().authenticatePlayer(playerUuid);
             
-                         // 4. Verificação de assinatura
-             AccountStatus status = checkAccountSubscriptionFromProfile(profile);
-             plugin.getLogger().info("🔍 [DEBUG-AUTH] Status final: " + status.getStatus() + " (dias: " + status.getDaysRemaining() + ")");
-             
-             switch (status.getStatus()) {
-                 case ACTIVE:
-                     plugin.getLogger().info("🔍 [DEBUG-AUTH] ✅ ACESSO AUTORIZADO");
-                     event.allow();
-                     break;
-                     
-                 case EXPIRED:
-                     plugin.getLogger().info("🔍 [DEBUG-AUTH] ❌ ASSINATURA EXPIRADA");
-                     event.disallow(Result.KICK_OTHER, 
-                         "§c§l✖ Assinatura Expirada\n\n" +
-                         "§fSua assinatura do Prime League expirou.\n" +
-                         "§7Para renovar e continuar jogando:\n\n" +
-                         "§e💎 Discord: §fdiscord.gg/primeleague\n" +
-                         "§e💎 Comando: §f/assinatura\n\n" +
-                         "§a🔄 Conecte novamente após renovar!"
-                     );
-                     break;
-                     
-                 case NEVER_SUBSCRIBED:
-                     plugin.getLogger().info("🔍 [DEBUG-AUTH] ❌ NUNCA TEVE ASSINATURA");
-                     event.disallow(Result.KICK_OTHER, 
-                         "§c§l✖ Assinatura Necessária\n\n" +
-                         "§fEsta conta não possui assinatura ativa.\n" +
-                         "§7Para adquirir e acessar o servidor:\n\n" +
-                         "§e💎 Discord: §fdiscord.gg/primeleague\n" +
-                         "§e💎 Comando: §f/assinatura\n\n" +
-                         "§a🔄 Conecte novamente após adquirir!"
-                     );
-                     break;
-                     
-                 case NOT_REGISTERED:
-                     plugin.getLogger().info("🔍 [DEBUG-AUTH] ❌ NÃO REGISTRADO NO DISCORD");
-                     event.disallow(Result.KICK_OTHER, 
-                         "§c§l✖ Registro Necessário\n\n" +
-                         "§fVocê precisa se registrar no Discord primeiro!\n\n" +
-                         "§e📱 Discord: §fdiscord.gg/primeleague\n" +
-                         "§e📱 Comando: §f/registrar " + playerName + "\n\n" +
-                         "§a🔄 Após o registro, use o código de verificação no servidor!"
-                     );
-                     break;
-                     
-                 case PENDING_VERIFICATION:
-                     plugin.getLogger().info("🔍 [DEBUG-AUTH] ⏳ VERIFICAÇÃO PENDENTE - PERMITINDO ENTRADA");
-                     event.allow();
-                     break;
-             }
+            switch (status.getStatus()) {
+                case ACTIVE:
+                    event.allow();
+                    break;
+                    
+                case EXPIRED:
+                    event.disallow(Result.KICK_OTHER, 
+                        "§c§l❌ Assinatura Expirada\n\n" +
+                        "§fSua assinatura expirou há " + status.getDaysRemaining() + " dia(s).\n\n" +
+                        "§e📱 Discord: §fdiscord.gg/primeleague\n" +
+                        "§e💬 Comando: §f/assinatura\n\n" +
+                        "§a💡 Renove sua assinatura para continuar jogando!");
+                    break;
+                    
+                case NEVER_SUBSCRIBED:
+                    event.disallow(Result.KICK_OTHER, 
+                        "§c§l❌ Assinatura Necessária\n\n" +
+                        "§fVocê precisa adquirir uma assinatura para jogar.\n\n" +
+                        "§e📱 Discord: §fdiscord.gg/primeleague\n" +
+                        "§e💬 Comando: §f/assinatura\n\n" +
+                        "§a💡 Adquira sua assinatura para começar a jogar!");
+                    break;
+                    
+                case NOT_REGISTERED:
+                    event.disallow(Result.KICK_OTHER, 
+                        "§c§l❌ Registro Necessário\n\n" +
+                        "§fVocê precisa se registrar no Discord primeiro!\n\n" +
+                        "§e📱 Discord: §fdiscord.gg/primeleague\n" +
+                        "§e💬 Comando: §f/registrar " + playerName + "\n\n" +
+                        "§a💡 Após o registro, use o código de verificação no servidor!");
+                    break;
+                    
+                case PENDING_VERIFICATION:
+                    event.allow();
+                    break;
+                    
+                default:
+                    event.disallow(Result.KICK_OTHER, "§c§l❌ Erro de autenticação");
+                    break;
+            }
             
         } catch (Exception e) {
-            plugin.getLogger().severe("🔍 [DEBUG-AUTH] ❌ Erro no processo de autenticação: " + e.getMessage());
-            e.printStackTrace();
-            event.disallow(Result.KICK_OTHER, "§cErro interno do servidor. Tente novamente.");
+            plugin.getLogger().severe("Erro na autenticação de " + playerName + ": " + e.getMessage());
+            event.disallow(Result.KICK_OTHER, "§c§l❌ Erro interno do servidor");
         }
-        
-        plugin.getLogger().info("==================================================================================");
-        plugin.getLogger().info("🔍 [DEBUG-AUTH] FIM DA AUTENTICAÇÃO PARA: " + playerName);
-        plugin.getLogger().info("==================================================================================");
     }
 
     /**
