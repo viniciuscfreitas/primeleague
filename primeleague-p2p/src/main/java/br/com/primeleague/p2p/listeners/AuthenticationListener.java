@@ -81,18 +81,9 @@ public final class AuthenticationListener implements Listener {
             
             // VERIFICAÇÃO DE PENDING_RELINK (FASE 2)
             if (isPlayerPendingRelink(playerName)) {
-                plugin.getLogger().info("[PENDING-RELINK] ⏳ Jogador em processo de recuperação: " + playerName);
-                
-                event.disallow(Result.KICK_OTHER,
-                    "§c§l🛡️ Processo de Recuperação Ativo\n\n" +
-                    "§fSua conta está em processo de recuperação.\n\n" +
-                    "§e📱 Acesse o Discord para finalizar a recuperação:\n" +
-                    "§e💬 Discord: §fdiscord.gg/primeleague\n" +
-                    "§e🔑 Use: §f/recuperacao §7para gerar códigos\n" +
-                    "§e🔗 Use: §f/vincular <nickname> <codigo> §7para re-vincular\n\n" +
-                    "§a💡 Após re-vincular, você poderá entrar novamente!"
-                );
-                
+                plugin.getLogger().info("[PENDING-RELINK] ⏳ Jogador em processo de recuperação: " + playerName + " - permitindo login");
+                // Permitir login - bypass de IP para jogadores em recuperação
+                event.allow();
                 return;
             }
             
@@ -178,6 +169,12 @@ public final class AuthenticationListener implements Listener {
              } else {
                  // Jogador verificado e ativo - log de entrada
                  plugin.getLogger().info("[JOIN-DEBUG] ✅ " + playerName + " entrou no servidor (verificado e ativo)");
+             }
+             
+             // Verificar se está em PENDING_RELINK e enviar mensagens persistentes
+             if (isPlayerPendingRelink(playerName)) {
+                 plugin.getLogger().info("[PENDING-RELINK] Iniciando mensagens persistentes para: " + playerName);
+                 startPendingRelinkReminders(player);
              }
             
         } catch (Exception e) {
@@ -1368,5 +1365,43 @@ public final class AuthenticationListener implements Listener {
         }
         
         return false;
+    }
+
+    /**
+     * Inicia o sistema de lembretes persistentes para jogadores em PENDING_RELINK.
+     */
+    private void startPendingRelinkReminders(final Player player) {
+        final String playerName = player.getName();
+        
+        // Enviar mensagem inicial
+        player.sendMessage("§e§l⚠️ ATENÇÃO: SUA CONTA ESTÁ EM RECUPERAÇÃO");
+        player.sendMessage("§7Você precisa finalizar a vinculação no Discord para proteger sua conta.");
+        player.sendMessage("§7Use o código de re-vinculação que apareceu no chat anteriormente.");
+        player.sendMessage("§7Comando: §f/vincular <seu_nickname> <codigo>");
+        
+        // Agendar lembretes a cada 5 minutos
+        plugin.getServer().getScheduler().runTaskTimer(plugin, new Runnable() {
+            @Override
+            public void run() {
+                if (!player.isOnline()) {
+                    // Jogador desconectou - cancelar lembretes
+                    return;
+                }
+                
+                if (!isPlayerPendingRelink(playerName)) {
+                    // Jogador já finalizou a recuperação - cancelar lembretes
+                    player.sendMessage("§a§l✅ RECUPERAÇÃO FINALIZADA!");
+                    player.sendMessage("§7Sua conta está protegida novamente.");
+                    return;
+                }
+                
+                // Enviar lembrete
+                player.sendMessage("§e§l⏰ LEMBRETE: FINALIZE SUA RECUPERAÇÃO");
+                player.sendMessage("§7Sua conta ainda está em processo de recuperação.");
+                player.sendMessage("§7Use o código de re-vinculação no Discord para finalizar.");
+                player.sendMessage("§7Comando: §f/vincular <seu_nickname> <codigo>");
+                
+            }
+        }, 6000L, 6000L); // 5 minutos = 6000 ticks (20 ticks/segundo * 60 segundos * 5)
     }
 }

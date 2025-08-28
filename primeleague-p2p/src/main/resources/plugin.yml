@@ -23,8 +23,8 @@ commands:
     permission: primeleague.verify
     permission-message: §cVocê não tem permissão para usar este comando.
   recuperar:
-    description: Iniciar processo de recuperação de conta
-    usage: /recuperar
+    description: Recuperação de emergência usando código de backup
+    usage: /recuperar <codigo_backup>
     permission: primeleague.recuperar
     permission-message: §cVocê não tem permissão para usar este comando.
 

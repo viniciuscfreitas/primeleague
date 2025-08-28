@@ -47,34 +47,42 @@ public class RecuperarCommand implements CommandExecutor {
         String playerName = player.getName();
         String playerIp = player.getAddress().getAddress().getHostAddress();
 
+        // Verificar se foi fornecido um código de backup
+        if (args.length != 1) {
+            player.sendMessage("§c❌ Uso correto: §f/recuperar <codigo_backup>");
+            player.sendMessage("§7Use um dos códigos de backup que você salvou anteriormente.");
+            return true;
+        }
+
+        String backupCode = args[0];
+
+        // Validar formato do código (8 caracteres alfanuméricos)
+        if (!backupCode.matches("^[A-Z0-9]{8}$")) {
+            player.sendMessage("§c❌ Código inválido. O código deve ter 8 caracteres (letras e números).");
+            return true;
+        }
+
         // Verificar se o jogador já está em processo de recuperação
         if (isPlayerInRecovery(playerName)) {
             player.sendMessage("§e⚠️ Você já possui um processo de recuperação ativo.");
-            player.sendMessage("§7Use o código enviado no Discord para finalizar a recuperação.");
+            player.sendMessage("§7Use o código de re-vinculação que apareceu no chat para finalizar.");
             return true;
         }
 
-        // Verificar se o jogador possui vínculo Discord
-        if (!hasDiscordLink(playerName)) {
-            player.sendMessage("§c❌ Você não possui uma conta vinculada ao Discord.");
-            player.sendMessage("§7Use §f/registrar §7no Discord para criar um vínculo primeiro.");
-            return true;
-        }
-
-        // Iniciar processo de recuperação
+        // Processar recuperação de emergência
         try {
-            boolean success = initiateRecovery(playerName, playerIp);
+            boolean success = processEmergencyRecovery(playerName, backupCode, playerIp);
             
             if (success) {
-                // Kickar o jogador com instruções
-                kickPlayerWithInstructions(player);
-                
                 // Log da ação
-                plugin.getLogger().info("[RECUPERAR] Jogador " + playerName + " iniciou processo de recuperação");
+                plugin.getLogger().info("[RECUPERAR] Jogador " + playerName + " iniciou recuperação de emergência");
+                
+                // Mostrar código de re-vinculação no chat
+                showRelinkCode(player);
                 
             } else {
-                player.sendMessage("§c❌ Erro ao iniciar processo de recuperação.");
-                player.sendMessage("§7Tente novamente em alguns minutos ou contate um administrador.");
+                player.sendMessage("§c❌ Código de backup inválido ou expirado.");
+                player.sendMessage("§7Verifique o código e tente novamente.");
             }
             
         } catch (Exception e) {
@@ -86,7 +94,7 @@ public class RecuperarCommand implements CommandExecutor {
     }
 
     /**
-     * Verifica se o jogador já está em processo de recuperação.
+     * Verifica se o jogador já está em processo de recuperação (PENDING_RELINK).
      */
     private boolean isPlayerInRecovery(String playerName) {
         try {
@@ -97,18 +105,14 @@ public class RecuperarCommand implements CommandExecutor {
                 return false;
             }
 
-            // Verificar se há códigos de recuperação ativos
             String discordId = dataManager.getDiscordIdByPlayerId(playerId);
             if (discordId == null) {
                 return false;
             }
 
-            // Fazer requisição para verificar status
-            String response = makeApiRequest("GET", "/api/v1/recovery/status/" + discordId, null);
-            
-            if (response != null && response.contains("\"hasActiveBackupCodes\":true")) {
-                return true;
-            }
+            // Verificar se está em estado PENDING_RELINK
+            String status = dataManager.getDiscordLinkStatus(discordId);
+            return "PENDING_RELINK".equals(status);
 
         } catch (Exception e) {
             plugin.getLogger().warning("[RECUPERAR] Erro ao verificar status de recuperação: " + e.getMessage());
@@ -118,88 +122,94 @@ public class RecuperarCommand implements CommandExecutor {
     }
 
     /**
-     * Verifica se o jogador possui vínculo Discord ativo.
+     * Processa a recuperação de emergência usando código de backup.
      */
-    private boolean hasDiscordLink(String playerName) {
+    private boolean processEmergencyRecovery(String playerName, String backupCode, String playerIp) {
         try {
-            DataManager dataManager = PrimeLeagueAPI.getDataManager();
-            Integer playerId = dataManager.getPlayerIdByName(playerName);
-            
-            if (playerId == null) {
-                return false;
-            }
-
-            String discordId = dataManager.getDiscordIdByPlayerId(playerId);
-            return discordId != null;
-
-        } catch (Exception e) {
-            plugin.getLogger().warning("[RECUPERAR] Erro ao verificar vínculo Discord: " + e.getMessage());
-            return false;
-        }
-    }
-
-    /**
-     * Inicia o processo de recuperação gerando códigos de backup.
-     */
-    private boolean initiateRecovery(String playerName, String playerIp) {
-        try {
-            DataManager dataManager = PrimeLeagueAPI.getDataManager();
-            Integer playerId = dataManager.getPlayerIdByName(playerName);
-            
-            if (playerId == null) {
-                return false;
-            }
-
-            String discordId = dataManager.getDiscordIdByPlayerId(playerId);
-            if (discordId == null) {
-                return false;
-            }
-
-            // Gerar códigos de backup via API
+            // Verificar o código de backup via API
             String payload = String.format(
-                "{\"discordId\":\"%s\",\"ipAddress\":\"%s\"}",
-                discordId, playerIp
+                "{\"playerName\":\"%s\",\"backupCode\":\"%s\",\"ipAddress\":\"%s\"}",
+                playerName, backupCode, playerIp
             );
 
-            String response = makeApiRequest("POST", "/api/v1/recovery/backup/generate", payload);
+            String response = makeApiRequest("POST", "/api/v1/recovery/verify", payload);
             
             if (response != null && response.contains("\"success\":true")) {
-                // Marcar jogador como PENDING_RELINK
-                dataManager.updateDiscordLinkStatus(discordId, "PENDING_RELINK");
-                return true;
+                // Código válido - marcar como PENDING_RELINK
+                DataManager dataManager = PrimeLeagueAPI.getDataManager();
+                Integer playerId = dataManager.getPlayerIdByName(playerName);
+                
+                if (playerId != null) {
+                    String discordId = dataManager.getDiscordIdByPlayerId(playerId);
+                    if (discordId != null) {
+                        dataManager.updateDiscordLinkStatus(discordId, "PENDING_RELINK");
+                        return true;
+                    }
+                }
             }
 
         } catch (Exception e) {
-            plugin.getLogger().severe("[RECUPERAR] Erro ao gerar códigos: " + e.getMessage());
+            plugin.getLogger().severe("[RECUPERAR] Erro ao processar recuperação de emergência: " + e.getMessage());
         }
 
         return false;
     }
 
     /**
-     * Kicka o jogador com instruções de recuperação.
+     * Mostra o código de re-vinculação no chat do jogador.
      */
-    private void kickPlayerWithInstructions(Player player) {
-        String kickMessage = String.join("\n",
-            "§c§l🛡️ PROCESSO DE RECUPERAÇÃO INICIADO",
-            "",
-            "§7Para finalizar a recuperação da sua conta:",
-            "",
-            "§e1. §7Acesse o Discord do servidor",
-            "§e2. §7Use o comando §f/recuperacao §7para gerar códigos",
-            "§e3. §7Use o comando §f/vincular <seu_nickname> <codigo> §7para re-vincular",
-            "",
-            "§c⚠️ IMPORTANTE:",
-            "§7• Os códigos são válidos por 30 dias",
-            "§7• Guarde-os em local seguro",
-            "§7• Nunca compartilhe com ninguém",
-            "",
-            "§7Após re-vincular, você poderá entrar novamente no servidor.",
-            "",
-            "§7Em caso de dúvidas, contate um administrador."
-        );
+    private void showRelinkCode(Player player) {
+        String playerName = player.getName();
+        
+        // Gerar novo código de re-vinculação
+        try {
+            DataManager dataManager = PrimeLeagueAPI.getDataManager();
+            Integer playerId = dataManager.getPlayerIdByName(playerName);
+            
+            if (playerId != null) {
+                String discordId = dataManager.getDiscordIdByPlayerId(playerId);
+                if (discordId != null) {
+                    // Gerar código temporário de re-vinculação
+                    String relinkCode = generateRelinkCode();
+                    
+                    // Enviar mensagem no chat
+                    player.sendMessage("§a§l✅ RECUPERAÇÃO DE EMERGÊNCIA CONCLUÍDA!");
+                    player.sendMessage("");
+                    player.sendMessage("§e🔑 Seu código de re-vinculação é: §f§l" + relinkCode);
+                    player.sendMessage("");
+                    player.sendMessage("§7📱 Use este código no Discord:");
+                    player.sendMessage("§7💬 Comando: §f/vincular " + playerName + " " + relinkCode);
+                    player.sendMessage("");
+                    player.sendMessage("§c⚠️ IMPORTANTE:");
+                    player.sendMessage("§7• Este código é válido por 24 horas");
+                    player.sendMessage("§7• Use-o para re-vincular sua conta no Discord");
+                    player.sendMessage("§7• Após re-vincular, sua conta estará protegida novamente");
+                    
+                    // Log do código gerado
+                    plugin.getLogger().info("[RECUPERAR] Código de re-vinculação gerado para " + playerName + ": " + relinkCode);
+                }
+            }
+            
+        } catch (Exception e) {
+            plugin.getLogger().severe("[RECUPERAR] Erro ao gerar código de re-vinculação: " + e.getMessage());
+            player.sendMessage("§c❌ Erro ao gerar código de re-vinculação. Contate um administrador.");
+        }
+    }
 
-        player.kickPlayer(kickMessage);
+    /**
+     * Gera um código temporário de re-vinculação.
+     */
+    private String generateRelinkCode() {
+        // Gerar código de 8 caracteres alfanuméricos
+        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        StringBuilder code = new StringBuilder();
+        java.util.Random random = new java.util.Random();
+        
+        for (int i = 0; i < 8; i++) {
+            code.append(chars.charAt(random.nextInt(chars.length())));
+        }
+        
+        return code.toString();
     }
 
     /**
