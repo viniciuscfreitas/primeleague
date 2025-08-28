@@ -703,10 +703,11 @@ public class HttpApiManager {
                         }
                         
                         // Processar geração de códigos
-                        boolean success = processRecoveryBackupGeneration(request);
+                        RecoveryBackupGenerateResult generateResult = processRecoveryBackupGeneration(request);
                         
-                        if (success) {
-                            String response = "{\"success\":true,\"message\":\"Códigos de backup gerados com sucesso\"}";
+                        if (generateResult.isSuccess()) {
+                            String response = "{\"success\":true,\"message\":\"Códigos de backup gerados com sucesso\",\"backupCodes\":" + 
+                                            java.util.Arrays.toString(generateResult.getBackupCodes().toArray()) + "}";
                             sendJsonResponse(exchange, 200, response);
                         } else {
                             // Verificar se é erro de Discord ID não encontrado
@@ -733,13 +734,13 @@ public class HttpApiManager {
         /**
          * Processa geração de códigos de backup
          */
-        private boolean processRecoveryBackupGeneration(RecoveryBackupGenerateRequest request) {
+        private RecoveryBackupGenerateResult processRecoveryBackupGeneration(RecoveryBackupGenerateRequest request) {
             try {
                 // Buscar player_id pelo discord_id
                 Integer playerId = dataManager.getPlayerIdByDiscordId(request.getDiscordId());
                 if (playerId == null) {
                     logger.warning("[RECOVERY] Discord ID não encontrado: " + request.getDiscordId());
-                    return false;
+                    return new RecoveryBackupGenerateResult(false, null);
                 }
                 
                 // Gerar códigos de backup
@@ -747,11 +748,11 @@ public class HttpApiManager {
                     playerId, request.getDiscordId(), request.getIpAddress());
                 
                 logger.info("[RECOVERY] Códigos de backup gerados para Discord ID: " + request.getDiscordId());
-                return true;
+                return new RecoveryBackupGenerateResult(true, codes);
                 
             } catch (Exception e) {
                 logger.severe("[RECOVERY] Erro ao gerar códigos: " + e.getMessage());
-                return false;
+                return new RecoveryBackupGenerateResult(false, null);
             }
         }
         
@@ -1654,6 +1655,23 @@ public class HttpApiManager {
     // =====================================================
     // CLASSES DE RESULTADO PARA RECUPERAÇÃO
     // =====================================================
+    
+    /**
+     * Classe de resultado para geração de códigos de backup
+     */
+    public static class RecoveryBackupGenerateResult {
+        private final boolean success;
+        private final java.util.List<String> backupCodes;
+        
+        public RecoveryBackupGenerateResult(boolean success, java.util.List<String> backupCodes) {
+            this.success = success;
+            this.backupCodes = backupCodes;
+        }
+        
+        // Getters
+        public boolean isSuccess() { return success; }
+        public java.util.List<String> getBackupCodes() { return backupCodes; }
+    }
     
     /**
      * Classe de resultado para verificação de recuperação

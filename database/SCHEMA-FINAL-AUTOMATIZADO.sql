@@ -1,11 +1,12 @@
 -- =========================================================
--- SCHEMA FINAL AUTOMATIZADO PRIME LEAGUE - VERSÃO 4.0
--- Data: 27/08/2025
+-- SCHEMA FINAL AUTOMATIZADO PRIME LEAGUE - VERSÃO 5.0
+-- Data: 28/08/2025
 -- Descrição: Schema final com todas as correções e melhorias
 --            Compatível com Discord First Registration Flow
 --            UUID compatibility fix aplicado
 --            SSOT (Single Source of Truth) implementado
 --            Shared subscriptions funcionando
+--            Sistema de Recuperação de Conta implementado
 --            TODAS as tabelas do sistema incluídas
 -- =========================================================
 
@@ -81,6 +82,35 @@ CREATE TABLE `discord_links` (
   CONSTRAINT `fk_discord_links_player` 
     FOREIGN KEY (`player_uuid`) REFERENCES `player_data` (`uuid`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `fk_discord_links_user` 
+    FOREIGN KEY (`discord_id`) REFERENCES `discord_users` (`discord_id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- TABELA DE CÓDIGOS DE RECUPERAÇÃO (SISTEMA DE RECUPERAÇÃO DE CONTA)
+-- =====================================================
+
+CREATE TABLE `recovery_codes` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `player_id` INT NOT NULL,
+  `code_hash` VARCHAR(255) NOT NULL,
+  `code_type` ENUM('BACKUP', 'TEMPORARY') NOT NULL,
+  `status` ENUM('ACTIVE', 'USED', 'BLOCKED', 'EXPIRED') NOT NULL DEFAULT 'ACTIVE',
+  `attempts` INT NOT NULL DEFAULT 0,
+  `ip_address` VARCHAR(45) NULL,
+  `discord_id` VARCHAR(20) NULL,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `used_at` TIMESTAMP NULL DEFAULT NULL,
+  `expires_at` TIMESTAMP NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_recovery_codes_player_id` (`player_id`),
+  KEY `idx_recovery_codes_code_type` (`code_type`),
+  KEY `idx_recovery_codes_status` (`status`),
+  KEY `idx_recovery_codes_discord_id` (`discord_id`),
+  KEY `idx_recovery_codes_created_at` (`created_at`),
+  KEY `idx_recovery_codes_expires_at` (`expires_at`),
+  CONSTRAINT `fk_recovery_codes_player` 
+    FOREIGN KEY (`player_id`) REFERENCES `player_data` (`player_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_recovery_codes_discord` 
     FOREIGN KEY (`discord_id`) REFERENCES `discord_users` (`discord_id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -411,7 +441,7 @@ BEGIN
         -- Verificar código de verificação (CORRIGIDO: usar player_id)
         SELECT dl.discord_id INTO v_discord_id
         FROM discord_links dl
-        JOIN player_data pd ON dl.player_id = pd.player_id
+        JOIN player_data pd ON dl.player_uuid = pd.uuid
         WHERE pd.name = p_player_name 
         AND dl.verification_code = p_verification_code
         AND dl.code_expires_at > NOW()
@@ -448,6 +478,12 @@ BEGIN
         code_expires_at = NULL 
     WHERE code_expires_at < NOW() 
     AND verified = 0;
+    
+    -- Limpar códigos de recuperação expirados
+    UPDATE recovery_codes 
+    SET status = 'EXPIRED' 
+    WHERE expires_at < NOW() 
+    AND status = 'ACTIVE';
     
     -- Limpar punições expiradas
     UPDATE punishments 
@@ -491,7 +527,14 @@ BEGIN
         COUNT(*) as total_registros,
         COUNT(CASE WHEN is_active = 1 THEN 1 END) as whitelist_ativos,
         COUNT(CASE WHEN is_active = 0 THEN 1 END) as whitelist_inativos
-    FROM whitelist_players;
+    FROM whitelist_players
+    UNION ALL
+    SELECT 
+        'recovery_codes' as tabela,
+        COUNT(*) as total_registros,
+        COUNT(CASE WHEN status = 'ACTIVE' THEN 1 END) as codigos_ativos,
+        COUNT(CASE WHEN status = 'USED' THEN 1 END) as codigos_usados
+    FROM recovery_codes;
 END //
 
 DELIMITER ;
@@ -504,6 +547,10 @@ DELIMITER ;
 -- NOTA: MariaDB não suporta LOWER() em índices, removido para compatibilidade
 CREATE INDEX `idx_discord_links_verification` ON `discord_links` (`verification_code`, `code_expires_at`, `verified`);
 CREATE INDEX `idx_discord_users_subscription_status` ON `discord_users` (`subscription_expires_at`, `donor_tier`);
+
+-- Índices específicos para o sistema de recuperação (MariaDB compatível)
+CREATE INDEX `idx_recovery_codes_active_backup` ON `recovery_codes` (`player_id`, `code_type`, `status`);
+CREATE INDEX `idx_recovery_codes_active_temporary` ON `recovery_codes` (`player_id`, `code_type`, `status`, `expires_at`);
 
 -- =====================================================
 -- TRIGGERS PARA MANUTENÇÃO AUTOMÁTICA
@@ -564,6 +611,28 @@ SELECT
 FROM discord_users
 GROUP BY subscription_type;
 
+-- View para códigos de recuperação ativos
+CREATE VIEW `v_active_recovery_codes` AS
+SELECT 
+    rc.id,
+    rc.player_id,
+    pd.name as player_name,
+    rc.code_type,
+    rc.status,
+    rc.attempts,
+    rc.discord_id,
+    rc.created_at,
+    rc.expires_at,
+    CASE 
+        WHEN rc.expires_at IS NOT NULL AND rc.expires_at < NOW() THEN 'EXPIRED'
+        WHEN rc.status = 'ACTIVE' THEN 'ACTIVE'
+        ELSE rc.status
+    END as effective_status
+FROM recovery_codes rc
+JOIN player_data pd ON rc.player_id = pd.player_id
+WHERE rc.status IN ('ACTIVE', 'BLOCKED')
+OR (rc.expires_at IS NOT NULL AND rc.expires_at > NOW());
+
 -- =====================================================
 -- VERIFICAÇÃO FINAL
 -- =====================================================
@@ -590,10 +659,19 @@ FROM information_schema.key_column_usage
 WHERE table_schema = 'primeleague' 
   AND referenced_table_name IS NOT NULL;
 
+-- Verificar tabela de recuperação
+SELECT 
+    'RECOVERY SYSTEM:' as info,
+    'Tabela recovery_codes criada com sucesso' as resultado
+FROM information_schema.tables 
+WHERE table_schema = 'primeleague' 
+  AND table_name = 'recovery_codes';
+
 -- =====================================================
 -- FIM DO SCHEMA
 -- =====================================================
 
 -- Log de criação
-SELECT 'Schema Final Automatizado Prime League v4.0 criado com sucesso!' as status;
+SELECT 'Schema Final Automatizado Prime League v5.0 criado com sucesso!' as status;
+SELECT 'Sistema de Recuperação de Conta incluído' as feature;
 SELECT NOW() as created_at;

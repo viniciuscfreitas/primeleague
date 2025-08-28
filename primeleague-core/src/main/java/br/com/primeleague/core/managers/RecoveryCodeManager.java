@@ -105,6 +105,7 @@ public class RecoveryCodeManager {
         try {
             // Buscar player_id pelo nome
             Integer playerId = getPlayerIdByName(playerName);
+            plugin.getLogger().info("[RECOVERY] DEBUG: Buscando player_id para '" + playerName + "', resultado: " + playerId);
             if (playerId == null) {
                 plugin.getLogger().warning("[RECOVERY] Jogador não encontrado: " + playerName);
                 return false;
@@ -120,22 +121,32 @@ public class RecoveryCodeManager {
                 stmt.setInt(1, playerId);
                 
                 try (ResultSet rs = stmt.executeQuery()) {
+                    int codesFound = 0;
                     while (rs.next()) {
+                        codesFound++;
                         String storedHash = rs.getString("code_hash");
                         int attempts = rs.getInt("attempts");
                         long codeId = rs.getLong("id");
                         
+                        plugin.getLogger().info("[RECOVERY] DEBUG: Verificando código " + codesFound + " (ID: " + codeId + ", tentativas: " + attempts + ")");
+                        
                         // Verificar se o código corresponde
-                        if (verifyHash(code, storedHash)) {
+                        plugin.getLogger().info("[RECOVERY] DEBUG: Verificando código '" + code + "' contra hash '" + storedHash + "'");
+                        boolean hashMatches = verifyHash(code, storedHash);
+                        plugin.getLogger().info("[RECOVERY] DEBUG: Resultado da verificação: " + hashMatches);
+                        
+                        if (hashMatches) {
                             // Código válido encontrado - marcar como usado
                             markCodeAsUsed(codeId, ipAddress);
                             plugin.getLogger().info("[RECOVERY] Código válido usado por " + playerName + " (IP: " + ipAddress + ")");
                             return true;
                         } else {
+                            plugin.getLogger().info("[RECOVERY] DEBUG: Hash não corresponde para código " + codeId);
                             // Incrementar tentativas
                             incrementAttempts(codeId, attempts);
                         }
                     }
+                    plugin.getLogger().info("[RECOVERY] DEBUG: Total de códigos encontrados para player_id=" + playerId + ": " + codesFound);
                 }
             }
             

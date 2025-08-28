@@ -74,13 +74,13 @@ cleanup_test_data() {
     log "Limpando dados de teste anteriores..."
     
     # Remover códigos de recuperação de teste
-    mysql -u root -p -e "DELETE FROM recovery_codes WHERE discord_id IN ('$DISCORD_ALFA_ID', '$DISCORD_BETA_ID');" primeleague 2>/dev/null || true
+    mysql -u root -proot -e "DELETE FROM recovery_codes WHERE discord_id IN ('$DISCORD_ALFA_ID', '$DISCORD_BETA_ID');" primeleague 2>/dev/null || true
     
     # Remover histórico de vínculos de teste
-    mysql -u root -p -e "DELETE FROM discord_link_history WHERE old_discord_id IN ('$DISCORD_ALFA_ID', '$DISCORD_BETA_ID') OR new_discord_id IN ('$DISCORD_ALFA_ID', '$DISCORD_BETA_ID');" primeleague 2>/dev/null || true
+    mysql -u root -proot -e "DELETE FROM discord_link_history WHERE old_discord_id IN ('$DISCORD_ALFA_ID', '$DISCORD_BETA_ID') OR new_discord_id IN ('$DISCORD_ALFA_ID', '$DISCORD_BETA_ID');" primeleague 2>/dev/null || true
     
     # Resetar status de vínculos para teste
-    mysql -u root -p -e "UPDATE discord_links SET status = 'ACTIVE' WHERE discord_id IN ('$DISCORD_ALFA_ID', '$DISCORD_BETA_ID');" primeleague 2>/dev/null || true
+    mysql -u root -proot -e "UPDATE discord_links SET status = 'ACTIVE' WHERE discord_id IN ('$DISCORD_ALFA_ID', '$DISCORD_BETA_ID');" primeleague 2>/dev/null || true
     
     success "Dados de teste limpos"
 }
@@ -89,19 +89,32 @@ cleanup_test_data() {
 prepare_test_data() {
     log "Preparando dados de teste..."
     
-    # Verificar se os jogadores existem
-    local player_alfa_exists=$(mysql -u root -p -s -e "SELECT COUNT(*) FROM player_data WHERE player_name = '$PLAYER_ALFA';" primeleague 2>/dev/null || echo "0")
-    local player_beta_exists=$(mysql -u root -p -s -e "SELECT COUNT(*) FROM player_data WHERE player_name = '$PLAYER_BETA';" primeleague 2>/dev/null || echo "0")
+    # Limpar dados existentes primeiro para evitar duplicação
+    log "Limpando dados existentes..."
+    mysql -u root -proot -e "DELETE FROM recovery_codes WHERE discord_id IN ('$DISCORD_ALFA_ID', '$DISCORD_BETA_ID');" primeleague 2>/dev/null || true
+    mysql -u root -proot -e "DELETE FROM discord_links WHERE discord_id IN ('$DISCORD_ALFA_ID', '$DISCORD_BETA_ID');" primeleague 2>/dev/null || true
+    mysql -u root -proot -e "DELETE FROM discord_users WHERE discord_id IN ('$DISCORD_ALFA_ID', '$DISCORD_BETA_ID');" primeleague 2>/dev/null || true
+    mysql -u root -proot -e "DELETE FROM player_data WHERE name IN ('$PLAYER_ALFA', '$PLAYER_BETA');" primeleague 2>/dev/null || true
     
-    if [ "$player_alfa_exists" = "0" ]; then
-        warning "Jogador $PLAYER_ALFA não encontrado. Criando..."
-        mysql -u root -p -e "INSERT INTO player_data (player_name, discord_id, tier, expiration_date) VALUES ('$PLAYER_ALFA', '$DISCORD_ALFA_ID', 'VIP', DATE_ADD(NOW(), INTERVAL 30 DAY));" primeleague 2>/dev/null || true
-    fi
+    # Forçar limpeza de qualquer registro duplicado
+    log "Forçando limpeza de registros duplicados..."
+    mysql -u root -proot -e "DELETE FROM recovery_codes WHERE player_id IN (SELECT player_id FROM player_data WHERE name IN ('$PLAYER_ALFA', '$PLAYER_BETA'));" primeleague 2>/dev/null || true
     
-    if [ "$player_beta_exists" = "0" ]; then
-        warning "Jogador $PLAYER_BETA não encontrado. Criando..."
-        mysql -u root -p -e "INSERT INTO player_data (player_name, discord_id, tier, expiration_date) VALUES ('$PLAYER_BETA', '$DISCORD_BETA_ID', 'PREMIUM', DATE_ADD(NOW(), INTERVAL 60 DAY));" primeleague 2>/dev/null || true
-    fi
+    # Sempre recriar os dados de teste para garantir consistência
+    log "Criando dados de teste..."
+    mysql -u root -proot -e "INSERT INTO player_data (name, uuid, elo, money, status) VALUES ('$PLAYER_ALFA', '11111111-1111-1111-1111-111111111111', 1000, 0.00, 'ACTIVE');" primeleague 2>/dev/null || true
+    mysql -u root -proot -e "INSERT INTO discord_users (discord_id, subscription_type, subscription_expires_at) VALUES ('$DISCORD_ALFA_ID', 'PREMIUM', DATE_ADD(NOW(), INTERVAL 30 DAY));" primeleague 2>/dev/null || true
+    mysql -u root -proot -e "INSERT INTO discord_links (discord_id, player_uuid, is_primary, verified, verified_at) SELECT '$DISCORD_ALFA_ID', uuid, 1, 1, NOW() FROM player_data WHERE name = '$PLAYER_ALFA';" primeleague 2>/dev/null || true
+    
+    mysql -u root -proot -e "INSERT INTO player_data (name, uuid, elo, money, status) VALUES ('$PLAYER_BETA', '22222222-2222-2222-2222-222222222222', 1000, 0.00, 'ACTIVE');" primeleague 2>/dev/null || true
+    mysql -u root -proot -e "INSERT INTO discord_users (discord_id, subscription_type, subscription_expires_at) VALUES ('$DISCORD_BETA_ID', 'BASIC', DATE_ADD(NOW(), INTERVAL 60 DAY));" primeleague 2>/dev/null || true
+    mysql -u root -proot -e "INSERT INTO discord_links (discord_id, player_uuid, is_primary, verified, verified_at) SELECT '$DISCORD_BETA_ID', uuid, 1, 1, NOW() FROM player_data WHERE name = '$PLAYER_BETA';" primeleague 2>/dev/null || true
+    
+    # Verificar se os dados foram inseridos corretamente
+    log "Verificando dados inseridos..."
+    mysql -u root -proot -e "SELECT 'PLAYER_DATA:' as info; SELECT player_id, name, uuid, status FROM player_data WHERE name IN ('$PLAYER_ALFA', '$PLAYER_BETA');" primeleague 2>/dev/null || true
+    mysql -u root -proot -e "SELECT 'DISCORD_USERS:' as info; SELECT discord_id, subscription_type FROM discord_users WHERE discord_id IN ('$DISCORD_ALFA_ID', '$DISCORD_BETA_ID');" primeleague 2>/dev/null || true
+    mysql -u root -proot -e "SELECT 'DISCORD_LINKS:' as info; SELECT dl.discord_id, dl.player_uuid, dl.verified, pd.name FROM discord_links dl JOIN player_data pd ON dl.player_uuid = pd.uuid WHERE dl.discord_id IN ('$DISCORD_ALFA_ID', '$DISCORD_BETA_ID');" primeleague 2>/dev/null || true
     
     success "Dados de teste preparados"
 }
@@ -130,7 +143,7 @@ test_emergency_flow() {
     local backup_response=$(api_request "POST" "/api/v1/recovery/backup/generate" "{\"discordId\":\"$DISCORD_ALFA_ID\",\"ipAddress\":\"$IP_ADDRESS\"}" "200")
     
     # Extrair um código de backup da resposta
-    local backup_code=$(echo "$backup_response" | grep -o '"codes":\["[^"]*"' | head -1 | cut -d'"' -f4)
+    local backup_code=$(echo "$backup_response" | grep -o '"backupCodes":\[[^]]*\]' | grep -o '[A-Z0-9]\{8\}' | head -1)
     
     if [ -z "$backup_code" ]; then
         error "Não foi possível extrair código de backup da resposta"

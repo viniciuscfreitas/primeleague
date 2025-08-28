@@ -66,8 +66,9 @@ public final class DataManager {
             "WHERE pd.name = ? LIMIT 1";
     
     private static final String SELECT_DISCORD_LINK_SQL =
-            "SELECT dl.player_id FROM discord_links dl " +
-            "WHERE dl.discord_id = ? LIMIT 1";
+            "SELECT pd.player_id FROM discord_links dl " +
+            "JOIN player_data pd ON dl.player_uuid = pd.uuid " +
+            "WHERE dl.discord_id = ? AND dl.verified = TRUE LIMIT 1";
     
     private static final String INSERT_DISCORD_LINK_SQL =
             "INSERT INTO discord_links (discord_id, player_id) VALUES (?, ?)";
@@ -1036,7 +1037,9 @@ public final class DataManager {
     public Integer getPlayerIdByDiscordId(String discordId) {
         try (Connection conn = dataSource.getConnection();
              PreparedStatement stmt = conn.prepareStatement(
-                     "SELECT player_id FROM discord_links WHERE discord_id = ? AND verified = TRUE LIMIT 1")) {
+                     "SELECT pd.player_id FROM discord_links dl " +
+                     "JOIN player_data pd ON dl.player_uuid = pd.uuid " +
+                     "WHERE dl.discord_id = ? AND dl.verified = TRUE LIMIT 1")) {
             
             stmt.setString(1, discordId);
             try (ResultSet rs = stmt.executeQuery()) {
@@ -1063,7 +1066,7 @@ public final class DataManager {
         try (Connection conn = dataSource.getConnection();
              PreparedStatement stmt = conn.prepareStatement(
                      "SELECT dl.discord_id FROM discord_links dl " +
-                     "JOIN player_data pd ON dl.player_id = pd.player_id " +
+                     "JOIN player_data pd ON dl.player_uuid = pd.uuid " +
                      "WHERE pd.name = ? AND dl.verified = TRUE LIMIT 1")) {
             
             stmt.setString(1, playerName);
