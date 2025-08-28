@@ -57,10 +57,11 @@ module.exports = {
                 throw error;
             }
 
-            // Gerar código de re-vinculação
+            // Desvincular conta e gerar código de re-vinculação
             try {
-                const response = await axios.post('http://localhost:8080/api/v1/recovery/backup/generate', {
-                    discordId: userId
+                const response = await axios.post('http://localhost:8080/api/v1/account/unlink', {
+                    playerName: nickname,
+                    ipAddress: "127.0.0.1" // IP simulado para teste
                 }, {
                     headers: {
                         'Content-Type': 'application/json',
@@ -69,59 +70,47 @@ module.exports = {
                 });
 
                 if (response.data.success) {
-                    // Buscar códigos gerados
-                    const codesResponse = await axios.get(`http://localhost:8080/api/v1/recovery/status/${userId}`, {
-                        headers: {
-                            'Authorization': `Bearer ${process.env.API_TOKEN}`
-                        }
+                    const relinkCode = response.data.relinkCode;
+                    
+                    // Criar embed de sucesso
+                    const successEmbed = new EmbedBuilder()
+                        .setTitle('✅ Desvinculação Iniciada')
+                        .setDescription(`**Conta desvinculada com sucesso!**`)
+                        .setColor(0x00FF00)
+                        .addFields(
+                            { 
+                                name: '👤 Jogador', 
+                                value: `\`${nickname}\`` 
+                            },
+                            { 
+                                name: '🔑 Código de Re-vinculação', 
+                                value: `\`${relinkCode}\`` 
+                            },
+                            { 
+                                name: '⏰ Validade', 
+                                value: '**5 minutos** a partir de agora' 
+                            }
+                        )
+                        .addFields(
+                            { 
+                                name: '📋 Próximos Passos', 
+                                value: '1. Use o código acima para re-vincular sua conta\n2. Use `/vincular <nickname> <codigo>`\n3. Ou use o comando `/recuperar` in-game' 
+                            },
+                            { 
+                                name: '⚠️ Importante', 
+                                value: '• Use o código rapidamente (expira em 5 minutos)\n• Use apenas quando necessário\n• Após usar, o código será invalidado' 
+                            }
+                        )
+                        .setFooter({ text: 'PrimeLeague - Sistema de Desvinculação' })
+                        .setTimestamp();
+
+                    await interaction.editReply({
+                        embeds: [successEmbed],
+                        ephemeral: true
                     });
 
-                    if (codesResponse.data.success && codesResponse.data.backupCodes) {
-                        const codes = codesResponse.data.backupCodes;
-                        
-                        // Criar embed de sucesso
-                        const successEmbed = new EmbedBuilder()
-                            .setTitle('✅ Desvinculação Iniciada')
-                            .setDescription(`**Conta desvinculada com sucesso!**`)
-                            .setColor(0x00FF00)
-                            .addFields(
-                                { 
-                                    name: '👤 Jogador', 
-                                    value: `\`${nickname}\`` 
-                                },
-                                { 
-                                    name: '🔑 Código de Re-vinculação', 
-                                    value: `\`${codes[0]}\`` 
-                                },
-                                { 
-                                    name: '⏰ Validade', 
-                                    value: '**30 dias** a partir de agora' 
-                                }
-                            )
-                            .addFields(
-                                { 
-                                    name: '📋 Próximos Passos', 
-                                    value: '1. Use o código acima para re-vincular sua conta\n2. Use `/vincular <nickname> <codigo>`\n3. Ou use o comando `/recuperar` in-game' 
-                                },
-                                { 
-                                    name: '⚠️ Importante', 
-                                    value: '• Guarde o código em local seguro\n• Use apenas quando necessário\n• Após usar, o código será invalidado' 
-                                }
-                            )
-                            .setFooter({ text: 'PrimeLeague - Sistema de Desvinculação' })
-                            .setTimestamp();
-
-                        await interaction.editReply({
-                            embeds: [successEmbed],
-                            ephemeral: true
-                        });
-
-                    } else {
-                        throw new Error('Não foi possível recuperar o código de re-vinculação');
-                    }
-
                 } else {
-                    throw new Error(response.data.message || 'Erro ao gerar código de re-vinculação');
+                    throw new Error(response.data.message || 'Erro ao desvincular conta');
                 }
 
             } catch (error) {

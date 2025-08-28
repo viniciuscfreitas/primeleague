@@ -291,6 +291,100 @@ public class RecoveryCodeManager {
     }
     
     /**
+     * Gera um código temporário de re-vinculação.
+     * Código válido por 5 minutos para re-vinculação de conta.
+     * 
+     * @param playerName Nome do jogador
+     * @param discordId Discord ID do jogador
+     * @param ipAddress IP de origem
+     * @return Código temporário gerado
+     */
+    public String generateTemporaryRelinkCode(String playerName, String discordId, String ipAddress) {
+        try {
+            Integer playerId = getPlayerIdByName(playerName);
+            if (playerId == null) {
+                plugin.getLogger().warning("[RECOVERY] Player não encontrado para gerar código temporário: " + playerName);
+                return null;
+            }
+            
+            // Gerar código temporário
+            String code = generateRandomCode(TEMPORARY_CODE_LENGTH);
+            String hashedCode = hashCode(code);
+            
+            // Salvar no banco com expiração de 5 minutos
+            try (Connection conn = dataSource.getConnection();
+                 PreparedStatement stmt = conn.prepareStatement(
+                         "INSERT INTO recovery_codes (player_id, code_hash, code_type, ip_address, discord_id, expires_at) " +
+                         "VALUES (?, ?, 'TEMPORARY', ?, ?, DATE_ADD(NOW(), INTERVAL 5 MINUTE))")) {
+                
+                stmt.setInt(1, playerId);
+                stmt.setString(2, hashedCode);
+                stmt.setString(3, ipAddress);
+                stmt.setString(4, discordId);
+                stmt.executeUpdate();
+            }
+            
+            plugin.getLogger().info("[RECOVERY] Código temporário gerado para " + playerName + " (Discord: " + discordId + ")");
+            return code;
+            
+        } catch (SQLException e) {
+            plugin.getLogger().severe("[RECOVERY] Erro ao gerar código temporário: " + e.getMessage());
+            return null;
+        }
+    }
+    
+    /**
+     * Verifica um código temporário de re-vinculação.
+     * 
+     * @param playerName Nome do jogador
+     * @param code Código fornecido
+     * @param ipAddress IP de origem
+     * @return true se válido, false caso contrário
+     */
+    public boolean verifyTemporaryRelinkCode(String playerName, String code, String ipAddress) {
+        try {
+            Integer playerId = getPlayerIdByName(playerName);
+            if (playerId == null) {
+                return false;
+            }
+            
+            String hashedCode = hashCode(code);
+            
+            // Verificar código temporário válido e não expirado
+            try (Connection conn = dataSource.getConnection();
+                 PreparedStatement stmt = conn.prepareStatement(
+                         "SELECT id, attempts FROM recovery_codes " +
+                         "WHERE player_id = ? AND code_hash = ? AND code_type = 'TEMPORARY' " +
+                         "AND status = 'ACTIVE' AND expires_at > NOW() " +
+                         "ORDER BY created_at DESC LIMIT 1")) {
+                
+                stmt.setInt(1, playerId);
+                stmt.setString(2, hashedCode);
+                
+                try (ResultSet rs = stmt.executeQuery()) {
+                    if (rs.next()) {
+                        long codeId = rs.getLong("id");
+                        int attempts = rs.getInt("attempts");
+                        
+                        // Marcar como usado
+                        markCodeAsUsed(codeId, ipAddress);
+                        
+                        plugin.getLogger().info("[RECOVERY] Código temporário validado para " + playerName);
+                        return true;
+                    }
+                }
+            }
+            
+            plugin.getLogger().warning("[RECOVERY] Código temporário inválido para " + playerName);
+            return false;
+            
+        } catch (SQLException e) {
+            plugin.getLogger().severe("[RECOVERY] Erro ao verificar código temporário: " + e.getMessage());
+            return false;
+        }
+    }
+    
+    /**
      * Classe para armazenar informações de rate limiting.
      */
     private static class RateLimitInfo {

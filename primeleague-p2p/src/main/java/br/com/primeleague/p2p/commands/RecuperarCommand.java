@@ -71,14 +71,14 @@ public class RecuperarCommand implements CommandExecutor {
 
         // Processar recuperação de emergência
         try {
-            boolean success = processEmergencyRecovery(playerName, backupCode, playerIp);
+            String relinkCode = processEmergencyRecovery(playerName, backupCode, playerIp);
             
-            if (success) {
+            if (relinkCode != null) {
                 // Log da ação
                 plugin.getLogger().info("[RECUPERAR] Jogador " + playerName + " iniciou recuperação de emergência");
                 
                 // Mostrar código de re-vinculação no chat
-                showRelinkCode(player);
+                showRelinkCode(player, relinkCode);
                 
             } else {
                 player.sendMessage("§c❌ Código de backup inválido ou expirado.");
@@ -124,7 +124,7 @@ public class RecuperarCommand implements CommandExecutor {
     /**
      * Processa a recuperação de emergência usando código de backup.
      */
-    private boolean processEmergencyRecovery(String playerName, String backupCode, String playerIp) {
+    private String processEmergencyRecovery(String playerName, String backupCode, String playerIp) {
         try {
             // Verificar o código de backup via API
             String payload = String.format(
@@ -135,16 +135,10 @@ public class RecuperarCommand implements CommandExecutor {
             String response = makeApiRequest("POST", "/api/v1/recovery/verify", payload);
             
             if (response != null && response.contains("\"success\":true")) {
-                // Código válido - marcar como PENDING_RELINK
-                DataManager dataManager = PrimeLeagueAPI.getDataManager();
-                Integer playerId = dataManager.getPlayerIdByName(playerName);
-                
-                if (playerId != null) {
-                    String discordId = dataManager.getDiscordIdByPlayerId(playerId);
-                    if (discordId != null) {
-                        dataManager.updateDiscordLinkStatus(discordId, "PENDING_RELINK");
-                        return true;
-                    }
+                // Extrair código de re-vinculação da resposta
+                String relinkCode = extractRelinkCodeFromResponse(response);
+                if (relinkCode != null) {
+                    return relinkCode;
                 }
             }
 
@@ -152,64 +146,50 @@ public class RecuperarCommand implements CommandExecutor {
             plugin.getLogger().severe("[RECUPERAR] Erro ao processar recuperação de emergência: " + e.getMessage());
         }
 
-        return false;
+        return null;
     }
 
     /**
      * Mostra o código de re-vinculação no chat do jogador.
      */
-    private void showRelinkCode(Player player) {
+    private void showRelinkCode(Player player, String relinkCode) {
         String playerName = player.getName();
         
-        // Gerar novo código de re-vinculação
-        try {
-            DataManager dataManager = PrimeLeagueAPI.getDataManager();
-            Integer playerId = dataManager.getPlayerIdByName(playerName);
-            
-            if (playerId != null) {
-                String discordId = dataManager.getDiscordIdByPlayerId(playerId);
-                if (discordId != null) {
-                    // Gerar código temporário de re-vinculação
-                    String relinkCode = generateRelinkCode();
-                    
-                    // Enviar mensagem no chat
-                    player.sendMessage("§a§l✅ RECUPERAÇÃO DE EMERGÊNCIA CONCLUÍDA!");
-                    player.sendMessage("");
-                    player.sendMessage("§e🔑 Seu código de re-vinculação é: §f§l" + relinkCode);
-                    player.sendMessage("");
-                    player.sendMessage("§7📱 Use este código no Discord:");
-                    player.sendMessage("§7💬 Comando: §f/vincular " + playerName + " " + relinkCode);
-                    player.sendMessage("");
-                    player.sendMessage("§c⚠️ IMPORTANTE:");
-                    player.sendMessage("§7• Este código é válido por 24 horas");
-                    player.sendMessage("§7• Use-o para re-vincular sua conta no Discord");
-                    player.sendMessage("§7• Após re-vincular, sua conta estará protegida novamente");
-                    
-                    // Log do código gerado
-                    plugin.getLogger().info("[RECUPERAR] Código de re-vinculação gerado para " + playerName + ": " + relinkCode);
-                }
-            }
-            
-        } catch (Exception e) {
-            plugin.getLogger().severe("[RECUPERAR] Erro ao gerar código de re-vinculação: " + e.getMessage());
-            player.sendMessage("§c❌ Erro ao gerar código de re-vinculação. Contate um administrador.");
-        }
+        // Enviar mensagem no chat
+        player.sendMessage("§a§l✅ RECUPERAÇÃO DE EMERGÊNCIA CONCLUÍDA!");
+        player.sendMessage("");
+        player.sendMessage("§e🔑 Seu código de re-vinculação é: §f§l" + relinkCode);
+        player.sendMessage("");
+        player.sendMessage("§7📱 Use este código no Discord:");
+        player.sendMessage("§7💬 Comando: §f/vincular " + playerName + " " + relinkCode);
+        player.sendMessage("");
+        player.sendMessage("§c⚠️ IMPORTANTE:");
+        player.sendMessage("§7• Este código é válido por 5 minutos");
+        player.sendMessage("§7• Use-o para re-vincular sua conta no Discord");
+        player.sendMessage("§7• Após re-vincular, sua conta estará protegida novamente");
+        
+        // Log do código recebido
+        plugin.getLogger().info("[RECUPERAR] Código de re-vinculação recebido para " + playerName + ": " + relinkCode);
     }
 
     /**
-     * Gera um código temporário de re-vinculação.
+     * Extrai o código de re-vinculação da resposta da API.
      */
-    private String generateRelinkCode() {
-        // Gerar código de 8 caracteres alfanuméricos
-        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-        StringBuilder code = new StringBuilder();
-        java.util.Random random = new java.util.Random();
-        
-        for (int i = 0; i < 8; i++) {
-            code.append(chars.charAt(random.nextInt(chars.length())));
+    private String extractRelinkCodeFromResponse(String response) {
+        try {
+            // Buscar "relinkCode":"CODIGO" na resposta JSON
+            int startIndex = response.indexOf("\"relinkCode\":\"");
+            if (startIndex != -1) {
+                startIndex += 14; // Comprimento de "relinkCode":"
+                int endIndex = response.indexOf("\"", startIndex);
+                if (endIndex != -1) {
+                    return response.substring(startIndex, endIndex);
+                }
+            }
+        } catch (Exception e) {
+            plugin.getLogger().warning("[RECUPERAR] Erro ao extrair código da resposta: " + e.getMessage());
         }
-        
-        return code.toString();
+        return null;
     }
 
     /**

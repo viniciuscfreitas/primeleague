@@ -64,6 +64,10 @@ public class HttpApiManager {
             // Endpoints de transferência de assinaturas (FASE 2)
             server.createContext("/api/v1/discord/transfer", new DiscordTransferHandler());
             
+            // Endpoints de desvinculação e re-vinculação (FASE 2)
+            server.createContext("/api/v1/account/unlink", new AccountUnlinkHandler());
+            server.createContext("/api/v1/recovery/complete-relink", new CompleteRelinkHandler());
+            
             // Configurar executor
             server.setExecutor(Executors.newFixedThreadPool(10));
             
@@ -819,10 +823,13 @@ public class HttpApiManager {
                         }
                         
                         // Processar verificação de código
-                        boolean success = processRecoveryVerification(request);
+                        RecoveryVerificationResult result = processRecoveryVerification(request);
                         
-                        if (success) {
-                            String response = "{\"success\":true,\"message\":\"Código validado com sucesso. A conta está pronta para ser revinculada.\"}";
+                        if (result.isSuccess()) {
+                            String response = String.format(
+                                "{\"success\":true,\"message\":\"Código validado com sucesso. A conta está pronta para ser revinculada.\",\"relinkCode\":\"%s\"}",
+                                result.getRelinkCode()
+                            );
                             sendJsonResponse(exchange, 200, response);
                         } else {
                             sendErrorResponse(exchange, 400, "Código inválido, expirado ou já utilizado");
@@ -843,7 +850,7 @@ public class HttpApiManager {
         /**
          * Processa verificação de código de recuperação
          */
-        private boolean processRecoveryVerification(RecoveryVerifyRequest request) {
+        private RecoveryVerificationResult processRecoveryVerification(RecoveryVerifyRequest request) {
             try {
                 // Verificar código
                 boolean isValid = plugin.getRecoveryCodeManager().verifyCode(
@@ -856,14 +863,20 @@ public class HttpApiManager {
                         // Marcar estado como PENDING_RELINK
                         dataManager.updateDiscordLinkStatus(discordId, "PENDING_RELINK");
                         logger.info("[RECOVERY] Estado alterado para PENDING_RELINK para: " + request.getPlayerName());
+                        
+                        // Gerar código temporário de re-vinculação
+                        String relinkCode = plugin.getRecoveryCodeManager().generateTemporaryRelinkCode(
+                            request.getPlayerName(), discordId, request.getIpAddress());
+                        
+                        return new RecoveryVerificationResult(true, relinkCode);
                     }
                 }
                 
-                return isValid;
+                return new RecoveryVerificationResult(false, null);
                 
             } catch (Exception e) {
                 logger.severe("[RECOVERY] Erro ao verificar código: " + e.getMessage());
-                return false;
+                return new RecoveryVerificationResult(false, null);
             }
         }
         
@@ -1172,6 +1185,255 @@ public class HttpApiManager {
     }
     
     // =====================================================
+    // HANDLER DE DESVINCULAÇÃO DE CONTA (FASE 2)
+    // =====================================================
+    
+    /**
+     * Handler para desvinculação proativa de conta
+     * POST /api/v1/account/unlink
+     */
+    private class AccountUnlinkHandler implements HttpHandler {
+        
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            setCorsHeaders(exchange);
+            
+            if (exchange.getRequestMethod().equals("OPTIONS")) {
+                sendResponse(exchange, 200, "");
+                return;
+            }
+            
+            if (!authenticateRequest(exchange)) {
+                sendErrorResponse(exchange, 401, "Token de autenticação inválido");
+                return;
+            }
+            
+            if (!exchange.getRequestMethod().equals("POST")) {
+                sendErrorResponse(exchange, 405, "Método não permitido");
+                return;
+            }
+            
+            try {
+                java.io.InputStream inputStream = exchange.getRequestBody();
+                java.io.ByteArrayOutputStream result = new java.io.ByteArrayOutputStream();
+                byte[] buffer = new byte[1024];
+                int length;
+                while ((length = inputStream.read(buffer)) != -1) {
+                    result.write(buffer, 0, length);
+                }
+                String requestBody = result.toString("UTF-8");
+                
+                Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+                    try {
+                        AccountUnlinkRequest request = parseAccountUnlinkRequest(requestBody);
+                        if (request == null) {
+                            sendErrorResponse(exchange, 400, "Dados de requisição inválidos");
+                            return;
+                        }
+                        
+                        AccountUnlinkResult result = processAccountUnlink(request);
+                        
+                        if (result.isSuccess()) {
+                            String response = String.format(
+                                "{\"success\":true,\"message\":\"Conta desvinculada com sucesso. Use o código para re-vincular.\",\"relinkCode\":\"%s\"}",
+                                result.getRelinkCode()
+                            );
+                            sendJsonResponse(exchange, 200, response);
+                        } else {
+                            sendErrorResponse(exchange, 400, result.getMessage());
+                        }
+                        
+                    } catch (Exception e) {
+                        logger.severe("[UNLINK] Erro ao processar desvinculação: " + e.getMessage());
+                        sendErrorResponse(exchange, 500, "Erro interno ao processar a requisição");
+                    }
+                });
+                
+            } catch (Exception e) {
+                logger.severe("[UNLINK] Erro ao ler requisição: " + e.getMessage());
+                sendErrorResponse(exchange, 500, "Erro interno ao ler a requisição");
+            }
+        }
+        
+        /**
+         * Processa desvinculação de conta
+         */
+        private AccountUnlinkResult processAccountUnlink(AccountUnlinkRequest request) {
+            try {
+                // Verificar se o jogador existe e está vinculado
+                String discordId = dataManager.getDiscordIdByPlayerName(request.getPlayerName());
+                if (discordId == null) {
+                    return new AccountUnlinkResult(false, "Jogador não encontrado ou não vinculado", null);
+                }
+                
+                // Marcar como PENDING_RELINK
+                dataManager.updateDiscordLinkStatus(discordId, "PENDING_RELINK");
+                logger.info("[UNLINK] Estado alterado para PENDING_RELINK para: " + request.getPlayerName());
+                
+                // Gerar código temporário de re-vinculação
+                String relinkCode = plugin.getRecoveryCodeManager().generateTemporaryRelinkCode(
+                    request.getPlayerName(), discordId, request.getIpAddress());
+                
+                return new AccountUnlinkResult(true, "Desvinculação realizada com sucesso", relinkCode);
+                
+            } catch (Exception e) {
+                logger.severe("[UNLINK] Erro ao processar desvinculação: " + e.getMessage());
+                return new AccountUnlinkResult(false, "Erro interno ao processar desvinculação", null);
+            }
+        }
+        
+        /**
+         * Parse da requisição de desvinculação
+         */
+        private AccountUnlinkRequest parseAccountUnlinkRequest(String json) {
+            try {
+                String playerName = extractJsonValue(json, "playerName");
+                String ipAddress = extractJsonValue(json, "ipAddress");
+                
+                if (playerName == null || ipAddress == null) {
+                    return null;
+                }
+                
+                return new AccountUnlinkRequest(playerName, ipAddress);
+                
+            } catch (Exception e) {
+                logger.severe("[UNLINK] Erro ao fazer parse da requisição: " + e.getMessage());
+                return null;
+            }
+        }
+    }
+    
+    // =====================================================
+    // HANDLER DE RE-VINCULAÇÃO TRANSACIONAL (FASE 2)
+    // =====================================================
+    
+    /**
+     * Handler para re-vinculação transacional (verificação + transferência)
+     * POST /api/v1/recovery/complete-relink
+     */
+    private class CompleteRelinkHandler implements HttpHandler {
+        
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            setCorsHeaders(exchange);
+            
+            if (exchange.getRequestMethod().equals("OPTIONS")) {
+                sendResponse(exchange, 200, "");
+                return;
+            }
+            
+            if (!authenticateRequest(exchange)) {
+                sendErrorResponse(exchange, 401, "Token de autenticação inválido");
+                return;
+            }
+            
+            if (!exchange.getRequestMethod().equals("POST")) {
+                sendErrorResponse(exchange, 405, "Método não permitido");
+                return;
+            }
+            
+            try {
+                java.io.InputStream inputStream = exchange.getRequestBody();
+                java.io.ByteArrayOutputStream result = new java.io.ByteArrayOutputStream();
+                byte[] buffer = new byte[1024];
+                int length;
+                while ((length = inputStream.read(buffer)) != -1) {
+                    result.write(buffer, 0, length);
+                }
+                String requestBody = result.toString("UTF-8");
+                
+                Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+                    try {
+                        CompleteRelinkRequest request = parseCompleteRelinkRequest(requestBody);
+                        if (request == null) {
+                            sendErrorResponse(exchange, 400, "Dados de requisição inválidos");
+                            return;
+                        }
+                        
+                        CompleteRelinkResult result = processCompleteRelink(request);
+                        
+                        if (result.isSuccess()) {
+                            String response = "{\"success\":true,\"message\":\"" + result.getMessage() + "\"}";
+                            sendJsonResponse(exchange, 200, response);
+                        } else {
+                            sendErrorResponse(exchange, 400, result.getMessage());
+                        }
+                        
+                    } catch (Exception e) {
+                        logger.severe("[COMPLETE-RELINK] Erro ao processar re-vinculação: " + e.getMessage());
+                        sendErrorResponse(exchange, 500, "Erro interno ao processar a requisição");
+                    }
+                });
+                
+            } catch (Exception e) {
+                logger.severe("[COMPLETE-RELINK] Erro ao ler requisição: " + e.getMessage());
+                sendErrorResponse(exchange, 500, "Erro interno ao ler a requisição");
+            }
+        }
+        
+        /**
+         * Processa re-vinculação transacional
+         */
+        private CompleteRelinkResult processCompleteRelink(CompleteRelinkRequest request) {
+            try {
+                // 1. Verificar código temporário
+                boolean isValidCode = plugin.getRecoveryCodeManager().verifyTemporaryRelinkCode(
+                    request.getPlayerName(), request.getRelinkCode(), request.getIpAddress());
+                
+                if (!isValidCode) {
+                    return new CompleteRelinkResult(false, "Código de re-vinculação inválido ou expirado");
+                }
+                
+                // 2. Executar transferência de assinatura
+                DataManager.TransferResult transferResult = dataManager.transferSubscription(
+                    request.getPlayerName(), 
+                    request.getNewDiscordId(), 
+                    request.getIpAddress()
+                );
+                
+                if (!transferResult.isSuccess()) {
+                    return new CompleteRelinkResult(false, transferResult.getMessage());
+                }
+                
+                // 3. Finalizar vínculo (remover PENDING_RELINK)
+                String discordId = dataManager.getDiscordIdByPlayerName(request.getPlayerName());
+                if (discordId != null) {
+                    dataManager.updateDiscordLinkStatus(discordId, "ACTIVE");
+                    logger.info("[COMPLETE-RELINK] Estado alterado para ACTIVE para: " + request.getPlayerName());
+                }
+                
+                return new CompleteRelinkResult(true, "Conta re-vinculada com sucesso");
+                
+            } catch (Exception e) {
+                logger.severe("[COMPLETE-RELINK] Erro ao processar re-vinculação: " + e.getMessage());
+                return new CompleteRelinkResult(false, "Erro interno ao processar re-vinculação");
+            }
+        }
+        
+        /**
+         * Parse da requisição de re-vinculação
+         */
+        private CompleteRelinkRequest parseCompleteRelinkRequest(String json) {
+            try {
+                String playerName = extractJsonValue(json, "playerName");
+                String relinkCode = extractJsonValue(json, "relinkCode");
+                String newDiscordId = extractJsonValue(json, "newDiscordId");
+                String ipAddress = extractJsonValue(json, "ipAddress");
+                
+                if (playerName == null || relinkCode == null || newDiscordId == null || ipAddress == null) {
+                    return null;
+                }
+                
+                return new CompleteRelinkRequest(playerName, relinkCode, newDiscordId, ipAddress);
+                
+            } catch (Exception e) {
+                logger.severe("[COMPLETE-RELINK] Erro ao fazer parse da requisição: " + e.getMessage());
+                return null;
+            }
+        }
+    }
+    
+    // =====================================================
     // HANDLER DE TRANSFERÊNCIA DE ASSINATURAS (FASE 2)
     // =====================================================
     
@@ -1302,5 +1564,111 @@ public class HttpApiManager {
         // Getters
         public String getPlayerName() { return playerName; }
         public String getNewDiscordId() { return newDiscordId; }
+    }
+    
+    // =====================================================
+    // CLASSES DE REQUISIÇÃO E RESULTADO PARA DESVINCULAÇÃO
+    // =====================================================
+    
+    /**
+     * Classe de requisição para desvinculação de conta
+     */
+    public static class AccountUnlinkRequest {
+        private final String playerName;
+        private final String ipAddress;
+        
+        public AccountUnlinkRequest(String playerName, String ipAddress) {
+            this.playerName = playerName;
+            this.ipAddress = ipAddress;
+        }
+        
+        // Getters
+        public String getPlayerName() { return playerName; }
+        public String getIpAddress() { return ipAddress; }
+    }
+    
+    /**
+     * Classe de resultado para desvinculação de conta
+     */
+    public static class AccountUnlinkResult {
+        private final boolean success;
+        private final String message;
+        private final String relinkCode;
+        
+        public AccountUnlinkResult(boolean success, String message, String relinkCode) {
+            this.success = success;
+            this.message = message;
+            this.relinkCode = relinkCode;
+        }
+        
+        // Getters
+        public boolean isSuccess() { return success; }
+        public String getMessage() { return message; }
+        public String getRelinkCode() { return relinkCode; }
+    }
+    
+    // =====================================================
+    // CLASSES DE REQUISIÇÃO E RESULTADO PARA RE-VINCULAÇÃO
+    // =====================================================
+    
+    /**
+     * Classe de requisição para re-vinculação transacional
+     */
+    public static class CompleteRelinkRequest {
+        private final String playerName;
+        private final String relinkCode;
+        private final String newDiscordId;
+        private final String ipAddress;
+        
+        public CompleteRelinkRequest(String playerName, String relinkCode, String newDiscordId, String ipAddress) {
+            this.playerName = playerName;
+            this.relinkCode = relinkCode;
+            this.newDiscordId = newDiscordId;
+            this.ipAddress = ipAddress;
+        }
+        
+        // Getters
+        public String getPlayerName() { return playerName; }
+        public String getRelinkCode() { return relinkCode; }
+        public String getNewDiscordId() { return newDiscordId; }
+        public String getIpAddress() { return ipAddress; }
+    }
+    
+    /**
+     * Classe de resultado para re-vinculação transacional
+     */
+    public static class CompleteRelinkResult {
+        private final boolean success;
+        private final String message;
+        
+        public CompleteRelinkResult(boolean success, String message) {
+            this.success = success;
+            this.message = message;
+        }
+        
+        // Getters
+        public boolean isSuccess() { return success; }
+        public String getMessage() { return message; }
+    }
+    
+    // =====================================================
+    // CLASSES DE RESULTADO PARA RECUPERAÇÃO
+    // =====================================================
+    
+    /**
+     * Classe de resultado para verificação de recuperação
+     */
+    public static class RecoveryVerificationResult {
+        private final boolean success;
+        private final String relinkCode;
+        
+        public RecoveryVerificationResult(boolean success, String relinkCode) {
+            this.success = success;
+            this.relinkCode = relinkCode;
+        }
+        
+        // Getters
+        public boolean isSuccess() { return success; }
+        public String getRelinkCode() { return relinkCode; }
     }
 }

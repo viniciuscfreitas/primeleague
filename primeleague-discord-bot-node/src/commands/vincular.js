@@ -41,55 +41,13 @@ module.exports = {
                 return;
             }
 
-            // Verificar se o código é válido
+            // Executar re-vinculação transacional
             try {
-                const verifyResponse = await axios.post('http://localhost:8080/api/v1/recovery/verify', {
-                    discordId: userId,
-                    code: codigo
-                }, {
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${process.env.API_TOKEN}`
-                    }
-                });
-
-                if (!verifyResponse.data.success) {
-                    await interaction.editReply({
-                        content: '❌ **Código inválido ou expirado. Verifique o código e tente novamente.**',
-                        ephemeral: true
-                    });
-                    return;
-                }
-
-            } catch (error) {
-                console.error('[VINCULAR] Erro ao verificar código:', error);
-                
-                let errorMessage = '❌ **Erro ao verificar código.**';
-                
-                if (error.response) {
-                    if (error.response.status === 400) {
-                        errorMessage = '❌ **Código inválido ou expirado. Verifique o código e tente novamente.**';
-                    } else if (error.response.status === 404) {
-                        errorMessage = '❌ **Você não possui códigos de backup. Use `/recuperacao` primeiro.**';
-                    } else if (error.response.status === 429) {
-                        errorMessage = '⏰ **Muitas tentativas. Aguarde alguns minutos antes de tentar novamente.**';
-                    } else {
-                        errorMessage = `❌ **Erro do servidor: ${error.response.data?.message || 'Erro desconhecido'}**`;
-                    }
-                }
-
-                await interaction.editReply({
-                    content: errorMessage,
-                    ephemeral: true
-                });
-                return;
-            }
-
-            // Executar transferência de assinatura
-            try {
-                const transferResponse = await axios.post('http://localhost:8080/api/v1/discord/transfer', {
+                const response = await axios.post('http://localhost:8080/api/v1/recovery/complete-relink', {
                     playerName: nickname,
-                    newDiscordId: userId
+                    relinkCode: codigo,
+                    newDiscordId: userId,
+                    ipAddress: "127.0.0.1" // IP simulado para teste
                 }, {
                     headers: {
                         'Content-Type': 'application/json',
@@ -97,7 +55,7 @@ module.exports = {
                     }
                 });
 
-                if (transferResponse.data.success) {
+                if (response.data.success) {
                     // Criar embed de sucesso
                     const successEmbed = new EmbedBuilder()
                         .setTitle('✅ Conta Vinculada com Sucesso!')
@@ -136,18 +94,18 @@ module.exports = {
                     });
 
                 } else {
-                    throw new Error(transferResponse.data.message || 'Erro na transferência');
+                    throw new Error(response.data.message || 'Erro na re-vinculação');
                 }
 
             } catch (error) {
-                console.error('[VINCULAR] Erro na transferência:', error);
+                console.error('[VINCULAR] Erro na re-vinculação:', error);
                 
                 let errorMessage = '❌ **Erro ao vincular conta.**';
                 
                 if (error.response) {
                     if (error.response.status === 400) {
-                        if (error.response.data.message.includes('igual ao atual')) {
-                            errorMessage = '❌ **Esta conta já está vinculada ao seu Discord.**';
+                        if (error.response.data.message.includes('inválido ou expirado')) {
+                            errorMessage = '❌ **Código inválido ou expirado. Verifique o código e tente novamente.**';
                         } else if (error.response.data.message.includes('não encontrado')) {
                             errorMessage = '❌ **Jogador não encontrado. Verifique o nickname.**';
                         } else if (error.response.data.message.includes('não possui vínculo')) {
