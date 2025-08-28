@@ -3,7 +3,8 @@
     "core": {
       "url": "http://localhost:8080",
       "timeout": 5000,
-      "retryAttempts": 2
+      "retryAttempts": 2,
+      "bearer_token": "primeleague_api_token_2024"
     }
   },
   "donorTiers": {

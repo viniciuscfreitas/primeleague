@@ -657,14 +657,16 @@ async function getDonorInfoFromCore(discordId) {
         const coreApiUrl = process.env.CORE_API_URL || config.api.core.url;
         const apiUrl = `${coreApiUrl}/api/donor-info/${discordId}`;
         const timeout = config.api.core.timeout;
+        const bearerToken = process.env.API_BEARER_TOKEN || config.api.core.bearer_token || 'primeleague_api_token_2024';
         
         console.log(`[API] Consultando Core: ${apiUrl}`);
         
-        // Fazer requisição HTTP para a API do Core
+        // Fazer requisição HTTP para a API do Core com autenticação
         const response = await fetch(apiUrl, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
+                'Authorization': `Bearer ${bearerToken}`,
                 'User-Agent': 'PrimeLeague-Discord-Bot/1.0'
             },
             signal: AbortSignal.timeout(timeout)

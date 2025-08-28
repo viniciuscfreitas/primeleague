@@ -33,6 +33,7 @@
                   <include>org.slf4j:slf4j-api</include>
                   <include>mysql:mysql-connector-java</include>
                   <include>org.slf4j:slf4j-nop</include>
+                  <include>org.mindrot:jbcrypt</include>
                 </includes>
               </artifactSet>
               <transformers>

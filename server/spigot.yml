@@ -13,9 +13,9 @@
 config-version: 1
 commands:
   tab-complete: true
+  log: true
   spam-exclusions:
   - /skill
-  log: true
 listeners:
 - port: default
   host: default
@@ -24,10 +24,10 @@ settings:
   netty-threads: 3
   log-filters:
   - ^(.*)(/login)(.*)$
-  prevent-proxies: false
   bungeecord-addresses:
   - 127.0.0.1
   bungeecord: true
+  prevent-proxies: false
   timeout-time: 60
   restart-on-crash: true
   restart-script: ./start.sh
@@ -51,7 +51,21 @@ world-settings:
       pumpkin-modifier: 100
       sapling-modifier: 100
       wheat-modifier: 100
+    entity-tracking-range:
+      players: 48
+      animals: 48
+      monsters: 48
+      misc: 32
+      other: 64
     mob-spawn-range: 4
+    entity-activation-range:
+      animals: 32
+      monsters: 32
+      misc: 16
+    ticks-per:
+      hopper-check: 8
+      hopper-transfer: 8
+    random-light-updates: false
     anti-xray:
       enabled: true
       engine-mode: 1
@@ -71,17 +85,3 @@ world-settings:
       - 82
       - 129
       - 130
-    entity-activation-range:
-      animals: 32
-      monsters: 32
-      misc: 16
-    entity-tracking-range:
-      players: 48
-      animals: 48
-      monsters: 48
-      misc: 32
-      other: 64
-    random-light-updates: false
-    ticks-per:
-      hopper-check: 8
-      hopper-transfer: 8

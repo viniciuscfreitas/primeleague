@@ -31,6 +31,7 @@ public class HttpApiManager {
     private final DonorManager donorManager;
     private HttpServer server;
     private int port;
+    private final String bearerToken;
     
     public HttpApiManager(PrimeLeagueCore plugin) {
         this.plugin = plugin;
@@ -38,6 +39,7 @@ public class HttpApiManager {
         this.dataManager = plugin.getDataManager();
         this.donorManager = plugin.getDonorManager();
         this.port = plugin.getConfig().getInt("api.port", 8080);
+        this.bearerToken = plugin.getConfig().getString("api.security.bearer_token", "primeleague_api_token_2024");
     }
     
     /**
@@ -61,7 +63,7 @@ public class HttpApiManager {
             logger.info("[Core] API HTTP iniciada na porta " + port);
             
         } catch (IOException e) {
-            logger.severe("❌ Erro ao iniciar API HTTP: " + e.getMessage());
+            logger.severe("Erro ao iniciar API HTTP: " + e.getMessage());
         }
     }
     
@@ -76,6 +78,20 @@ public class HttpApiManager {
     }
     
     /**
+     * Verifica autenticação Bearer Token
+     */
+    private boolean authenticateRequest(HttpExchange exchange) {
+        String authHeader = exchange.getRequestHeaders().getFirst("Authorization");
+        
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return false;
+        }
+        
+        String token = authHeader.substring(7); // Remove "Bearer "
+        return bearerToken.equals(token);
+    }
+    
+    /**
      * Handler para informações de doador
      * GET /api/donor-info/{discordId}
      */
@@ -86,17 +102,11 @@ public class HttpApiManager {
             // Configurar CORS
             exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
             exchange.getResponseHeaders().add("Access-Control-Allow-Methods", "GET, OPTIONS");
-            exchange.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type");
+            exchange.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type, Authorization");
             
             // Responder a requisições OPTIONS (CORS preflight)
             if (exchange.getRequestMethod().equalsIgnoreCase("OPTIONS")) {
                 exchange.sendResponseHeaders(200, -1);
-                return;
-            }
-            
-            // Verificar método HTTP
-            if (!exchange.getRequestMethod().equalsIgnoreCase("GET")) {
-                sendErrorResponse(exchange, 405, "Método não permitido");
                 return;
             }
             
@@ -111,6 +121,12 @@ public class HttpApiManager {
                 }
                 
                 String discordId = pathParts[3];
+                
+                // Verificar autenticação (exceto para health)
+                if (!path.equals("/api/health") && !authenticateRequest(exchange)) {
+                    sendErrorResponse(exchange, 401, "Unauthorized - Invalid or missing Bearer token");
+                    return;
+                }
                 
                 // Executar lógica de negócio de forma assíncrona
                 Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
@@ -174,10 +190,16 @@ public class HttpApiManager {
             // Configurar CORS
             exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
             exchange.getResponseHeaders().add("Access-Control-Allow-Methods", "POST, OPTIONS");
-            exchange.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type");
+            exchange.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type, Authorization");
             
             if (exchange.getRequestMethod().equalsIgnoreCase("OPTIONS")) {
                 exchange.sendResponseHeaders(200, -1);
+                return;
+            }
+            
+            // Verificar autenticação
+            if (!authenticateRequest(exchange)) {
+                sendErrorResponse(exchange, 401, "Unauthorized - Invalid or missing Bearer token");
                 return;
             }
             
@@ -195,7 +217,7 @@ public class HttpApiManager {
                     try {
                         // Limpar cache do DataManager
                         dataManager.clearCache();
-                        logger.info("🔄 Cache limpo automaticamente após criação de player via Discord");
+                        logger.info("Cache limpo automaticamente após criação de player via Discord");
                         
                         // Enviar resposta de sucesso
                         String response = "{\"success\":true,\"message\":\"Cache limpo com sucesso\"}";
@@ -225,7 +247,7 @@ public class HttpApiManager {
             // Configurar CORS
             exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
             exchange.getResponseHeaders().add("Access-Control-Allow-Methods", "GET, OPTIONS");
-            exchange.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type");
+            exchange.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type, Authorization");
             
             if (exchange.getRequestMethod().equalsIgnoreCase("OPTIONS")) {
                 exchange.sendResponseHeaders(200, -1);
@@ -237,7 +259,7 @@ public class HttpApiManager {
                 return;
             }
             
-            String response = "{\"status\":\"ok\",\"service\":\"PrimeLeague Core API\",\"timestamp\":\"" + System.currentTimeMillis() + "\"}";
+            String response = "{\"status\":\"ok\",\"service\":\"PrimeLeague Core API v2.0\",\"timestamp\":\"" + System.currentTimeMillis() + "\"}";
             sendJsonResponse(exchange, 200, response);
         }
     }

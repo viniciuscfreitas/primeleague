@@ -86,5 +86,14 @@ security:
 api:
   port: 8080  # Porta para o servidor HTTP da API
   enabled: true  # Habilitar/desabilitar API HTTP
+  security:
+    enabled: true  # Habilitar autenticação
+    bearer_token: "primeleague_api_token_2024"  # Token único para autenticação
+    rate_limit:
+      requests_per_minute: 60  # Limite de requisições por minuto
+      burst_limit: 10  # Limite de burst (requisições simultâneas)
+  cors:
+    enabled: true
+    allowed_origins: ["*"]  # Em produção, especificar domínios específicos
 
 

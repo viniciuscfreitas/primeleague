@@ -53,6 +53,13 @@
             <artifactId>slf4j-nop</artifactId>
             <version>1.7.25</version>
         </dependency>
+
+        <!-- BCrypt para hash seguro de códigos de recuperação -->
+        <dependency>
+            <groupId>org.mindrot</groupId>
+            <artifactId>jbcrypt</artifactId>
+            <version>0.4</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -88,6 +95,7 @@
                                     <include>org.slf4j:slf4j-api</include>
                                     <include>mysql:mysql-connector-java</include>
                                     <include>org.slf4j:slf4j-nop</include>
+                                    <include>org.mindrot:jbcrypt</include>
                                 </includes>
                             </artifactSet>
                             <!-- Removendo relocations para evitar conflitos de classe -->
