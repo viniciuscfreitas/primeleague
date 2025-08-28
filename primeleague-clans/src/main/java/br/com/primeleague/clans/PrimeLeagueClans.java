@@ -71,12 +71,12 @@ public class PrimeLeagueClans extends JavaPlugin {
         // Registrar handler para placeholder {clan_tag} no TagManager do Core
         registerTagHandlers();
         
-        getLogger().info("§6[Clans] PrimeLeague Clans habilitado");
+        getLogger().info("[Clans] PrimeLeague Clans habilitado");
     }
 
     @Override
     public void onDisable() {
-        getLogger().info("§6[Clans] PrimeLeague Clans desabilitado");
+        getLogger().info("[Clans] PrimeLeague Clans desabilitado");
         
         // Salvar dados (quando integração com Core estiver pronta)
         // saveData();

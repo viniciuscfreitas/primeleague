@@ -58,7 +58,7 @@ public class HttpApiManager {
             // Iniciar servidor
             server.start();
             
-            logger.info("§9[Core] API HTTP iniciada na porta " + port);
+            logger.info("[Core] API HTTP iniciada na porta " + port);
             
         } catch (IOException e) {
             logger.severe("❌ Erro ao iniciar API HTTP: " + e.getMessage());
@@ -71,7 +71,7 @@ public class HttpApiManager {
     public void stop() {
         if (server != null) {
             server.stop(0);
-            logger.info("§9[Core] API HTTP parada");
+            logger.info("[Core] API HTTP parada");
         }
     }
     

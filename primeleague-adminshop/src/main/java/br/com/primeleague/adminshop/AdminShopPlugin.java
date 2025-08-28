@@ -55,7 +55,7 @@ public class AdminShopPlugin extends JavaPlugin {
             // Registrar listeners
             registerListeners();
             
-            logger.info("§e[Shop] PrimeLeague AdminShop habilitado");
+            logger.info("[Shop] PrimeLeague AdminShop habilitado");
             
         } catch (Exception e) {
             logger.severe("❌ Erro fatal ao inicializar Admin Shop: " + e.getMessage());
@@ -70,7 +70,7 @@ public class AdminShopPlugin extends JavaPlugin {
             shopManager.clearCache();
         }
         
-        logger.info("§e[Shop] PrimeLeague AdminShop desabilitado");
+        logger.info("[Shop] PrimeLeague AdminShop desabilitado");
     }
 
     /**
