@@ -805,13 +805,13 @@ public class HttpApiManager {
             try {
                 // Ler dados do request (compatível com Java 7)
                 java.io.InputStream inputStream = exchange.getRequestBody();
-                java.io.ByteArrayOutputStream result = new java.io.ByteArrayOutputStream();
+                java.io.ByteArrayOutputStream byteStream = new java.io.ByteArrayOutputStream();
                 byte[] buffer = new byte[1024];
                 int length;
                 while ((length = inputStream.read(buffer)) != -1) {
-                    result.write(buffer, 0, length);
+                    byteStream.write(buffer, 0, length);
                 }
-                String requestBody = result.toString("UTF-8");
+                String requestBody = byteStream.toString("UTF-8");
                 
                 // Executar verificação de forma assíncrona
                 Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
@@ -1215,13 +1215,13 @@ public class HttpApiManager {
             
             try {
                 java.io.InputStream inputStream = exchange.getRequestBody();
-                java.io.ByteArrayOutputStream result = new java.io.ByteArrayOutputStream();
+                java.io.ByteArrayOutputStream byteStream = new java.io.ByteArrayOutputStream();
                 byte[] buffer = new byte[1024];
                 int length;
                 while ((length = inputStream.read(buffer)) != -1) {
-                    result.write(buffer, 0, length);
+                    byteStream.write(buffer, 0, length);
                 }
-                String requestBody = result.toString("UTF-8");
+                String requestBody = byteStream.toString("UTF-8");
                 
                 Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
                     try {
@@ -1334,13 +1334,13 @@ public class HttpApiManager {
             
             try {
                 java.io.InputStream inputStream = exchange.getRequestBody();
-                java.io.ByteArrayOutputStream result = new java.io.ByteArrayOutputStream();
+                java.io.ByteArrayOutputStream byteStream = new java.io.ByteArrayOutputStream();
                 byte[] buffer = new byte[1024];
                 int length;
                 while ((length = inputStream.read(buffer)) != -1) {
-                    result.write(buffer, 0, length);
+                    byteStream.write(buffer, 0, length);
                 }
-                String requestBody = result.toString("UTF-8");
+                String requestBody = byteStream.toString("UTF-8");
                 
                 Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
                     try {

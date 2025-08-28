@@ -1105,6 +1105,32 @@ public final class DataManager {
     }
     
     /**
+     * Busca o status de um link Discord.
+     * Suporte para a API HTTP do Core.
+     * 
+     * @param discordId Discord ID do usuário
+     * @return status do link ou null se não encontrado
+     */
+    public String getDiscordLinkStatus(String discordId) {
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(
+                     "SELECT status FROM discord_links WHERE discord_id = ?")) {
+            
+            stmt.setString(1, discordId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getString("status");
+                }
+            }
+            
+        } catch (SQLException e) {
+            plugin.getLogger().severe("🚨 [DATA-MANAGER] Erro ao buscar status Discord: " + e.getMessage());
+        }
+        
+        return null;
+    }
+    
+    /**
      * Conta quantas contas estão vinculadas a um Discord ID.
      * Suporte para a API HTTP do Core.
      * 
