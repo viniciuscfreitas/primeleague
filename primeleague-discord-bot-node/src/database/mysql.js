@@ -98,7 +98,7 @@ async function createDiscordLink(discordId, playerId, verifyCode = null) {
 async function getPlayerAccountInfo(discordId) {
     try {
         const [rows] = await pool.execute(
-            `SELECT dl.player_id, pd.name, pd.elo, pd.money
+            `SELECT pd.player_id, pd.name, pd.elo, pd.money
              FROM discord_links dl
              JOIN player_data pd ON dl.player_id = pd.player_id
              WHERE dl.discord_id = ? AND dl.verified = TRUE`,
@@ -183,10 +183,10 @@ pool.getConnection()
 async function getDiscordLinksById(discordId) {
     try {
         const [rows] = await pool.execute(
-            `SELECT dl.discord_id, dl.player_id, pd.name as player_name, dl.is_primary, dl.verified, 
+            `SELECT dl.discord_id, pd.player_id, pd.name as player_name, dl.is_primary, dl.verified, 
                     dl.verification_code, dl.code_expires_at, dl.verified_at
              FROM discord_links dl
-             JOIN player_data pd ON dl.player_id = pd.player_id
+             JOIN player_data pd ON dl.player_uuid = pd.uuid
              WHERE dl.discord_id = ? 
              ORDER BY dl.is_primary DESC, dl.verified_at ASC`,
             [discordId]
@@ -301,7 +301,7 @@ async function getPortfolioByDiscordId(discordId) {
     try {
         const [rows] = await pool.execute(`
             SELECT 
-                dl.player_id,
+                pd.player_id,
                 pd.name as player_name,
                 dl.is_primary,
                 dl.verified_at as linked_at,

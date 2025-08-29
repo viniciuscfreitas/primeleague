@@ -1,5 +1,5 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-const config = require('../config/bot-config.json');
+const config = require('../../bot-config.json');
 
 /**
  * Handler para webhook de autorização de IP
@@ -9,7 +9,7 @@ class IpAuthWebhookHandler {
     constructor(client) {
         this.client = client;
         this.pendingNotifications = new Map(); // Cache de notificações pendentes
-        this.bearerToken = config.coreApi.bearerToken;
+        this.bearerToken = config.api.core.bearer_token;
     }
 
     /**
@@ -108,7 +108,7 @@ class IpAuthWebhookHandler {
                     { name: 'ℹ️ O que fazer?', value: 'Clique em **Autorizar** se este IP é confiável, ou **Rejeitar** se não reconhece este endereço.' }
                 )
                 .setColor(config.ui.colors.warning)
-                .setFooter({ text: config.ui.footer })
+                .setFooter({ text: config.ui.embeds.footer.text })
                 .setTimestamp();
 
             // Criar botões
@@ -221,7 +221,7 @@ class IpAuthWebhookHandler {
                 timestamp: Date.now()
             };
 
-            const response = await fetch(`${config.coreApi.baseUrl}/api/v1/ip-authorize`, {
+            const response = await fetch(`${config.api.core.url}/api/v1/ip-authorize`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
