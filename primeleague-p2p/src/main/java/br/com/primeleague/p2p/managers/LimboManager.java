@@ -144,7 +144,7 @@ public final class LimboManager implements Listener {
             if (conn != null) {
                 // Primeiro, verificar se já existe um vínculo Discord para este nome (mesmo que não verificado)
                 String sql = "SELECT dl.discord_id FROM discord_links dl " +
-                           "JOIN player_data pd ON dl.player_id = pd.player_id " +
+                                                       "JOIN player_data pd ON dl.player_id = pd.player_id " +
                            "WHERE pd.name = ?";
                 
                 try (java.sql.PreparedStatement stmt = conn.prepareStatement(sql)) {

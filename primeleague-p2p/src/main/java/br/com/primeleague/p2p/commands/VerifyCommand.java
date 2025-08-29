@@ -139,7 +139,7 @@ public class VerifyCommand implements CommandExecutor {
                 
                 if (success) {
                     String discordId = rs.getString("discord_id");
-                    String playerUuid = rs.getString("player_uuid");
+                    String playerId = rs.getString("player_id");
                     
                     // Log da verificação bem-sucedida
                     PrimeLeagueP2P.getInstance().getLogger().info(

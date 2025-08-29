@@ -111,7 +111,7 @@ module.exports = {
             const verifyCode = await generateVerifyCode();
             
             // Criar registro na tabela discord_links
-            const linkResult = await createDiscordLink(discordId, player.uuid, player.name, verifyCode);
+            const linkResult = await createDiscordLink(discordId, player.player_id, verifyCode);
             if (!linkResult) {
                 return interaction.editReply({
                     content: '❌ **Erro:** Falha ao iniciar registro. Tente novamente.'
