@@ -136,46 +136,60 @@ public final class AuthenticationListener implements Listener {
             return; // Pula toda a verificação
         }
         
-                 try {
-             plugin.getLogger().info("[JOIN-DEBUG] 🔍 Verificando se precisa de verificação para: " + playerName);
-             
-             // CORREÇÃO: Usar UUID canônico do Core (mesmo do AsyncPlayerPreLoginEvent)
-             final UUID canonicalUuid = UUIDUtils.offlineUUIDFromName(playerName);
-             plugin.getLogger().info("[JOIN-DEBUG] 🔄 UUID do jogador: " + playerUuid);
-             plugin.getLogger().info("[JOIN-DEBUG] 🔄 UUID canônico: " + canonicalUuid);
-             
-             // Verificar se o jogador tem registro pendente (não verificado)
-             boolean hasPendingVerification = hasPendingVerification(canonicalUuid);
-             
-             plugin.getLogger().info("[JOIN-DEBUG] 📊 Resultado da verificação: " + (hasPendingVerification ? "PENDENTE" : "VERIFICADO/ATIVO"));
-             
-             if (hasPendingVerification) {
-                 // Jogador tem registro pendente - colocar em limbo para verificação
-                 plugin.getLogger().info("[JOIN-DEBUG] ⏳ Jogador com verificação pendente: " + playerName + " - colocando em limbo");
-                 
-                 // Delay para garantir que o jogador carregou completamente
-                 plugin.getServer().getScheduler().runTaskLater(plugin, new Runnable() {
-                     @Override
-                     public void run() {
-                         if (player.isOnline()) {
-                             plugin.getLogger().info("[JOIN-DEBUG] 🚀 Executando putPlayerInLimbo para: " + playerName);
-                             plugin.getLimboManager().putPlayerInLimbo(player);
-                             plugin.getLogger().info("[JOIN-DEBUG] ✅ Jogador colocado em limbo: " + playerName);
-                         } else {
-                             plugin.getLogger().warning("[JOIN-DEBUG] ⚠️ Jogador offline durante colocação em limbo: " + playerName);
-                         }
-                     }
-                 }, 20L); // 1 segundo de delay
-             } else {
-                 // Jogador verificado e ativo - log de entrada
-                 plugin.getLogger().info("[JOIN-DEBUG] ✅ " + playerName + " entrou no servidor (verificado e ativo)");
-             }
-             
-             // Verificar se está em PENDING_RELINK e enviar mensagens persistentes
-             if (isPlayerPendingRelink(playerName)) {
-                 plugin.getLogger().info("[PENDING-RELINK] Iniciando mensagens persistentes para: " + playerName);
-                 startPendingRelinkReminders(player);
-             }
+        try {
+            plugin.getLogger().info("[JOIN-DEBUG] 🔍 Verificando se precisa de verificação para: " + playerName);
+            
+            // CORREÇÃO CRÍTICA: Usar UUID canônico do Core (mesmo do AsyncPlayerPreLoginEvent)
+            final UUID canonicalUuid = UUIDUtils.offlineUUIDFromName(playerName);
+            plugin.getLogger().info("[JOIN-DEBUG] 🔄 UUID do jogador: " + playerUuid);
+            plugin.getLogger().info("[JOIN-DEBUG] 🔄 UUID canônico: " + canonicalUuid);
+            
+            // CORREÇÃO ARQUITETURAL: Verificar assinatura ativa PRIMEIRO (evita loop infinito)
+            PlayerProfile profile = PrimeLeagueAPI.getDataManager().loadOfflinePlayerProfile(playerName);
+            if (profile != null && profile.hasActiveAccess()) {
+                plugin.getLogger().info("[JOIN-DEBUG] ✅ Jogador com assinatura ativa: " + playerName + " - bypass de limbo");
+                plugin.getLogger().info("[JOIN-DEBUG] ✅ " + playerName + " entrou no servidor (assinatura ativa)");
+                
+                // Verificar se está em PENDING_RELINK e enviar mensagens persistentes
+                if (isPlayerPendingRelink(playerName)) {
+                    plugin.getLogger().info("[PENDING-RELINK] Iniciando mensagens persistentes para: " + playerName);
+                    startPendingRelinkReminders(player);
+                }
+                return; // Pula toda a lógica de limbo para jogadores com assinatura ativa
+            }
+            
+            // Se não tem assinatura ativa, verificar se o jogador tem registro pendente (não verificado)
+            boolean hasPendingVerification = hasPendingVerification(canonicalUuid);
+            
+            plugin.getLogger().info("[JOIN-DEBUG] 📊 Resultado da verificação: " + (hasPendingVerification ? "PENDENTE" : "VERIFICADO/ATIVO"));
+            
+            if (hasPendingVerification) {
+                // Jogador tem registro pendente - colocar em limbo para verificação
+                plugin.getLogger().info("[JOIN-DEBUG] ⏳ Jogador com verificação pendente: " + playerName + " - colocando em limbo");
+                
+                // Delay para garantir que o jogador carregou completamente
+                plugin.getServer().getScheduler().runTaskLater(plugin, new Runnable() {
+                    @Override
+                    public void run() {
+                        if (player.isOnline()) {
+                            plugin.getLogger().info("[JOIN-DEBUG] 🚀 Executando putPlayerInLimbo para: " + playerName);
+                            plugin.getLimboManager().putPlayerInLimbo(player);
+                            plugin.getLogger().info("[JOIN-DEBUG] ✅ Jogador colocado em limbo: " + playerName);
+                        } else {
+                            plugin.getLogger().warning("[JOIN-DEBUG] ⚠️ Jogador offline durante colocação em limbo: " + playerName);
+                        }
+                    }
+                }, 20L); // 1 segundo de delay
+            } else {
+                // Jogador verificado e ativo - log de entrada
+                plugin.getLogger().info("[JOIN-DEBUG] ✅ " + playerName + " entrou no servidor (verificado e ativo)");
+            }
+            
+            // Verificar se está em PENDING_RELINK e enviar mensagens persistentes
+            if (isPlayerPendingRelink(playerName)) {
+                plugin.getLogger().info("[PENDING-RELINK] Iniciando mensagens persistentes para: " + playerName);
+                startPendingRelinkReminders(player);
+            }
             
         } catch (Exception e) {
             plugin.getLogger().severe("[JOIN-DEBUG] ❌ Erro ao processar entrada de " + playerName + ": " + e.getMessage());
@@ -819,10 +833,10 @@ public final class AuthenticationListener implements Listener {
                  return false;
              }
              
-             // Query para verificar se tem registro mas não está verificado
-             String sql = "SELECT COUNT(*) FROM discord_links dl JOIN player_data pd ON dl.player_id = pd.player_id WHERE pd.uuid = ? AND dl.verified = FALSE";
-             ps = conn.prepareStatement(sql);
-             ps.setString(1, playerUuid.toString());
+                         // Query para verificar se tem registro mas não está verificado
+            String sql = "SELECT COUNT(*) FROM discord_links dl JOIN player_data pd ON dl.player_id = pd.player_id WHERE pd.uuid = ? AND dl.verified = FALSE";
+            ps = conn.prepareStatement(sql);
+            ps.setString(1, playerUuid.toString());
              
              rs = ps.executeQuery();
              if (rs.next()) {

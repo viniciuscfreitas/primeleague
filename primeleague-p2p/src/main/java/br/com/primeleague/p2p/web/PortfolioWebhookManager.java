@@ -278,11 +278,10 @@ public final class PortfolioWebhookManager {
             if (conn == null) return;
 
             ps = conn.prepareStatement(
-                "INSERT INTO server_notifications (action_type, target_player, payload) VALUES (?, ?, ?)"
+                "INSERT INTO server_notifications (action_type, payload) VALUES (?, ?)"
             );
-            ps.setString(1, type);
-            ps.setString(2, null); // target_player não aplicável para este tipo
-            ps.setString(3, data);
+                            ps.setString(1, type);
+                ps.setString(2, data);
             ps.executeUpdate();
 
         } catch (Exception e) {

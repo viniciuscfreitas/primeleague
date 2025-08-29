@@ -11,11 +11,6 @@
 # Forums: http://www.spigotmc.org/forum/
 
 config-version: 1
-commands:
-  tab-complete: true
-  spam-exclusions:
-  - /skill
-  log: true
 listeners:
 - port: default
   host: default
@@ -24,13 +19,18 @@ settings:
   netty-threads: 3
   log-filters:
   - ^(.*)(/login)(.*)$
-  bungeecord-addresses:
-  - 127.0.0.1
-  bungeecord: true
   prevent-proxies: false
   timeout-time: 60
   restart-on-crash: true
   restart-script: ./start.sh
+  bungeecord-addresses:
+  - 127.0.0.1
+  bungeecord: true
+commands:
+  tab-complete: true
+  log: true
+  spam-exclusions:
+  - /skill
 messages:
   whitelist: You are not whitelisted on this server!
   unknown-command: Unknown command. Type "help" for help.
@@ -38,6 +38,24 @@ messages:
 world-settings:
   default:
     verbose: true
+    merge-radius:
+      exp: 3.0
+      item: 2.5
+    chunks-per-tick: 650
+    view-distance: 10
+    growth:
+      cactus-modifier: 100
+      cane-modifier: 100
+      melon-modifier: 100
+      mushroom-modifier: 100
+      pumpkin-modifier: 100
+      sapling-modifier: 100
+      wheat-modifier: 100
+    entity-activation-range:
+      animals: 32
+      monsters: 32
+      misc: 16
+    mob-spawn-range: 4
     anti-xray:
       enabled: true
       engine-mode: 1
@@ -57,19 +75,7 @@ world-settings:
       - 82
       - 129
       - 130
-    entity-activation-range:
-      animals: 32
-      monsters: 32
-      misc: 16
-    mob-spawn-range: 4
-    growth:
-      cactus-modifier: 100
-      cane-modifier: 100
-      melon-modifier: 100
-      mushroom-modifier: 100
-      pumpkin-modifier: 100
-      sapling-modifier: 100
-      wheat-modifier: 100
+    random-light-updates: false
     entity-tracking-range:
       players: 48
       animals: 48
@@ -79,9 +85,3 @@ world-settings:
     ticks-per:
       hopper-check: 8
       hopper-transfer: 8
-    random-light-updates: false
-    view-distance: 10
-    chunks-per-tick: 650
-    merge-radius:
-      exp: 3.0
-      item: 2.5

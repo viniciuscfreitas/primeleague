@@ -448,7 +448,7 @@ public class VerifyCommand implements CommandExecutor {
             Connection connection = PrimeLeagueAPI.getDataManager().getConnection();
             
             // Criar notificação para o Discord
-            String sql = "INSERT INTO server_notifications (action_type, target_player, payload) VALUES (?, ?, ?)";
+            String sql = "INSERT INTO server_notifications (action_type, payload) VALUES (?, ?)";
             
             Map<String, Object> payload = new HashMap<>();
             payload.put("player_name", playerName);
@@ -457,8 +457,7 @@ public class VerifyCommand implements CommandExecutor {
             
             PreparedStatement stmt = connection.prepareStatement(sql);
             stmt.setString(1, "DISCORD_VERIFY_SUCCESS");
-            stmt.setString(2, playerName);
-            stmt.setString(3, new com.google.gson.Gson().toJson(payload));
+            stmt.setString(2, new com.google.gson.Gson().toJson(payload));
             
             stmt.executeUpdate();
             

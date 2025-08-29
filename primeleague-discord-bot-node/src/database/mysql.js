@@ -26,7 +26,7 @@ async function getPlayerByNickname(nickname) {
             `SELECT pd.player_id, pd.name, pd.elo, pd.money,
              dl.discord_id, dl.verified
              FROM player_data pd
-             LEFT JOIN discord_links dl ON pd.uuid = dl.player_uuid
+             LEFT JOIN discord_links dl ON pd.player_id = dl.player_id
              WHERE pd.name = ?`,
             [nickname]
         );
@@ -53,19 +53,9 @@ async function getDiscordLink(discordId) {
 
 async function getDiscordLinkByPlayerId(playerId) {
     try {
-        // Primeiro buscar o UUID do player
-        const [playerRows] = await pool.execute(
-            'SELECT uuid FROM player_data WHERE player_id = ?',
-            [playerId]
-        );
-        
-        if (playerRows.length === 0) {
-            return null;
-        }
-        
         const [rows] = await pool.execute(
-            'SELECT discord_id, verified, verification_code, code_expires_at FROM discord_links WHERE player_uuid = ?',
-            [playerRows[0].uuid]
+            'SELECT discord_id, verified, verification_code, code_expires_at FROM discord_links WHERE player_id = ?',
+            [playerId]
         );
         return rows[0];
     } catch (error) {
@@ -82,7 +72,17 @@ async function createDiscordLink(discordId, playerId, verifyCode = null) {
             [discordId, 'BASIC']
         );
         
-        // 2. Buscar o UUID do player
+        // 2. Verificar se já existe um vínculo para este player_id
+        const [existingRows] = await pool.execute(
+            'SELECT link_id FROM discord_links WHERE player_id = ?',
+            [playerId]
+        );
+        
+        if (existingRows.length > 0) {
+            return false;
+        }
+        
+        // 3. Buscar o UUID do player para compatibilidade
         const [playerRows] = await pool.execute(
             'SELECT uuid FROM player_data WHERE player_id = ?',
             [playerId]
@@ -92,21 +92,11 @@ async function createDiscordLink(discordId, playerId, verifyCode = null) {
             return false;
         }
         
-        // 3. Verificar se já existe um vínculo para este player_uuid
-        const [existingRows] = await pool.execute(
-            'SELECT link_id FROM discord_links WHERE player_uuid = ?',
-            [playerRows[0].uuid]
-        );
-        
-        if (existingRows.length > 0) {
-            return false;
-        }
-        
         const codeExpiresAt = verifyCode ? new Date(Date.now() + 5 * 60 * 1000) : null; // 5 minutos
         const [result] = await pool.execute(
-            `INSERT INTO discord_links (discord_id, player_uuid, verified, verification_code, code_expires_at)
-             VALUES (?, ?, ?, ?, ?)`,
-            [discordId, playerRows[0].uuid, false, verifyCode, codeExpiresAt]
+            `INSERT INTO discord_links (discord_id, player_id, player_uuid, verified, verification_code, code_expires_at)
+             VALUES (?, ?, ?, ?, ?, ?)`,
+            [discordId, playerId, playerRows[0].uuid, false, verifyCode, codeExpiresAt]
         );
         return result.affectedRows > 0;
     } catch (error) {
@@ -120,7 +110,7 @@ async function getPlayerAccountInfo(discordId) {
         const [rows] = await pool.execute(
             `SELECT pd.player_id, pd.name, pd.elo, pd.money
              FROM discord_links dl
-             JOIN player_data pd ON dl.player_uuid = pd.uuid
+             JOIN player_data pd ON dl.player_id = pd.player_id
              WHERE dl.discord_id = ? AND dl.verified = TRUE`,
             [discordId]
         );
@@ -137,18 +127,8 @@ async function getVerificationStatus(discordId, playerId = null) {
         
         if (playerId) {
             // Buscar por discord_id E player_id específico
-            // Primeiro buscar o UUID do player
-            const [playerRows] = await pool.execute(
-                'SELECT uuid FROM player_data WHERE player_id = ?',
-                [playerId]
-            );
-            
-            if (playerRows.length === 0) {
-                return null;
-            }
-            
-            sql = 'SELECT verified, verification_code, code_expires_at FROM discord_links WHERE discord_id = ? AND player_uuid = ?';
-            params = [discordId, playerRows[0].uuid];
+            sql = 'SELECT verified, verification_code, code_expires_at FROM discord_links WHERE discord_id = ? AND player_id = ?';
+            params = [discordId, playerId];
         } else {
             // Buscar por discord_id (comportamento original)
             sql = 'SELECT verified, verification_code, code_expires_at FROM discord_links WHERE discord_id = ?';
@@ -167,7 +147,7 @@ async function verifyDiscordLink(playerName, verifyCode) {
     try {
         const [result] = await pool.execute(
             `UPDATE discord_links dl
-             JOIN player_data pd ON dl.player_uuid = pd.uuid
+             JOIN player_data pd ON dl.player_id = pd.player_id
              SET dl.verified = TRUE, dl.verification_code = NULL, dl.code_expires_at = NULL, dl.verified_at = NOW()
              WHERE pd.name = ? AND dl.verification_code = ? AND dl.code_expires_at > NOW()`,
             [playerName, verifyCode]
