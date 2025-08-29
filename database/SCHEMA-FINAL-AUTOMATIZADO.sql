@@ -67,7 +67,7 @@ CREATE TABLE `discord_users` (
 CREATE TABLE `discord_links` (
   `link_id` INT NOT NULL AUTO_INCREMENT,
   `discord_id` VARCHAR(20) NOT NULL,
-  `player_uuid` CHAR(36) NOT NULL,
+  `player_id` INT NOT NULL,
   `is_primary` TINYINT(1) NOT NULL DEFAULT 0,
   `verified` TINYINT(1) NOT NULL DEFAULT 0,
   `verification_code` VARCHAR(8) NULL DEFAULT NULL,
@@ -75,12 +75,12 @@ CREATE TABLE `discord_links` (
   `verified_at` TIMESTAMP NULL DEFAULT NULL,
   `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`link_id`),
-  UNIQUE KEY `uk_player_uuid` (`player_uuid`),
+  UNIQUE KEY `uk_player_id` (`player_id`),
   KEY `idx_discord_id` (`discord_id`),
   KEY `idx_verified` (`verified`),
   KEY `idx_verification_code` (`verification_code`),
   CONSTRAINT `fk_discord_links_player` 
-    FOREIGN KEY (`player_uuid`) REFERENCES `player_data` (`uuid`) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (`player_id`) REFERENCES `player_data` (`player_id`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `fk_discord_links_user` 
     FOREIGN KEY (`discord_id`) REFERENCES `discord_users` (`discord_id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -441,7 +441,7 @@ BEGIN
         -- Verificar código de verificação (CORRIGIDO: usar player_id)
         SELECT dl.discord_id INTO v_discord_id
         FROM discord_links dl
-        JOIN player_data pd ON dl.player_uuid = pd.uuid
+        JOIN player_data pd ON dl.player_id = pd.player_id
         WHERE pd.name = p_player_name 
         AND dl.verification_code = p_verification_code
         AND dl.code_expires_at > NOW()
@@ -597,7 +597,7 @@ SELECT
         ELSE 'EXPIRED'
     END as subscription_status
 FROM player_data pd
-LEFT JOIN discord_links dl ON pd.uuid = dl.player_uuid
+LEFT JOIN discord_links dl ON pd.player_id = dl.player_id
 LEFT JOIN discord_users du ON dl.discord_id = du.discord_id
 WHERE dl.verified = 1;
 
