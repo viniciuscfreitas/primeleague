@@ -14,100 +14,177 @@ items:
       - "§7Kit completo para PvP"
       - "§7Inclui armadura e armas"
     kit_items:
-      - material: "DIAMOND_SWORD"
+      - id: "pvp_sword"
+        name: "§cEspada de Diamante"
+        description: "Espada poderosa para PvP"
+        material: "DIAMOND_SWORD"
+        price: 0.0
         enchantments:
           DAMAGE_ALL: 3
           DURABILITY: 2
-      - material: "DIAMOND_HELMET"
+      - id: "pvp_helmet"
+        name: "§cCapacete de Diamante"
+        description: "Proteção de cabeça"
+        material: "DIAMOND_HELMET"
+        price: 0.0
         enchantments:
           PROTECTION_ENVIRONMENTAL: 3
           DURABILITY: 2
-      - material: "DIAMOND_CHESTPLATE"
+      - id: "pvp_chestplate"
+        name: "§cPeitoral de Diamante"
+        description: "Proteção de corpo"
+        material: "DIAMOND_CHESTPLATE"
+        price: 0.0
         enchantments:
           PROTECTION_ENVIRONMENTAL: 3
           DURABILITY: 2
-      - material: "DIAMOND_LEGGINGS"
+      - id: "pvp_leggings"
+        name: "§cCalças de Diamante"
+        description: "Proteção de pernas"
+        material: "DIAMOND_LEGGINGS"
+        price: 0.0
         enchantments:
           PROTECTION_ENVIRONMENTAL: 3
           DURABILITY: 2
-      - material: "DIAMOND_BOOTS"
+      - id: "pvp_boots"
+        name: "§cBotas de Diamante"
+        description: "Proteção de pés"
+        material: "DIAMOND_BOOTS"
+        price: 0.0
         enchantments:
           PROTECTION_ENVIRONMENTAL: 3
           DURABILITY: 2
-      - material: "GOLDEN_APPLE"
+      - id: "pvp_golden_apple"
+        name: "§6Maçã Dourada"
+        description: "Cura instantânea"
+        material: "GOLDEN_APPLE"
+        price: 0.0
         amount: 16
-      - material: "POTION"
+      - id: "pvp_potion"
+        name: "§bPoção de Cura"
+        description: "Poção de cura"
+        material: "POTION"
+        price: 0.0
         amount: 8
         potion_effects:
           HEAL: 1:1
           
   - id: "mining_kit"
-    name: "§6Kit de Mineracao"
-    description: "Ferramentas para mineracao eficiente"
+    name: "§6Kit de Mineração"
+    description: "Ferramentas para mineração eficiente"
     material: "DIAMOND_PICKAXE"
     price: 8000.0
     lore:
-      - "§7Kit para mineracao"
+      - "§7Kit para mineração"
       - "§7Inclui picaretas e tochas"
     kit_items:
-      - material: "DIAMOND_PICKAXE"
+      - id: "mining_pickaxe"
+        name: "§6Picareta de Diamante"
+        description: "Picareta eficiente"
+        material: "DIAMOND_PICKAXE"
+        price: 0.0
         enchantments:
           DIG_SPEED: 3
           DURABILITY: 2
-      - material: "DIAMOND_SHOVEL"
+      - id: "mining_shovel"
+        name: "§6Pá de Diamante"
+        description: "Pá eficiente"
+        material: "DIAMOND_SHOVEL"
+        price: 0.0
         enchantments:
           DIG_SPEED: 3
           DURABILITY: 2
-      - material: "TORCH"
+      - id: "mining_torch"
+        name: "§eTocha"
+        description: "Iluminação"
+        material: "TORCH"
+        price: 0.0
         amount: 64
-      - material: "COOKED_BEEF"
+      - id: "mining_food"
+        name: "§aCarne Cozida"
+        description: "Comida"
+        material: "COOKED_BEEF"
+        price: 0.0
         amount: 32
         
   - id: "builder_kit"
     name: "§eKit de Construtor"
-    description: "Ferramentas para construcao"
+    description: "Ferramentas para construção"
     material: "DIAMOND_AXE"
     price: 6000.0
     lore:
-      - "§7Kit para construcao"
+      - "§7Kit para construção"
       - "§7Inclui ferramentas e blocos"
     kit_items:
-      - material: "DIAMOND_AXE"
+      - id: "builder_axe"
+        name: "§eMachado de Diamante"
+        description: "Machado para construção"
+        material: "DIAMOND_AXE"
+        price: 0.0
         enchantments:
           DIG_SPEED: 3
           DURABILITY: 2
-      - material: "DIAMOND_SHOVEL"
+      - id: "builder_shovel"
+        name: "§ePá de Diamante"
+        description: "Pá para construção"
+        material: "DIAMOND_SHOVEL"
+        price: 0.0
         enchantments:
           DIG_SPEED: 3
           DURABILITY: 2
-      - material: "STONE"
+      - id: "builder_stone"
+        name: "§7Pedra"
+        description: "Bloco de pedra"
+        material: "STONE"
+        price: 0.0
         amount: 64
-      - material: "WOOD"
+      - id: "builder_wood"
+        name: "§6Madeira"
+        description: "Bloco de madeira"
+        material: "WOOD"
+        price: 0.0
         amount: 64
-      - material: "GLASS"
+      - id: "builder_glass"
+        name: "§bVidro"
+        description: "Bloco de vidro"
+        material: "GLASS"
+        price: 0.0
         amount: 32
         
   - id: "survival_kit"
-    name: "§aKit de Sobrevivencia"
-    description: "Itens essenciais para sobrevivencia"
+    name: "§aKit de Sobrevivência"
+    description: "Itens essenciais para sobrevivência"
     material: "IRON_SWORD"
     price: 3000.0
     lore:
-      - "§7Kit basico de sobrevivencia"
+      - "§7Kit básico de sobrevivência"
       - "§7Inclui armas e comida"
     kit_items:
-      - material: "IRON_SWORD"
+      - id: "survival_sword"
+        name: "§fEspada de Ferro"
+        description: "Espada básica"
+        material: "IRON_SWORD"
+        price: 0.0
         enchantments:
+          DAMAGE_ALL: 1
           DURABILITY: 1
-      - material: "IRON_PICKAXE"
+      - id: "survival_pickaxe"
+        name: "§fPicareta de Ferro"
+        description: "Picareta básica"
+        material: "IRON_PICKAXE"
+        price: 0.0
         enchantments:
+          DIG_SPEED: 1
           DURABILITY: 1
-      - material: "IRON_AXE"
-        enchantments:
-          DURABILITY: 1
-      - material: "COOKED_BEEF"
+      - id: "survival_food"
+        name: "§aCarne Cozida"
+        description: "Comida básica"
+        material: "COOKED_BEEF"
+        price: 0.0
         amount: 16
-      - material: "TORCH"
+      - id: "survival_torch"
+        name: "§eTocha"
+        description: "Iluminação básica"
+        material: "TORCH"
+        price: 0.0
         amount: 32
-      - material: "BREAD"
-        amount: 16
