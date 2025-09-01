@@ -47,6 +47,13 @@
             <version>5.1.49</version>
         </dependency>
 
+        <!-- SLF4J API - Interface necessária para HikariCP -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>1.7.25</version>
+        </dependency>
+
         <!-- SLF4J NOP - Remove avisos de logging -->
         <dependency>
             <groupId>org.slf4j</groupId>
@@ -97,7 +104,7 @@
                             <artifactSet>
                                 <includes>
                                     <include>br.com.primeleague:primeleague-api</include>
-                                    <include>com.zaxxer:HikariCP</include>
+                                    <include>com.zaxxer:HikariCP-java7</include>
                                     <include>org.slf4j:slf4j-api</include>
                                     <include>mysql:mysql-connector-java</include>
                                     <include>org.slf4j:slf4j-nop</include>
