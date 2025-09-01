@@ -29,6 +29,7 @@ public final class ProfileListener implements Listener {
      * Carrega perfil do jogador ANTES da entrada no servidor.
      * EventPriority.LOWEST garante que executa primeiro que outros plugins.
      * CORREÇÃO DEFINITIVA: Injeção de UUID canônico no processo de login.
+     * REFATORADO: Operações assíncronas para evitar bloqueio da thread principal.
      */
     @EventHandler(priority = EventPriority.LOWEST)
     public void onPlayerPreLogin(AsyncPlayerPreLoginEvent event) {
@@ -60,11 +61,8 @@ public final class ProfileListener implements Listener {
         // PASSO 3: Executar o padrão de "Loading State" com o UUID canônico.
         dataManager.startLoading(canonicalUuid);
         
-        try {
-            // REFATORADO: Só carregar perfil se existir, NÃO criar automaticamente
-            // A criação será feita apenas via comando /registrar no Discord
-            PlayerProfile profile = dataManager.loadPlayerProfile(canonicalUuid);
-            
+        // REFATORADO: Carregamento assíncrono para evitar bloqueio da thread principal
+        dataManager.loadPlayerProfileAsync(canonicalUuid, (profile) -> {
             if (profile == null) {
                 // Perfil não existe - não criar automaticamente
                 // O AuthenticationListener decidirá se deve kickar ou não
@@ -73,51 +71,62 @@ public final class ProfileListener implements Listener {
                 // Perfil existe - carregar normalmente
                 plugin.getLogger().info("[PROFILE-LISTENER] Perfil carregado para " + playerName);
             }
-        } finally {
+            
+            // Finalizar loading state
             dataManager.finishLoading(canonicalUuid);
-        }
+        });
     }
 
-        @EventHandler(priority = EventPriority.LOWEST)
+    @EventHandler(priority = EventPriority.LOWEST)
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
         String name = player.getName();
 
-        // OBTER PLAYER_ID DO IDENTITY MANAGER (UMA ÚNICA VEZ)
-        Integer playerId = null;
-        try {
-            playerId = PrimeLeagueAPI.getIdentityManager().getPlayerId(player);
+        // REFATORADO: CACHEAMENTO PREDITIVO - Carregar player_id de forma assíncrona
+        PrimeLeagueAPI.getIdentityManager().getPlayerIdAsync(player, (playerId) -> {
+            // HARDENING: Verificar se o player ainda está online
+            if (!player.isOnline()) {
+                return; // Player não está mais online, abortar callback
+            }
             
-            // REGISTRAR JOGADOR NO SISTEMA DE IDENTIDADE
+            if (playerId == null) {
+                // Jogador não encontrado no banco - erro crítico
+                player.kickPlayer("§cErro de identidade. Entre em contato com a administração.");
+                return;
+            }
+            
+            // REGISTRAR JOGADOR NO SISTEMA DE IDENTIDADE (popula o cache)
             PrimeLeagueAPI.getIdentityManager().registerPlayer(player, playerId);
             
-        } catch (IllegalStateException e) {
-            // Jogador não encontrado no banco - erro crítico
-            player.kickPlayer("§cErro de identidade. Entre em contato com a administração.");
-            return;
-        }
+            // Verificar se perfil já está no cache
+            PlayerProfile existingProfile = dataManager.getPlayerProfileByName(name);
+            if (existingProfile == null) {
+                // Fallback - carregar se não estiver no cache de forma assíncrona
+                UUID canonicalUuid = UUIDUtils.offlineUUIDFromName(name);
+                dataManager.loadPlayerProfileWithCreationAsync(canonicalUuid, name, (profile) -> {
+                    if (profile != null) {
+                        plugin.getLogger().info("[PROFILE-LISTENER] Perfil carregado assincronamente para " + name);
+                    }
+                });
+            }
 
-        // Verificar se perfil já está no cache
-        PlayerProfile existingProfile = dataManager.getPlayerProfileByName(name);
-        if (existingProfile == null) {
-            // Fallback - carregar se não estiver no cache
-            UUID canonicalUuid = UUIDUtils.offlineUUIDFromName(name);
-            dataManager.loadPlayerProfileWithCreation(canonicalUuid, name);
-        }
-
-        // 🔗 CRIAÇÃO DO MAPEAMENTO DE UUID PARA O CHAT LOG
-        // Obter UUID do Bukkit e UUID canônico do banco
-        UUID bukkitUuid = player.getUniqueId();
-        UUID canonicalUuid = existingProfile != null ? existingProfile.getUuid() : UUIDUtils.offlineUUIDFromName(name);
-        
-        // Criar mapeamento no DataManager para o tradutor de identidade
-        dataManager.addUuidMapping(bukkitUuid, canonicalUuid);
-        
-        // 🔥 CACHE WARMING - ECONOMIA
-        // Carregar saldo do jogador no cache para operações instantâneas
-        if (playerId != null) {
+            // 🔗 CRIAÇÃO DO MAPEAMENTO DE UUID PARA O CHAT LOG
+            // Obter UUID do Bukkit e UUID canônico do banco
+            UUID bukkitUuid = player.getUniqueId();
+            UUID canonicalUuid = existingProfile != null ? existingProfile.getUuid() : UUIDUtils.offlineUUIDFromName(name);
+            
+            // Criar mapeamento no DataManager para o tradutor de identidade
+            dataManager.addUuidMapping(bukkitUuid, canonicalUuid);
+            
+            // 🔥 CACHE WARMING - ECONOMIA
+            // Carregar saldo do jogador no cache para operações instantâneas
             try {
-                PrimeLeagueAPI.getEconomyManager().getBalance(playerId);
+                // REFATORADO: Usar método assíncrono para evitar bloqueio da thread principal
+                PrimeLeagueAPI.getEconomyManager().getBalanceAsync(playerId, (balance) -> {
+                    if (balance != null) {
+                        dataManager.getPlugin().getLogger().info("💰 [CACHE-WARMING] Saldo carregado no cache para " + name + ": $" + balance);
+                    }
+                });
                 // Log de debug (opcional)
                 // player.sendMessage("§a💰 Saldo carregado no cache: $" + PrimeLeagueAPI.getEconomyManager().getBalance(playerId));
             } catch (Exception e) {
@@ -126,9 +135,9 @@ public final class ProfileListener implements Listener {
                 dataManager.getPlugin().getLogger().log(java.util.logging.Level.WARNING, 
                     "⚠️ [CACHE-WARMING] Falha ao carregar saldo no cache para " + name + " (player_id: " + playerId + ")", e);
             }
-        }
-        
-        dataManager.getPlugin().getLogger().info("🔗 [PROFILE-LISTENER] Mapeamento criado para " + name + ": " + bukkitUuid + " → " + canonicalUuid);
+            
+            dataManager.getPlugin().getLogger().info("🔗 [PROFILE-LISTENER] Mapeamento criado para " + name + ": " + bukkitUuid + " → " + canonicalUuid);
+        });
     }
 
         @EventHandler(priority = EventPriority.NORMAL)

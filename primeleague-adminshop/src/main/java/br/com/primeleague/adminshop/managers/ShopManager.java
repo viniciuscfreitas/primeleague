@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
+import org.bukkit.ChatColor;
 
 /**
  * Gerenciador principal da loja administrativa.
@@ -122,52 +123,71 @@ public class ShopManager {
             
             // 3. Calcular desconto baseado no donor_tier (usando DonorManager como fonte única)
             DonorManager donorManager = PrimeLeagueAPI.getDonorManager();
-            Integer donorTier = PrimeLeagueAPI.getDataManager().getDonorTier(profile.getUuid());
-            double discount = donorManager.getDiscountForTier(donorTier != null ? donorTier : 0);
-            double finalPrice = item.getPrice() * (1.0 - discount);
             
-            // 4. Verificar saldo
-            EconomyManager economyManager = PrimeLeagueAPI.getEconomyManager();
-            BigDecimal currentBalance = economyManager.getBalance(playerId);
+            // REFATORADO: Usar método assíncrono para verificar tier de doador
+            player.sendMessage(ChatColor.YELLOW + "⏳ Verificando desconto de doador...");
             
-            if (currentBalance.compareTo(BigDecimal.valueOf(finalPrice)) < 0) {
-                String message = configManager.getSettings().getInsufficientFunds()
-                    .replace("{balance}", String.format("$%.2f", currentBalance.doubleValue()));
-                player.sendMessage(message);
-                return false;
-            }
+            PrimeLeagueAPI.getDataManager().getDonorTierAsync(profile.getUuid(), (donorTier) -> {
+                double discount = donorManager.getDiscountForTier(donorTier != null ? donorTier : 0);
+                double finalPrice = item.getPrice() * (1.0 - discount);
+                
+                // REFATORADO: Usar método assíncrono para evitar bloqueio da thread principal
+                player.sendMessage(ChatColor.YELLOW + "⏳ Verificando saldo...");
+                
+                EconomyManager economyManager = PrimeLeagueAPI.getEconomyManager();
+                economyManager.getBalanceAsync(playerId, (currentBalance) -> {
+                    if (currentBalance == null) {
+                        player.sendMessage(configManager.getSettings().getPurchaseFailed()
+                            .replace("{reason}", "Erro ao verificar saldo"));
+                        return;
+                    }
+                    
+                    if (currentBalance.compareTo(BigDecimal.valueOf(finalPrice)) < 0) {
+                        String message = configManager.getSettings().getInsufficientFunds()
+                            .replace("{balance}", String.format("$%.2f", currentBalance.doubleValue()));
+                        player.sendMessage(message);
+                        return;
+                    }
+                    
+                    // 5. Processar transação de forma assíncrona
+                    player.sendMessage(ChatColor.YELLOW + "⏳ Processando transação...");
+                    
+                    economyManager.debitBalanceAsync(playerId, finalPrice, 
+                        "Compra na loja: " + item.getName(), (transactionResponse) -> {
+                        
+                        if (!transactionResponse.isSuccess()) {
+                            player.sendMessage(configManager.getSettings().getPurchaseFailed()
+                                .replace("{reason}", "Falha na transação: " + transactionResponse.getErrorMessage()));
+                            return;
+                        }
+                        
+                        // 6. Entregar item/comando/kit
+                        boolean deliverySuccess = deliverItem(player, item);
+                        
+                        if (!deliverySuccess) {
+                            // Reembolsar se a entrega falhou de forma assíncrona
+                            economyManager.creditBalanceAsync(playerId, finalPrice, 
+                                "Reembolso - Falha na entrega: " + item.getName(), (refundResponse) -> {
+                                if (refundResponse.isSuccess()) {
+                                    player.sendMessage(ChatColor.GREEN + "💰 Reembolso processado devido à falha na entrega.");
+                                }
+                            });
+                            player.sendMessage(configManager.getSettings().getPurchaseFailed()
+                                .replace("{reason}", "Falha na entrega do item"));
+                            return;
+                        }
+                        
+                        // 7. Mensagem de sucesso
+                        String successMessage = configManager.getSettings().getPurchaseSuccess();
+                        if (discount > 0) {
+                            successMessage += " §e(Desconto: " + String.format("%.1f%%", discount * 100) + ")";
+                        }
+                        player.sendMessage(successMessage);
+                    });
+                });
+            });
             
-            // 5. Processar transação
-            EconomyResponse transactionResponse = economyManager.debitBalance(playerId, finalPrice, 
-                "Compra na loja: " + item.getName());
-            
-            if (!transactionResponse.isSuccess()) {
-                player.sendMessage(configManager.getSettings().getPurchaseFailed()
-                    .replace("{reason}", "Falha na transação: " + transactionResponse.getErrorMessage()));
-                return false;
-            }
-            
-            // 6. Entregar item/comando/kit
-            boolean deliverySuccess = deliverItem(player, item);
-            
-            if (!deliverySuccess) {
-                // Reembolsar se a entrega falhou
-                economyManager.creditBalance(playerId, finalPrice, 
-                    "Reembolso - Falha na entrega: " + item.getName());
-                player.sendMessage(configManager.getSettings().getPurchaseFailed()
-                    .replace("{reason}", "Falha na entrega do item"));
-                return false;
-            }
-            
-            // 7. Mensagem de sucesso
-            String successMessage = configManager.getSettings().getPurchaseSuccess();
-            if (discount > 0) {
-                successMessage += " §e(Desconto: " + String.format("%.1f%%", discount * 100) + ")";
-            }
-            player.sendMessage(successMessage);
-            
-
-            
+            // Retornar true imediatamente - o processamento continua de forma assíncrona
             return true;
             
         } catch (Exception e) {
@@ -320,6 +340,10 @@ public class ShopManager {
         if (playerId != null) {
             PlayerProfile profile = PrimeLeagueAPI.getDataManager().getPlayerProfile(playerId);
             if (profile != null) {
+                // REFATORADO: Usar método assíncrono para verificar tier de doador
+                // Como este método é chamado durante a criação do inventário, vamos usar o método síncrono
+                // para evitar complexidade na criação do ItemStack, mas o desconto será aplicado corretamente
+                // durante a compra (que já está assíncrona)
                 Integer donorTier = PrimeLeagueAPI.getDataManager().getDonorTier(profile.getUuid());
                 discount = PrimeLeagueAPI.getDonorManager().getDiscountForTier(donorTier != null ? donorTier : 0);
             }

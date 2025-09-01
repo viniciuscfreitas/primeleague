@@ -236,6 +236,23 @@ public class MySqlClanDAO implements ClanDAO {
         }
     }
 
+    /**
+     * Cria um clã de forma ASSÍNCRONA com integridade transacional.
+     * 
+     * @param clanDTO Dados do clã a ser criado
+     * @param callback Callback para receber o resultado
+     */
+    public void createClanAsync(ClanDTO clanDTO, java.util.function.Consumer<ClanDTO> callback) {
+        core.getServer().getScheduler().runTaskAsynchronously(core, () -> {
+            ClanDTO result = createClan(clanDTO);
+            
+            // Retornar para a thread principal
+            core.getServer().getScheduler().runTask(core, () -> {
+                callback.accept(result);
+            });
+        });
+    }
+
     @Override
     public void deleteClan(ClanDTO clanDTO) {
         try (Connection conn = dataManager.getConnection();
@@ -291,6 +308,75 @@ public class MySqlClanDAO implements ClanDAO {
         } catch (SQLException e) {
             core.getLogger().severe("Erro ao salvar jogador de clã: " + e.getMessage());
         }
+    }
+
+    /**
+     * Salva ou atualiza um jogador de clã de forma ASSÍNCRONA.
+     * 
+     * @param clanPlayerDTO Dados do jogador de clã
+     * @param callback Callback para receber o resultado
+     */
+    public void saveOrUpdateClanPlayerAsync(ClanPlayerDTO clanPlayerDTO, java.util.function.Consumer<Boolean> callback) {
+        core.getServer().getScheduler().runTaskAsynchronously(core, () -> {
+            try {
+                // Verificar se o jogador existe na tabela player_data
+                try (Connection conn = dataManager.getConnection();
+                     PreparedStatement checkStmt = conn.prepareStatement("SELECT player_id FROM player_data WHERE player_id = ?")) {
+                    
+                    checkStmt.setInt(1, clanPlayerDTO.getPlayerId());
+                    try (ResultSet rs = checkStmt.executeQuery()) {
+                        if (!rs.next()) {
+                            core.getLogger().severe("ERRO: Jogador NÃO encontrado em player_data: " + clanPlayerDTO.getPlayerId());
+                            // Retornar para a thread principal
+                            core.getServer().getScheduler().runTask(core, () -> {
+                                callback.accept(false);
+                            });
+                            return;
+                        }
+                    }
+                }
+                
+                // Salvar ou atualizar o jogador de clã
+                try (Connection conn = dataManager.getConnection();
+                     PreparedStatement stmt = conn.prepareStatement(
+                         "INSERT INTO clan_players (player_id, clan_id, role, kills, deaths) " +
+                         "VALUES (?, ?, ?, ?, ?) " +
+                         "ON DUPLICATE KEY UPDATE " +
+                         "clan_id = VALUES(clan_id), " +
+                         "role = VALUES(role), " +
+                         "kills = VALUES(kills), " +
+                         "deaths = VALUES(deaths)")) {
+                    
+                    stmt.setInt(1, clanPlayerDTO.getPlayerId());
+                    stmt.setInt(2, clanPlayerDTO.getClanId());
+                    stmt.setInt(3, clanPlayerDTO.getRole());
+                    stmt.setInt(4, clanPlayerDTO.getKills());
+                    stmt.setInt(5, clanPlayerDTO.getDeaths());
+                    
+                    int affectedRows = stmt.executeUpdate();
+                    core.getLogger().info("Jogador de clã salvo no banco: " + clanPlayerDTO.getPlayerName());
+                    
+                    // Retornar para a thread principal
+                    core.getServer().getScheduler().runTask(core, () -> {
+                        callback.accept(true);
+                    });
+                    
+                } catch (SQLException e) {
+                    core.getLogger().severe("Erro ao salvar jogador de clã: " + e.getMessage());
+                    // Retornar para a thread principal
+                    core.getServer().getScheduler().runTask(core, () -> {
+                        callback.accept(false);
+                    });
+                }
+                
+            } catch (SQLException e) {
+                core.getLogger().severe("Erro ao verificar jogador em player_data: " + e.getMessage());
+                // Retornar para a thread principal
+                core.getServer().getScheduler().runTask(core, () -> {
+                    callback.accept(false);
+                });
+            }
+        });
     }
 
     @Override
@@ -374,6 +460,60 @@ public class MySqlClanDAO implements ClanDAO {
         }
     }
 
+    /**
+     * Salva uma relação de clã de forma ASSÍNCRONA.
+     * 
+     * @param relationDTO Dados da relação de clã
+     * @param callback Callback para receber o resultado
+     */
+    public void saveClanRelationAsync(ClanRelationDTO relationDTO, java.util.function.Consumer<Boolean> callback) {
+        core.getServer().getScheduler().runTaskAsynchronously(core, () -> {
+            try {
+                saveClanRelation(relationDTO);
+                
+                // Retornar para a thread principal
+                core.getServer().getScheduler().runTask(core, () -> {
+                    callback.accept(true);
+                });
+                
+            } catch (Exception e) {
+                core.getLogger().severe("Erro ao salvar relação de clã de forma assíncrona: " + e.getMessage());
+                
+                // Retornar para a thread principal
+                core.getServer().getScheduler().runTask(core, () -> {
+                    callback.accept(false);
+                });
+            }
+        });
+    }
+
+    /**
+     * Remove uma relação de clã de forma ASSÍNCRONA.
+     * 
+     * @param relationDTO Dados da relação de clã
+     * @param callback Callback para receber o resultado
+     */
+    public void deleteClanRelationAsync(ClanRelationDTO relationDTO, java.util.function.Consumer<Boolean> callback) {
+        core.getServer().getScheduler().runTaskAsynchronously(core, () -> {
+            try {
+                deleteClanRelation(relationDTO);
+                
+                // Retornar para a thread principal
+                core.getServer().getScheduler().runTask(core, () -> {
+                    callback.accept(true);
+                });
+                
+            } catch (Exception e) {
+                core.getLogger().severe("Erro ao deletar relação de clã de forma assíncrona: " + e.getMessage());
+                
+                // Retornar para a thread principal
+                core.getServer().getScheduler().runTask(core, () -> {
+                    callback.accept(false);
+                });
+            }
+        });
+    }
+
     @Override
     public boolean setFounder(ClanDTO clanDTO, int newFounderPlayerId, String newFounderName, int oldFounderPlayerId) {
         Connection conn = null;
@@ -449,6 +589,26 @@ public class MySqlClanDAO implements ClanDAO {
             }
         }
     }
+
+    /**
+     * Altera o fundador de um clã de forma ASSÍNCRONA com integridade transacional.
+     * 
+     * @param clanDTO Dados do clã
+     * @param newFounderPlayerId ID do novo fundador
+     * @param newFounderName Nome do novo fundador
+     * @param oldFounderPlayerId ID do fundador antigo
+     * @param callback Callback para receber o resultado
+     */
+    public void setFounderAsync(ClanDTO clanDTO, int newFounderPlayerId, String newFounderName, int oldFounderPlayerId, java.util.function.Consumer<Boolean> callback) {
+        core.getServer().getScheduler().runTaskAsynchronously(core, () -> {
+            boolean result = setFounder(clanDTO, newFounderPlayerId, newFounderName, oldFounderPlayerId);
+            
+            // Retornar para a thread principal
+            core.getServer().getScheduler().runTask(core, () -> {
+                callback.accept(result);
+            });
+        });
+    }
     
     @Override
     public void logAction(int clanId, int actorPlayerId, String actorName, LogActionType actionType, int targetPlayerId, String targetName, String details) {
@@ -470,6 +630,39 @@ public class MySqlClanDAO implements ClanDAO {
         } catch (SQLException e) {
             core.getLogger().severe("Erro ao registrar log de ação do clã: " + e.getMessage());
         }
+    }
+
+    /**
+     * Registra uma ação de clã de forma ASSÍNCRONA.
+     * 
+     * @param clanId ID do clã
+     * @param actorPlayerId ID do jogador que executou a ação
+     * @param actorName Nome do jogador que executou a ação
+     * @param actionType Tipo da ação
+     * @param targetPlayerId ID do jogador alvo da ação
+     * @param targetName Nome do jogador alvo da ação
+     * @param details Detalhes da ação
+     * @param callback Callback para receber o resultado
+     */
+    public void logActionAsync(int clanId, int actorPlayerId, String actorName, LogActionType actionType, int targetPlayerId, String targetName, String details, java.util.function.Consumer<Boolean> callback) {
+        core.getServer().getScheduler().runTaskAsynchronously(core, () -> {
+            try {
+                logAction(clanId, actorPlayerId, actorName, actionType, targetPlayerId, targetName, details);
+                
+                // Retornar para a thread principal
+                core.getServer().getScheduler().runTask(core, () -> {
+                    callback.accept(true);
+                });
+                
+            } catch (Exception e) {
+                core.getLogger().severe("Erro ao logar ação de clã de forma assíncrona: " + e.getMessage());
+                
+                // Retornar para a thread principal
+                core.getServer().getScheduler().runTask(core, () -> {
+                    callback.accept(false);
+                });
+            }
+        });
     }
     
     public List<ClanLogDTO> getClanLogs(int clanId, int limit) {

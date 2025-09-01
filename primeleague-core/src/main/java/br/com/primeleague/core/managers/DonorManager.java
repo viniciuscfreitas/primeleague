@@ -199,6 +199,23 @@ public final class DonorManager {
         
         return false;
     }
+
+    /**
+     * Atualiza o nível de doador de um jogador de forma ASSÍNCRONA.
+     * 
+     * @param playerUuid UUID do jogador
+     * @param levelKey Chave do nível
+     * @param totalDonation Total de doações
+     * @param callback Callback para receber o resultado
+     */
+    public void updateDonorLevelAsync(UUID playerUuid, String levelKey, double totalDonation, java.util.function.Consumer<Boolean> callback) {
+        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
+            boolean success = updateDonorLevel(playerUuid, levelKey, totalDonation);
+            plugin.getServer().getScheduler().runTask(plugin, () -> {
+                callback.accept(success);
+            });
+        });
+    }
     
     /**
      * Remove o status de doador de um jogador.
@@ -228,6 +245,21 @@ public final class DonorManager {
         }
         
         return false;
+    }
+
+    /**
+     * Remove o status de doador de um jogador de forma ASSÍNCRONA.
+     * 
+     * @param playerUuid UUID do jogador
+     * @param callback Callback para receber o resultado
+     */
+    public void removeDonorStatusAsync(UUID playerUuid, java.util.function.Consumer<Boolean> callback) {
+        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
+            boolean success = removeDonorStatus(playerUuid);
+            plugin.getServer().getScheduler().runTask(plugin, () -> {
+                callback.accept(success);
+            });
+        });
     }
     
     /**
@@ -259,6 +291,20 @@ public final class DonorManager {
         }
         
         return donors;
+    }
+
+    /**
+     * Obtém todos os doadores de forma ASSÍNCRONA.
+     * 
+     * @param callback Callback para receber a lista de doadores
+     */
+    public void getAllDonorsAsync(java.util.function.Consumer<List<DonorInfo>> callback) {
+        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
+            List<DonorInfo> donors = getAllDonors();
+            plugin.getServer().getScheduler().runTask(plugin, () -> {
+                callback.accept(donors);
+            });
+        });
     }
     
     /**

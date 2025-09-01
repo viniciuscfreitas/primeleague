@@ -100,17 +100,29 @@ public class MoneyCommand implements CommandExecutor {
                 return;
             }
 
-            // Obter saldo via EconomyManager
-            BigDecimal balance = PrimeLeagueAPI.getEconomyManager().getBalance(playerId);
+            // REFATORADO: Usar método assíncrono para evitar bloqueio da thread principal
+            sender.sendMessage(ChatColor.YELLOW + "⏳ Calculando saldo...");
             
-            // Exibir saldo formatado
-            String formattedBalance = EconomyUtils.formatMoney(balance);
-            
-            if (sender.getName().equals(playerName)) {
-                sender.sendMessage(ChatColor.GREEN + "💰 Seu saldo atual: " + ChatColor.GOLD + "$" + formattedBalance);
-            } else {
-                sender.sendMessage(ChatColor.GREEN + "💰 Saldo de " + ChatColor.YELLOW + playerName + ChatColor.GREEN + ": " + ChatColor.GOLD + "$" + formattedBalance);
-            }
+            PrimeLeagueAPI.getEconomyManager().getBalanceAsync(playerId, (balance) -> {
+                // HARDENING: Verificar se o sender ainda é válido antes de enviar mensagens
+                if (!(sender instanceof org.bukkit.entity.Player) || !((org.bukkit.entity.Player) sender).isOnline()) {
+                    return; // Sender não é mais válido, abortar callback
+                }
+                
+                if (balance == null) {
+                    sender.sendMessage(ChatColor.RED + "Erro ao buscar saldo do jogador.");
+                    return;
+                }
+                
+                // Exibir saldo formatado
+                String formattedBalance = EconomyUtils.formatMoney(balance);
+                
+                if (sender.getName().equals(playerName)) {
+                    sender.sendMessage(ChatColor.GREEN + "💰 Seu saldo atual: " + ChatColor.GOLD + "$" + formattedBalance);
+                } else {
+                    sender.sendMessage(ChatColor.GREEN + "💰 Saldo de " + ChatColor.YELLOW + playerName + ChatColor.GREEN + ": " + ChatColor.GOLD + "$" + formattedBalance);
+                }
+            });
 
         } catch (Exception e) {
             sender.sendMessage(ChatColor.RED + "Erro ao buscar saldo: " + e.getMessage());

@@ -51,16 +51,22 @@ public final class LoginListener implements Listener {
                         return;
                     }
 
-                    // Verificar se a assinatura está ativa
-                    // TODO: Implementar consulta SSOT via DataManager
-                    if (!PrimeLeagueAPI.getDataManager().hasActiveSubscription(player.getUniqueId())) {
-                        player.kickPlayer(getMessage("access_expired"));
-                        plugin.getLogger().info("Acesso negado para " + playerName + " - Assinatura expirada");
-                        return;
-                    }
+                    // REFATORADO: Usar método assíncrono para verificar assinatura ativa
+                    PrimeLeagueAPI.getDataManager().hasActiveSubscriptionAsync(player.getUniqueId(), (hasActive) -> {
+                        // HARDENING: Verificar se o player ainda está online antes de processar
+                        if (!player.isOnline()) {
+                            return; // Player não está mais online, abortar callback
+                        }
+                        
+                        if (!hasActive) {
+                            player.kickPlayer(getMessage("access_expired"));
+                            plugin.getLogger().info("Acesso negado para " + playerName + " - Assinatura expirada");
+                            return;
+                        }
 
-                    // Se chegou até aqui, a assinatura está ativa
-                    plugin.getLogger().info("Acesso permitido para " + playerName + " - Assinatura válida");
+                        // Se chegou até aqui, a assinatura está ativa
+                        plugin.getLogger().info("Acesso permitido para " + playerName + " - Assinatura válida");
+                    });
                 }
             }, 10L); // Aguardar 10 ticks (0.5 segundos)
 

@@ -115,38 +115,65 @@ public class PayCommand implements CommandExecutor {
                 return;
             }
 
-            // Verificar se tem saldo suficiente
-            if (!PrimeLeagueAPI.getEconomyManager().hasBalance(fromPlayerId, amount.doubleValue())) {
-                BigDecimal currentBalance = PrimeLeagueAPI.getEconomyManager().getBalance(fromPlayerId);
-                sender.sendMessage(ChatColor.RED + "Saldo insuficiente. Seu saldo atual: $" + EconomyUtils.formatMoney(currentBalance));
-                return;
-            }
+            // REFATORADO: Usar métodos assíncronos para evitar bloqueio da thread principal
+            sender.sendMessage(ChatColor.YELLOW + "⏳ Processando transferência...");
 
-            // Realizar transferência
-            EconomyResponse response = PrimeLeagueAPI.getEconomyManager().transfer(fromPlayerId, toPlayerId, amount.doubleValue());
-
-            if (response.isSuccess()) {
-                // Mensagem de sucesso para o remetente
-                sender.sendMessage(ChatColor.GREEN + "✅ Transferência realizada com sucesso!");
-                sender.sendMessage(ChatColor.GREEN + "💰 Enviado para " + ChatColor.YELLOW + targetName + ChatColor.GREEN + ": " + ChatColor.GOLD + "$" + EconomyUtils.formatMoney(amount));
-                sender.sendMessage(ChatColor.GREEN + "💳 Seu novo saldo: " + ChatColor.GOLD + "$" + EconomyUtils.formatMoney(response.getNewBalance()));
-
-                // Mensagem para o destinatário (se online)
-                if (targetPlayer != null && targetPlayer.isOnline()) {
-                    targetPlayer.sendMessage(ChatColor.GREEN + "💰 Você recebeu " + ChatColor.GOLD + "$" + EconomyUtils.formatMoney(amount) + ChatColor.GREEN + " de " + ChatColor.YELLOW + sender.getName());
-                    
-                    // Atualizar saldo do destinatário no cache
-                    BigDecimal newBalance = PrimeLeagueAPI.getEconomyManager().getBalance(toPlayerId);
-                    targetPlayer.sendMessage(ChatColor.GREEN + "💳 Seu novo saldo: " + ChatColor.GOLD + "$" + EconomyUtils.formatMoney(newBalance));
+            // Primeiro verificar saldo de forma assíncrona
+            PrimeLeagueAPI.getEconomyManager().getBalanceAsync(fromPlayerId, (currentBalance) -> {
+                // HARDENING: Verificar se o sender ainda está online
+                if (!sender.isOnline()) {
+                    return; // Sender não está mais online, abortar callback
+                }
+                
+                if (currentBalance == null) {
+                    sender.sendMessage(ChatColor.RED + "Erro ao verificar saldo.");
+                    return;
                 }
 
-                // Log da transação
-                plugin.getLogger().info("💰 [PAY] " + sender.getName() + " transferiu $" + amount + " para " + targetName);
+                if (currentBalance.compareTo(amount) < 0) {
+                    sender.sendMessage(ChatColor.RED + "Saldo insuficiente. Seu saldo atual: $" + EconomyUtils.formatMoney(currentBalance));
+                    return;
+                }
 
-            } else {
-                // Mensagem de erro
-                sender.sendMessage(ChatColor.RED + "❌ Erro na transferência: " + response.getErrorMessage());
-            }
+                // Se tem saldo suficiente, realizar transferência assíncrona
+                PrimeLeagueAPI.getEconomyManager().transferAsync(fromPlayerId, toPlayerId, amount.doubleValue(), (response) -> {
+                    // HARDENING: Verificar se o sender ainda está online
+                    if (!sender.isOnline()) {
+                        return; // Sender não está mais online, abortar callback
+                    }
+                    
+                    if (response.isSuccess()) {
+                        // Mensagem de sucesso para o remetente
+                        sender.sendMessage(ChatColor.GREEN + "✅ Transferência realizada com sucesso!");
+                        sender.sendMessage(ChatColor.GREEN + "💰 Enviado para " + ChatColor.YELLOW + targetName + ChatColor.GREEN + ": " + ChatColor.GOLD + "$" + EconomyUtils.formatMoney(amount));
+                        sender.sendMessage(ChatColor.GREEN + "💳 Seu novo saldo: " + ChatColor.GOLD + "$" + EconomyUtils.formatMoney(response.getNewBalance()));
+
+                        // Mensagem para o destinatário (se online)
+                        if (targetPlayer != null && targetPlayer.isOnline()) {
+                            targetPlayer.sendMessage(ChatColor.GREEN + "💰 Você recebeu " + ChatColor.GOLD + "$" + EconomyUtils.formatMoney(amount) + ChatColor.GREEN + " de " + ChatColor.YELLOW + sender.getName());
+                            
+                            // Atualizar saldo do destinatário no cache de forma assíncrona
+                            PrimeLeagueAPI.getEconomyManager().getBalanceAsync(toPlayerId, (newBalance) -> {
+                                // HARDENING: Verificar se o targetPlayer ainda está online
+                                if (targetPlayer == null || !targetPlayer.isOnline()) {
+                                    return; // Target player não está mais online, abortar callback
+                                }
+                                
+                                if (newBalance != null) {
+                                    targetPlayer.sendMessage(ChatColor.GREEN + "💳 Seu novo saldo: " + ChatColor.GOLD + "$" + EconomyUtils.formatMoney(newBalance));
+                                }
+                            });
+                        }
+
+                        // Log da transação
+                        plugin.getLogger().info("💰 [PAY] " + sender.getName() + " transferiu $" + amount + " para " + targetName);
+
+                    } else {
+                        // Mensagem de erro
+                        sender.sendMessage(ChatColor.RED + "❌ Erro na transferência: " + response.getErrorMessage());
+                    }
+                });
+            });
 
         } catch (Exception e) {
             sender.sendMessage(ChatColor.RED + "Erro interno durante a transferência.");

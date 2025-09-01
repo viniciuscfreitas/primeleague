@@ -44,7 +44,7 @@ public class IdentityManager {
      * 
      * @param player Jogador do Bukkit
      * @return player_id (INT) único e estável
-     * @throws IllegalStateException se o jogador não estiver registrado
+     * @throws IllegalStateException se o jogador não estiver registrado no cache
      */
     public int getPlayerId(Player player) {
         if (player == null) {
@@ -52,27 +52,52 @@ public class IdentityManager {
         }
         
         UUID bukkitUuid = player.getUniqueId();
-        String playerName = player.getName();
         
-        // Verificar cache primeiro
+        // REFATORADO: Buscar apenas no cache - fail-fast se não encontrado
         Integer cachedPlayerId = uuidToPlayerIdMap.get(bukkitUuid);
         if (cachedPlayerId != null) {
             return cachedPlayerId;
         }
         
-        // Buscar no banco de dados
-        Integer playerId = dataManager.getPlayerIdFromDatabase(bukkitUuid, playerName);
-        if (playerId != null) {
-            // Adicionar ao cache
-            addToCache(playerId, bukkitUuid, playerName);
-            return playerId;
+        // Jogador não encontrado no cache - erro crítico
+        throw new IllegalStateException(
+            "Jogador não registrado no cache: " + player.getName() + " (UUID: " + bukkitUuid + "). " +
+            "A identidade deve ser carregada durante o login. Verifique o ProfileListener."
+        );
+    }
+
+    /**
+     * Obtém o player_id único e estável de um jogador de forma ASSÍNCRONA.
+     * Usado exclusivamente pelo ProfileListener para carregar identidades no login.
+     * 
+     * @param player Jogador do Bukkit
+     * @param callback Callback para receber o player_id
+     */
+    public void getPlayerIdAsync(Player player, java.util.function.Consumer<Integer> callback) {
+        if (player == null) {
+            callback.accept(null);
+            return;
         }
         
-        // Jogador não encontrado - erro crítico
-        throw new IllegalStateException(
-            "Jogador não registrado no sistema: " + playerName + " (UUID: " + bukkitUuid + "). " +
-            "O jogador deve fazer login primeiro para obter um player_id."
-        );
+        UUID bukkitUuid = player.getUniqueId();
+        String playerName = player.getName();
+        
+        // Verificar cache primeiro (thread principal)
+        Integer cachedPlayerId = uuidToPlayerIdMap.get(bukkitUuid);
+        if (cachedPlayerId != null) {
+            callback.accept(cachedPlayerId);
+            return;
+        }
+        
+        // Buscar no banco de dados de forma assíncrona
+        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
+            Integer playerId = dataManager.getPlayerIdFromDatabase(bukkitUuid, playerName);
+            
+            // Retornar para a thread principal
+            plugin.getServer().getScheduler().runTask(plugin, () -> {
+                callback.accept(playerId);
+            });
+        });
     }
     
     /**

@@ -72,54 +72,64 @@ public class MinhaAssinaturaCommand implements CommandExecutor {
         player.sendMessage("§6§l=== MINHA ASSINATURA ===");
         player.sendMessage("");
         
-        // Status da assinatura
-        if (PrimeLeagueAPI.getDataManager().hasActiveSubscription(player.getUniqueId())) {
-            player.sendMessage("§a✅ Status: §fATIVA");
-            
-            // Dias restantes
-            int daysRemaining = 0; // TODO: Implementar cálculo via DataManager
-            if (daysRemaining > 0) {
-                if (daysRemaining == 1) {
-                    player.sendMessage("§e⚠️ Expira: §fAmanhã");
-                } else {
-                    player.sendMessage("§e⚠️ Expira em: §f" + daysRemaining + " dias");
-                }
-            } else {
-                player.sendMessage("§a✅ Expira: §fHoje");
+        // REFATORADO: Usar método assíncrono para verificar status da assinatura
+        player.sendMessage("§e⏳ Verificando status da assinatura...");
+        
+        PrimeLeagueAPI.getDataManager().hasActiveSubscriptionAsync(player.getUniqueId(), (hasActive) -> {
+            // HARDENING: Verificar se o player ainda está online antes de enviar mensagens
+            if (!player.isOnline()) {
+                return; // Player não está mais online, abortar callback
             }
             
-            // Data de expiração
-            // TODO: Implementar consulta SSOT via DataManager
+            // Status da assinatura
+            if (hasActive) {
+                player.sendMessage("§a✅ Status: §fATIVA");
+                
+                // Dias restantes
+                int daysRemaining = 0; // TODO: Implementar cálculo via DataManager
+                if (daysRemaining > 0) {
+                    if (daysRemaining == 1) {
+                        player.sendMessage("§e⚠️ Expira: §fAmanhã");
+                    } else {
+                        player.sendMessage("§e⚠️ Expira em: §f" + daysRemaining + " dias");
+                    }
+                } else {
+                    player.sendMessage("§a✅ Expira: §fHoje");
+                }
+                
+                // Data de expiração
+                // TODO: Implementar consulta SSOT via DataManager
+                
+            } else {
+                player.sendMessage("§c❌ Status: §fINATIVA");
+                player.sendMessage("§7Você não possui uma assinatura ativa.");
+            }
             
-        } else {
-            player.sendMessage("§c❌ Status: §fINATIVA");
-            player.sendMessage("§7Você não possui uma assinatura ativa.");
-        }
-        
-        player.sendMessage("");
-        
-        // Informações adicionais
-        player.sendMessage("§7ELO atual: §e" + profile.getElo());
-        player.sendMessage("§7Dinheiro: §a$" + String.format("%.2f", profile.getMoney()));
-        player.sendMessage("§7Total de logins: §b" + profile.getTotalLogins());
-        
-        if (profile.getLastSeen() != null) {
-            player.sendMessage("§7Último login: §f" + formatDate(profile.getLastSeen()));
-        }
-        
-        player.sendMessage("");
-        
-        // Mensagens de ajuda
-        if (!PrimeLeagueAPI.getDataManager().hasActiveSubscription(player.getUniqueId())) {
-            player.sendMessage("§c💡 Para renovar sua assinatura:");
-            player.sendMessage("§7  • Entre em contato com a administração");
-            player.sendMessage("§7  • Use o comando /tickets para solicitar renovação");
-        } else if (false) { // TODO: Implementar verificação via DataManager
-            player.sendMessage("§e💡 Sua assinatura expira em breve!");
-            player.sendMessage("§7  • Entre em contato com a administração para renovar");
-        }
-        
-        player.sendMessage("§6§l=== FIM ===");
+            player.sendMessage("");
+            
+            // Informações adicionais
+            player.sendMessage("§7ELO atual: §e" + profile.getElo());
+            player.sendMessage("§7Dinheiro: §a$" + String.format("%.2f", profile.getMoney()));
+            player.sendMessage("§7Total de logins: §b" + profile.getTotalLogins());
+            
+            if (profile.getLastSeen() != null) {
+                player.sendMessage("§7Último login: §f" + formatDate(profile.getLastSeen()));
+            }
+            
+            player.sendMessage("");
+            
+            // Mensagens de ajuda
+            if (!hasActive) {
+                player.sendMessage("§c💡 Para renovar sua assinatura:");
+                player.sendMessage("§7  • Entre em contato com a administração");
+                player.sendMessage("§7  • Use o comando /tickets para solicitar renovação");
+            } else if (false) { // TODO: Implementar verificação via DataManager
+                player.sendMessage("§e💡 Sua assinatura expira em breve!");
+                player.sendMessage("§7  • Entre em contato com a administração para renovar");
+            }
+            
+            player.sendMessage("§6§l=== FIM ===");
+        });
     }
     
     /**

@@ -1169,6 +1169,21 @@ public final class DataManager {
         
         return 0;
     }
+
+    /**
+     * Busca o tier de doador por Discord ID de forma ASSÍNCRONA.
+     * 
+     * @param discordId Discord ID do usuário
+     * @param callback Callback para receber o resultado
+     */
+    public void getDonorTierByDiscordIdAsync(String discordId, java.util.function.Consumer<Integer> callback) {
+        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
+            int tier = getDonorTierByDiscordId(discordId);
+            plugin.getServer().getScheduler().runTask(plugin, () -> {
+                callback.accept(tier);
+            });
+        });
+    }
     
     /**
      * Busca a assinatura compartilhada de um usuário Discord.
@@ -1248,6 +1263,21 @@ public final class DataManager {
         }
         
         return false;
+    }
+
+    /**
+     * Verifica se um jogador tem assinatura ativa de forma ASSÍNCRONA.
+     * 
+     * @param playerUuid UUID do jogador
+     * @param callback Callback para receber o resultado
+     */
+    public void hasActiveSubscriptionAsync(UUID playerUuid, java.util.function.Consumer<Boolean> callback) {
+        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
+            boolean hasActive = hasActiveSubscription(playerUuid);
+            plugin.getServer().getScheduler().runTask(plugin, () -> {
+                callback.accept(hasActive);
+            });
+        });
     }
     
     /**
@@ -1370,6 +1400,21 @@ public final class DataManager {
         
         return null;
     }
+
+    /**
+     * Obtém o tier de doador de um jogador de forma ASSÍNCRONA.
+     * 
+     * @param playerUuid UUID do jogador
+     * @param callback Callback para receber o resultado
+     */
+    public void getDonorTierAsync(UUID playerUuid, java.util.function.Consumer<Integer> callback) {
+        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
+            Integer tier = getDonorTier(playerUuid);
+            plugin.getServer().getScheduler().runTask(plugin, () -> {
+                callback.accept(tier);
+            });
+        });
+    }
     
     /**
      * Atualiza o tier de doador de um Discord ID.
@@ -1400,6 +1445,23 @@ public final class DataManager {
         }
         
         return false;
+    }
+
+    /**
+     * Atualiza o tier de doador de um Discord ID de forma ASSÍNCRONA.
+     * 
+     * @param discordId Discord ID do usuário
+     * @param tier Novo tier de doador
+     * @param expiresAt Data de expiração do tier
+     * @param callback Callback para receber o resultado
+     */
+    public void updateDonorTierAsync(String discordId, int tier, java.util.Date expiresAt, java.util.function.Consumer<Boolean> callback) {
+        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
+            boolean success = updateDonorTier(discordId, tier, expiresAt);
+            plugin.getServer().getScheduler().runTask(plugin, () -> {
+                callback.accept(success);
+            });
+        });
     }
     
 

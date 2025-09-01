@@ -105,8 +105,8 @@ public class EcoCommand implements CommandExecutor {
                 return;
             }
 
-            EconomyResponse response = null;
-            String actionDescription = "";
+            // REFATORADO: Usar métodos assíncronos para evitar bloqueio da thread principal
+            sender.sendMessage(ChatColor.YELLOW + "⏳ Processando operação econômica...");
 
             // Obter nome do admin para logs
             String adminName = sender.getName();
@@ -114,60 +114,84 @@ public class EcoCommand implements CommandExecutor {
                 adminName = ((Player) sender).getName();
             }
             
-            // Executar ação específica
+            // Executar ação específica de forma assíncrona
             switch (action) {
                 case "give":
-                    response = PrimeLeagueAPI.getEconomyManager().creditBalance(targetPlayerId, amount.doubleValue(), "Admin Give by " + adminName);
-                    actionDescription = "adicionado";
+                    PrimeLeagueAPI.getEconomyManager().creditBalanceAsync(targetPlayerId, amount.doubleValue(), "Admin Give by " + adminName, (response) -> {
+                        handleEcoResponse(sender, targetPlayer, targetName, response, "adicionado", adminName, action, amount);
+                    });
                     break;
                     
                 case "take":
-                    response = PrimeLeagueAPI.getEconomyManager().debitBalance(targetPlayerId, amount.doubleValue(), "Admin Take by " + adminName);
-                    actionDescription = "removido";
+                    PrimeLeagueAPI.getEconomyManager().debitBalanceAsync(targetPlayerId, amount.doubleValue(), "Admin Take by " + adminName, (response) -> {
+                        handleEcoResponse(sender, targetPlayer, targetName, response, "removido", adminName, action, amount);
+                    });
                     break;
                     
                 case "set":
-                    // Para set, precisamos calcular a diferença
-                    BigDecimal currentBalance = PrimeLeagueAPI.getEconomyManager().getBalance(targetPlayerId);
-                    BigDecimal difference = amount.subtract(currentBalance);
-                    
-                    if (difference.compareTo(BigDecimal.ZERO) > 0) {
-                        // Precisa adicionar
-                        response = PrimeLeagueAPI.getEconomyManager().creditBalance(targetPlayerId, difference.doubleValue(), "Admin Set by " + adminName + " (added " + difference + ")");
-                    } else if (difference.compareTo(BigDecimal.ZERO) < 0) {
-                        // Precisa remover
-                        response = PrimeLeagueAPI.getEconomyManager().debitBalance(targetPlayerId, difference.abs().doubleValue(), "Admin Set by " + adminName + " (removed " + difference.abs() + ")");
-                    } else {
-                        // Já está no valor correto
-                        sender.sendMessage(ChatColor.YELLOW + "O saldo de " + targetName + " já está em $" + EconomyUtils.formatMoney(amount));
-                        return;
-                    }
-                    actionDescription = "definido";
+                    // Para set, precisamos calcular a diferença de forma assíncrona
+                    PrimeLeagueAPI.getEconomyManager().getBalanceAsync(targetPlayerId, (currentBalance) -> {
+                        if (currentBalance == null) {
+                            sender.sendMessage(ChatColor.RED + "Erro ao verificar saldo atual.");
+                            return;
+                        }
+                        
+                        BigDecimal difference = amount.subtract(currentBalance);
+                        
+                        if (difference.compareTo(BigDecimal.ZERO) > 0) {
+                            // Precisa adicionar
+                            PrimeLeagueAPI.getEconomyManager().creditBalanceAsync(targetPlayerId, difference.doubleValue(), "Admin Set by " + adminName + " (added " + difference + ")", (response) -> {
+                                handleEcoResponse(sender, targetPlayer, targetName, response, "definido", adminName, action, amount);
+                            });
+                        } else if (difference.compareTo(BigDecimal.ZERO) < 0) {
+                            // Precisa remover
+                            PrimeLeagueAPI.getEconomyManager().debitBalanceAsync(targetPlayerId, difference.abs().doubleValue(), "Admin Set by " + adminName + " (removed " + difference.abs() + ")", (response) -> {
+                                handleEcoResponse(sender, targetPlayer, targetName, response, "definido", adminName, action, amount);
+                            });
+                        } else {
+                            // Já está no valor correto
+                            sender.sendMessage(ChatColor.YELLOW + "O saldo de " + targetName + " já está em $" + EconomyUtils.formatMoney(amount));
+                        }
+                    });
                     break;
-            }
-
-            if (response != null && response.isSuccess()) {
-                // Mensagem de sucesso
-                sender.sendMessage(ChatColor.GREEN + "✅ Saldo de " + ChatColor.YELLOW + targetName + ChatColor.GREEN + " " + actionDescription + " com sucesso!");
-                sender.sendMessage(ChatColor.GREEN + "💰 Novo saldo: " + ChatColor.GOLD + "$" + EconomyUtils.formatMoney(response.getNewBalance()));
-
-                // Notificar o jogador se estiver online
-                if (targetPlayer != null && targetPlayer.isOnline()) {
-                    targetPlayer.sendMessage(ChatColor.GREEN + "💰 Seu saldo foi " + actionDescription + " por " + ChatColor.YELLOW + adminName);
-                    targetPlayer.sendMessage(ChatColor.GREEN + "💳 Novo saldo: " + ChatColor.GOLD + "$" + EconomyUtils.formatMoney(response.getNewBalance()));
-                }
-
-                // Log da ação administrativa
-                plugin.getLogger().info("💰 [ECO-ADMIN] " + adminName + " " + action + " $" + amount + " para " + targetName + " (novo saldo: $" + response.getNewBalance() + ")");
-
-            } else if (response != null) {
-                // Mensagem de erro
-                sender.sendMessage(ChatColor.RED + "❌ Erro na operação: " + response.getErrorMessage());
             }
 
         } catch (Exception e) {
             sender.sendMessage(ChatColor.RED + "Erro interno durante a operação.");
             plugin.getLogger().severe("Erro no comando /eco: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Trata a resposta da operação econômica.
+     * 
+     * @param sender Quem executou o comando
+     * @param targetPlayer Jogador alvo (se online)
+     * @param targetName Nome do jogador alvo
+     * @param response Resposta da operação
+     * @param actionDescription Descrição da ação
+     * @param adminName Nome do admin
+     * @param action Ação executada
+     * @param amount Quantia
+     */
+    private void handleEcoResponse(CommandSender sender, Player targetPlayer, String targetName, EconomyResponse response, String actionDescription, String adminName, String action, BigDecimal amount) {
+        if (response != null && response.isSuccess()) {
+            // Mensagem de sucesso
+            sender.sendMessage(ChatColor.GREEN + "✅ Saldo de " + ChatColor.YELLOW + targetName + ChatColor.GREEN + " " + actionDescription + " com sucesso!");
+            sender.sendMessage(ChatColor.GREEN + "💰 Novo saldo: " + ChatColor.GOLD + "$" + EconomyUtils.formatMoney(response.getNewBalance()));
+
+            // Notificar o jogador se estiver online
+            if (targetPlayer != null && targetPlayer.isOnline()) {
+                targetPlayer.sendMessage(ChatColor.GREEN + "💰 Seu saldo foi " + actionDescription + " por " + ChatColor.YELLOW + adminName);
+                targetPlayer.sendMessage(ChatColor.GREEN + "💳 Novo saldo: " + ChatColor.GOLD + "$" + EconomyUtils.formatMoney(response.getNewBalance()));
+            }
+
+            // Log da ação administrativa
+            plugin.getLogger().info("💰 [ECO-ADMIN] " + adminName + " " + action + " $" + amount + " para " + targetName + " (novo saldo: $" + response.getNewBalance() + ")");
+
+        } else if (response != null) {
+            // Mensagem de erro
+            sender.sendMessage(ChatColor.RED + "❌ Erro na operação: " + response.getErrorMessage());
         }
     }
 

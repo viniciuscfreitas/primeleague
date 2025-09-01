@@ -353,6 +353,131 @@ public class ClanManager {
     }
 
     /**
+     * Cria um clã de forma ASSÍNCRONA.
+     * 
+     * @param tag Tag do clã
+     * @param name Nome do clã
+     * @param leader Jogador líder/fundador
+     * @param callback Callback para receber o resultado
+     */
+    public void createClanAsync(String tag, String name, Player leader, java.util.function.Consumer<Clan> callback) {
+        plugin.getLogger().info("🔧 [CLAN-MANAGER-DEBUG] Iniciando criação ASSÍNCRONA do clã: " + tag + " (" + name + ")");
+        
+        // Validações prévias na thread principal (são rápidas e seguras)
+        Clan existingByTag = getClanByTag(tag);
+        if (existingByTag != null) {
+            plugin.getLogger().warning("🔧 [CLAN-MANAGER-DEBUG] Tag já existe: " + tag);
+            callback.accept(null);
+            return;
+        }
+        
+        Clan existingByName = getClanByName(name);
+        if (existingByName != null) {
+            plugin.getLogger().warning("🔧 [CLAN-MANAGER-DEBUG] Nome já existe: " + name);
+            callback.accept(null);
+            return;
+        }
+        
+        Clan existingByPlayer = getClanByPlayer(leader);
+        if (existingByPlayer != null) {
+            plugin.getLogger().warning("🔧 [CLAN-MANAGER-DEBUG] Jogador já está em um clã: " + existingByPlayer.getTag());
+            callback.accept(null);
+            return;
+        }
+        
+        // Obter player_id na thread principal (é seguro e rápido)
+        int leaderPlayerId = PrimeLeagueAPI.getIdentityManager().getPlayerId(leader);
+        if (leaderPlayerId == -1) {
+            plugin.getLogger().severe("🔧 [CLAN-MANAGER-DEBUG] FALHA CRÍTICA: Não foi possível obter player_id para " + leader.getName());
+            callback.accept(null);
+            return;
+        }
+        
+        // Criar o DTO na thread principal
+        ClanDTO clanToCreate = new ClanDTO();
+        clanToCreate.setTag(tag);
+        clanToCreate.setName(name);
+        clanToCreate.setFounderPlayerId(leaderPlayerId);
+        clanToCreate.setFounderName(leader.getName());
+        clanToCreate.setFriendlyFireEnabled(false);
+        clanToCreate.setCreationDate(new Date());
+        
+        plugin.getLogger().info("🔧 [CLAN-MANAGER-DEBUG] DTO criado, iniciando operações assíncronas...");
+        
+        // Executar operações de banco de forma assíncrona
+        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
+            try {
+                // 1. Criar o clã no banco
+                ClanDTO savedClanDTO = clanDAO.createClan(clanToCreate);
+                
+                if (savedClanDTO == null || savedClanDTO.getId() <= 0) {
+                    plugin.getLogger().severe("🔧 [CLAN-MANAGER-DEBUG] FALHA CRÍTICA: O DAO retornou nulo ao tentar criar o clã " + tag);
+                    
+                    // Retornar para a thread principal
+                    plugin.getServer().getScheduler().runTask(plugin, () -> {
+                        callback.accept(null);
+                    });
+                    return;
+                }
+                
+                plugin.getLogger().info("🔧 [CLAN-MANAGER-DEBUG] Clã persistido com ID: " + savedClanDTO.getId());
+                
+                // 2. Salvar o ClanPlayer do fundador
+                ClanPlayer founderPlayer = new ClanPlayer(leader);
+                founderPlayer.setClanId(savedClanDTO.getId());
+                founderPlayer.setRole(ClanPlayer.ClanRole.FUNDADOR);
+                founderPlayer.setJoinDate(System.currentTimeMillis());
+                
+                clanDAO.saveOrUpdateClanPlayer(toDTO(founderPlayer));
+                plugin.getLogger().info("🔧 [CLAN-MANAGER-DEBUG] ClanPlayer do fundador persistido");
+                
+                // 3. Registrar log da criação
+                clanDAO.logAction(
+                    savedClanDTO.getId(),
+                    leaderPlayerId,
+                    leader.getName(),
+                    LogActionType.CLAN_CREATE,
+                    0,
+                    null,
+                    "Clã criado: " + tag + " (" + name + ")"
+                );
+                plugin.getLogger().info("🔧 [CLAN-MANAGER-DEBUG] Log registrado");
+                
+                // Retornar para a thread principal para atualizar o cache
+                plugin.getServer().getScheduler().runTask(plugin, () -> {
+                    try {
+                        // DIRETRIZ DE CONSISTÊNCIA DO CACHE: Atualizar o cache em memória
+                        Clan clan = fromDTO(savedClanDTO);
+                        clans.put(clan.getId(), clan);
+                        
+                        // Atualizar o cache de jogadores
+                        founderPlayer.setClan(clan);
+                        clanPlayers.put(leaderPlayerId, founderPlayer);
+                        
+                        plugin.getLogger().info("🔧 [CLAN-MANAGER-DEBUG] ✅ Cache atualizado para o clã " + tag);
+                        
+                        // Entregar o resultado via callback
+                        callback.accept(clan);
+                        
+                    } catch (Exception e) {
+                        plugin.getLogger().severe("🔧 [CLAN-MANAGER-DEBUG] Erro ao atualizar cache: " + e.getMessage());
+                        callback.accept(null);
+                    }
+                });
+                
+            } catch (Exception e) {
+                plugin.getLogger().severe("🔧 [CLAN-MANAGER-DEBUG] Erro durante criação assíncrona do clã: " + e.getMessage());
+                e.printStackTrace();
+                
+                // Retornar para a thread principal
+                plugin.getServer().getScheduler().runTask(plugin, () -> {
+                    callback.accept(null);
+                });
+            }
+        });
+    }
+
+    /**
      * Remove um clã completamente.
      *
      * @param clan O clã a ser removido

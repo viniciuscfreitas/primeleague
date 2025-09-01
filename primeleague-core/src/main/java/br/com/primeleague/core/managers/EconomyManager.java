@@ -201,20 +201,47 @@ public final class EconomyManager {
             return BigDecimal.ZERO;
         }
     }
-    
+
     /**
-     * Obtém o saldo de um jogador por UUID.
+     * Obtém o saldo de um jogador de forma ASSÍNCRONA.
+     * Primeiro verifica o cache; se não encontrar, busca no banco em outra thread.
+     * 
+     * @param playerId ID do jogador
+     * @param callback Callback para receber o resultado
+     */
+    public void getBalanceAsync(int playerId, java.util.function.Consumer<BigDecimal> callback) {
+        // Verificar cache primeiro (na thread principal, é seguro e rápido)
+        BigDecimal cachedBalance = balanceCache.get(playerId);
+        if (cachedBalance != null) {
+            callback.accept(cachedBalance);
+            return;
+        }
+        
+        // Se não está no cache, buscar no banco de forma assíncrona
+        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
+            BigDecimal balanceFromDb = getBalance(playerId); // Chama a versão síncrona fora da thread principal
+            
+            // Retorna para a thread principal para entregar o resultado
+            plugin.getServer().getScheduler().runTask(plugin, () -> {
+                callback.accept(balanceFromDb);
+            });
+        });
+    }
+
+    /**
+     * Obtém o saldo de um jogador por UUID de forma ASSÍNCRONA.
      * 
      * @param playerUuid UUID do jogador
-     * @return Saldo atual do jogador ou null se não encontrado
+     * @param callback Callback para receber o resultado
      */
-    public BigDecimal getBalance(UUID playerUuid) {
+    public void getBalanceAsync(UUID playerUuid, java.util.function.Consumer<BigDecimal> callback) {
         Integer playerId = plugin.getIdentityManager().getPlayerIdByUuid(playerUuid);
         if (playerId == null) {
             logger.warning("⚠️ [ECONOMY-GET] Player ID não encontrado para UUID: " + playerUuid);
-            return null;
+            callback.accept(null);
+            return;
         }
-        return getBalance(playerId);
+        getBalanceAsync(playerId, callback);
     }
     
     /**
@@ -655,5 +682,24 @@ public final class EconomyManager {
                 toLock.unlock();
             }
         }
+    }
+
+    /**
+     * Transfere dinheiro entre jogadores de forma ASSÍNCRONA.
+     * 
+     * @param fromPlayerId ID do jogador remetente
+     * @param toPlayerId ID do jogador destinatário
+     * @param amount Valor a transferir
+     * @param callback Callback para receber o resultado
+     */
+    public void transferAsync(int fromPlayerId, int toPlayerId, double amount, java.util.function.Consumer<EconomyResponse> callback) {
+        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
+            EconomyResponse response = transfer(fromPlayerId, toPlayerId, amount);
+            
+            // Retorna para a thread principal
+            plugin.getServer().getScheduler().runTask(plugin, () -> {
+                callback.accept(response);
+            });
+        });
     }
 }

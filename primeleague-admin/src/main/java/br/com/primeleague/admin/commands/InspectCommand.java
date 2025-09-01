@@ -146,7 +146,7 @@ public class InspectCommand implements CommandExecutor {
     }
 
     /**
-     * Exibe informações P2P (assinatura).
+     * Exibe informações P2P do jogador.
      */
     private void displayP2PInfo(CommandSender sender, UUID targetUuid) {
         sender.sendMessage(ChatColor.YELLOW + "=== INFORMAÇÕES P2P ===");
@@ -155,13 +155,22 @@ public class InspectCommand implements CommandExecutor {
             // Verificar se o jogador tem acesso P2P ativo
             Integer playerId = PrimeLeagueAPI.getIdentityManager().getPlayerIdByUuid(targetUuid);
             if (playerId != null) {
-                Integer donorTier = PrimeLeagueAPI.getDataManager().getDonorTier(targetUuid);
-                if (donorTier != null && donorTier > 0) {
-                    sender.sendMessage(ChatColor.GRAY + "Status da assinatura: " + ChatColor.GREEN + "ATIVA");
-                    sender.sendMessage(ChatColor.GRAY + "Tier de doador: " + ChatColor.WHITE + donorTier);
-                } else {
-                    sender.sendMessage(ChatColor.RED + "Sem assinatura P2P ativa.");
-                }
+                // REFATORADO: Usar método assíncrono para verificar tier de doador
+                sender.sendMessage(ChatColor.YELLOW + "⏳ Verificando status da assinatura...");
+                
+                PrimeLeagueAPI.getDataManager().getDonorTierAsync(targetUuid, (donorTier) -> {
+                    // HARDENING: Verificar se o sender ainda é válido antes de enviar mensagens
+                    if (!(sender instanceof org.bukkit.entity.Player) || !((org.bukkit.entity.Player) sender).isOnline()) {
+                        return; // Sender não é mais válido, abortar callback
+                    }
+                    
+                    if (donorTier != null && donorTier > 0) {
+                        sender.sendMessage(ChatColor.GRAY + "Status da assinatura: " + ChatColor.GREEN + "ATIVA");
+                        sender.sendMessage(ChatColor.GRAY + "Tier de doador: " + ChatColor.WHITE + donorTier);
+                    } else {
+                        sender.sendMessage(ChatColor.RED + "Sem assinatura P2P ativa.");
+                    }
+                });
             } else {
                 sender.sendMessage(ChatColor.RED + "Jogador não encontrado no sistema.");
             }

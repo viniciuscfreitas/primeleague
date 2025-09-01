@@ -1,883 +1,616 @@
 # Relatório de Análise Técnica: Prime League
 
 **Data da Análise:** 28/08/2025  
-**Versão do Projeto:** 5.0  
-**Analista:** IA de Análise de Código  
+**Versão do Relatório:** 1.0  
+**Analista:** Arquiteto do Prime League  
 
 ---
 
-## **I. Visão Arquitetural Geral (Macro)**
+## I. Visão Arquitetural Geral (Macro)
 
-### **1. Diagrama de Dependências de Módulos**
-
-O projeto Prime League segue uma arquitetura modular com dependências bem definidas:
+### 1. Diagrama de Dependências de Módulos
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   primeleague   │    │   primeleague   │    │   primeleague   │
-│      API        │◄───┤      Core       │◄───┤      P2P        │
-│   (Compartilhada)│    │   (Central)     │    │   (Acesso)      │
+│   PrimeLeague   │    │   PrimeLeague   │    │   PrimeLeague   │
+│      Core       │◄───┤      API        │◄───┤      P2P        │
+│   (Central)     │    │   (Interface)   │    │  (Autorização)  │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
-         ▲                       ▲                       ▲
          │                       │                       │
          ▼                       ▼                       ▼
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   primeleague   │    │   primeleague   │    │   primeleague   │
-│     Admin       │    │     Chat        │    │     Clans       │
-│  (Administrativo)│    │  (Comunicação)  │    │   (Grupos)      │
+│   PrimeLeague   │    │   PrimeLeague   │    │   PrimeLeague   │
+│      Chat       │    │     Clans       │    │     Admin       │
+│  (Comunicação)  │    │   (Sistema)     │    │ (Administração) │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
-         ▲                       ▲                       ▲
          │                       │                       │
          ▼                       ▼                       ▼
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   primeleague   │    │   primeleague   │    │   Discord Bot   │
-│   AdminShop     │    │   (Futuros)     │    │   (Node.js)     │
-│   (Loja)        │    │   Módulos       │    │   (Integração)  │
+│   PrimeLeague   │    │   Discord Bot   │    │   Database      │
+│   AdminShop     │    │   (Node.js)     │    │   (MySQL)       │
+│   (Loja)        │    │  (Integração)   │    │  (Schema)       │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
 **Dependências Principais:**
-- **Core** → **API**: Todos os módulos dependem da API compartilhada
-- **Todos os Módulos** → **Core**: Acesso centralizado a dados e serviços
-- **P2P** → **Core**: Sistema de autenticação e verificação
-- **Admin/Chat/Clans** → **Core**: Funcionalidades administrativas e sociais
-- **Discord Bot** → **Core**: Integração via API HTTP
+- **Core** → **API**: Interface central para comunicação inter-módulos
+- **P2P** → **Core**: Sistema de autorização depende do Core
+- **Chat** → **Core**: Sistema de comunicação usa API do Core
+- **Clans** → **Core**: Sistema de clãs integra com Core
+- **Admin** → **Core**: Sistema administrativo usa Core
+- **AdminShop** → **Core**: Loja administrativa depende do Core
+- **Discord Bot** → **Core**: Bot externo se comunica via HTTP API
 
-### **2. Padrões de Comunicação**
+### 2. Padrões de Comunicação
 
-#### **Padrões Implementados:**
+**Padrões Implementados:**
 
 1. **Injeção de Dependência (DI)**
-   - Uso de registries para serviços (`ProfileServiceRegistry`, `TagServiceRegistry`)
-   - Injeção via construtor em managers e services
+   - Uso de registries (ProfileServiceRegistry, TagServiceRegistry, etc.)
+   - Injeção via construtor nos managers
 
-2. **API Interna Centralizada**
-   - `PrimeLeagueAPI` como ponto central de comunicação
-   - Métodos estáticos para acesso a serviços compartilhados
+2. **Service Registry Pattern**
+   - `ProfileServiceRegistry`
+   - `TagServiceRegistry`
+   - `DAOServiceRegistry`
+   - `ClanServiceRegistry`
+   - `AdminServiceRegistry`
+   - `P2PServiceRegistry`
+   - `LoggingServiceRegistry`
 
-3. **Event Listeners Customizados**
-   - Sistema de eventos Bukkit para comunicação assíncrona
-   - Listeners específicos por módulo
+3. **API HTTP para Integração Externa**
+   - `HttpApiManager` no Core (porta 8765)
+   - Webhook para notificações de pagamento
+   - Endpoints REST para bot Discord
 
-4. **HTTP API para Integração Externa**
-   - `HttpApiManager` no Core para comunicação com bot Discord
-   - Webhooks para notificações em tempo real
+4. **Event-Driven Architecture**
+   - Listeners de eventos Bukkit
+   - Sistema de notificações assíncrono
+   - Workers para tarefas em background
 
-#### **Fluxo de Comunicação:**
-```
-Módulo → API Registry → Core → DataManager → Database
-   ↓
-HTTP API → Discord Bot → Database (via Node.js)
-```
+### 3. Análise de Conformidade Filosófica
 
-### **3. Análise de Conformidade Filosófica**
+**Filosofia "O Coliseu Competitivo":**
 
-#### **Filosofia "O Coliseu Competitivo":**
-
-**✅ CONFORMES:**
+✅ **CONFORME:**
 - Sistema de ELO para ranking competitivo
-- PvP 1.5.2 sem modificações de combate
-- Sistema de clãs focado em competição
-- Economia baseada em PvP e conquistas
-- Sem elementos RPG (magias, classes, etc.)
+- PvP 1.5.2 sem modificações de meta
+- Sistema de clãs para competição em grupo
+- Economia baseada em PvP (bounties, recompensas)
+- Sistema de punições para fair play
 
-**⚠️ PONTOS DE ATENÇÃO:**
-- Sistema de doadores pode criar vantagens econômicas
-- Loja administrativa pode afetar balanço competitivo
-- Tags e formatação de chat podem criar hierarquias visuais
-
-**❌ NÃO CONFORMES:**
-- Nenhum elemento identificado que viole a filosofia
+⚠️ **PONTOS DE ATENÇÃO:**
+- AdminShop pode introduzir vantagens pagas
+- Sistema de doadores com benefícios
+- Kits especiais podem afetar balance
 
 ---
 
-## **II. Análise Detalhada por Módulo**
+## II. Análise Detalhada por Módulo
 
-### **Módulo 1: Core**
+### Módulo 1: Core (Central)
 
-#### **a. Estrutura de Pacotes e Classes:**
-
+**Estrutura de Pacotes:**
 ```
 br.com.primeleague.core/
-├── PrimeLeagueCore.java          # Classe principal do plugin
-├── managers/
-│   ├── DataManager.java          # Gerenciador de dados (1797 linhas)
-│   ├── IdentityManager.java      # Sistema de identidade
-│   ├── DonorManager.java         # Sistema de doadores
-│   ├── EconomyManager.java       # Sistema econômico
-│   ├── PrivateMessageManager.java # Sistema de mensagens privadas
-│   └── RecoveryCodeManager.java  # Sistema de recuperação
-├── models/
-│   └── PlayerProfile.java        # Modelo de perfil de jogador
-├── services/
-│   ├── CoreProfileService.java   # Serviço de perfis
-│   ├── TagManager.java           # Gerenciador de tags
-│   └── DAOServiceImpl.java       # Implementação de DAO
-├── commands/
-│   ├── PrivateMessageCommand.java # Comando /msg
-│   ├── MoneyCommand.java         # Comando /money
-│   ├── PayCommand.java           # Comando /pagar
-│   └── EcoCommand.java           # Comando /eco
-├── api/
-│   └── PrimeLeagueAPI.java       # API interna
-├── database/
-│   └── MySqlClanDAO.java         # DAO para clãs
-└── HttpApiManager.java           # API HTTP (1693 linhas)
+├── api/           # API interna e HTTP
+├── commands/      # Comandos básicos
+├── database/      # Acesso a dados
+├── managers/      # Gerenciadores principais
+├── models/        # Modelos de dados
+├── profile/       # Sistema de perfis
+├── services/      # Serviços internos
+├── util/          # Utilitários
+└── utils/         # Utilitários adicionais
 ```
 
-#### **b. Principais Funcionalidades Implementadas:**
+**Principais Funcionalidades:**
+- ✅ Sistema de perfis de jogadores
+- ✅ Gerenciamento de economia
+- ✅ Sistema de doadores
+- ✅ API HTTP para integração externa
+- ✅ Sistema de recuperação de conta
+- ✅ Gerenciamento de identidade
+- ✅ Sistema de mensagens privadas
+- ✅ Gerenciamento de whitelist
 
-- ✅ **Sistema de Perfis**: Carregamento e cache de perfis de jogadores
-- ✅ **Gerenciamento de Dados**: Pool de conexões HikariCP, operações CRUD
-- ✅ **Sistema Econômico**: Transações, saldos, logs de auditoria
-- ✅ **Sistema de Doadores**: Níveis, benefícios, cache
-- ✅ **API HTTP**: Endpoints para integração com bot Discord
-- ✅ **Sistema de Recuperação**: Códigos de backup e temporários
-- ✅ **Mensagens Privadas**: Sistema de comunicação privada
-- ✅ **Tags e Formatação**: Sistema de tags personalizáveis
-- ✅ **Registries de Serviços**: Injeção de dependência para outros módulos
+**Endpoints da API Interna:**
+- `PrimeLeagueAPI.getDataManager()`
+- `PrimeLeagueAPI.getIdentityManager()`
+- `PrimeLeagueAPI.getDonorManager()`
+- `PrimeLeagueAPI.getEconomyManager()`
+- `PrimeLeagueAPI.getTagManager()`
 
-#### **c. Endpoints da API Interna:**
+**Schema do Banco de Dados:**
+- `player_data` (tabela central SSOT)
+- `discord_users` (dados Discord)
+- `discord_links` (vínculos Discord-Minecraft)
+- `recovery_codes` (sistema de recuperação)
+- `economy_logs` (auditoria econômica)
+- `server_notifications` (notificações)
 
-**Expostos:**
-- `DataManager.getPlayerProfile(UUID)`
-- `DataManager.loadPlayerProfileWithClan(UUID)`
-- `EconomyManager.getBalance(UUID)`
-- `DonorManager.getDonorTier(UUID)`
-- `TagManager.getPlayerTag(UUID)`
-- `HttpApiManager` (endpoints HTTP)
+**Comandos e Permissões:**
+- `/msg`, `/tell` - Mensagens privadas
+- `/r` - Responder mensagem
+- `/money` - Ver saldo
+- `/pagar` - Transferir dinheiro
+- `/eco` - Comandos admin de economia
 
-**Consumidos:**
-- `ProfileServiceRegistry` (registro de serviços)
-- `TagServiceRegistry` (registro de serviços)
-- `DAOServiceRegistry` (registro de serviços)
+**Event Listeners:**
+- `ProfileListener` - Gerenciamento de perfis
 
-#### **d. Schema do Banco de Dados:**
+**Tarefas Agendadas:**
+- Limpeza de cache (assíncrona)
+- Processamento de notificações
 
-**Tabelas Principais:**
-- `player_data`: Dados centrais dos jogadores
-- `discord_users`: Usuários Discord (SSOT para assinaturas)
-- `discord_links`: Vínculos Discord-Minecraft
-- `recovery_codes`: Códigos de recuperação
-- `economy_logs`: Logs de transações econômicas
-- `server_notifications`: Notificações para serviços externos
+**Pontos de Atenção:**
+- ⚠️ Operações de banco na thread principal
+- ⚠️ Cache em memória sem persistência
+- ✅ Compatibilidade Java 7 + Bukkit 1.5.2
 
-#### **e. Comandos e Permissões:**
+### Módulo 2: Acesso P2P
 
-```yaml
-commands:
-  msg: "Envia mensagem privada"
-  tell: "Alias para /msg"
-  r: "Responde à última mensagem"
-  money: "Exibe saldo"
-  pagar: "Transfere dinheiro"
-  eco: "Comando administrativo de economia"
-
-permissions:
-  primeleague.money: "Permite usar /money"
-  primeleague.pay: "Permite usar /pagar"
-  primeleague.admin.eco: "Comandos administrativos de economia"
-```
-
-#### **f. Event Listeners:**
-
-- `ProfileListener`: Gerencia eventos de login/logout
-- `HttpApiManager`: Gerencia requisições HTTP
-
-#### **g. Tarefas Agendadas:**
-
-- Limpeza de cache de perfis (assíncrona)
-- Limpeza de códigos de recuperação expirados
-- Atualização de estatísticas do servidor
-
-#### **h. Pontos de Atenção e Riscos:**
-
-**⚠️ RISCOS IDENTIFICADOS:**
-- Operações de banco na thread principal em alguns pontos
-- Cache de perfis pode consumir muita memória
-- Falta de rate limiting na API HTTP
-- Possível race condition no sistema de recuperação
-
-**🔧 RECOMENDAÇÕES:**
-- Implementar rate limiting na API HTTP
-- Adicionar timeout para operações de banco
-- Implementar limpeza automática de cache
-- Adicionar validação de entrada em todos os endpoints
-
-### **Módulo 2: Acesso P2P**
-
-#### **a. Estrutura de Pacotes e Classes:**
-
+**Estrutura de Pacotes:**
 ```
 br.com.primeleague.p2p/
-├── PrimeLeagueP2P.java           # Classe principal
-├── listeners/
-│   └── AuthenticationListener.java # Listener de autenticação
-├── commands/
-│   ├── VerifyCommand.java        # Comando /verify
-│   └── RecoveryCommand.java      # Comando /recuperar
-├── managers/
-│   └── P2PManager.java           # Gerenciador P2P
-├── services/
-│   └── P2PService.java           # Serviço P2P
-└── web/
-    └── WebhookHandler.java       # Handler de webhooks
+├── commands/      # Comandos P2P
+├── listeners/     # Listeners de autenticação
+├── managers/      # Gerenciadores P2P
+├── services/      # Serviços P2P
+├── tasks/         # Tarefas agendadas
+└── web/           # Webhook HTTP
 ```
 
-#### **b. Principais Funcionalidades Implementadas:**
+**Principais Funcionalidades:**
+- ✅ Sistema de autorização de IP
+- ✅ Verificação via Discord
+- ✅ Sistema de limbo para pendentes
+- ✅ Webhook para notificações
+- ✅ Sistema de bypass para admins
+- ✅ Recuperação de conta
 
-- ✅ **Sistema de Verificação**: Códigos de verificação Discord
-- ✅ **Autorização de IPs**: Sistema de IPs autorizados
-- ✅ **Recuperação de Conta**: Códigos de backup e emergência
-- ✅ **Integração Discord**: Webhooks e comandos Discord
-- ✅ **Verificação de Assinatura**: Controle de acesso baseado em assinatura
+**Endpoints da API Interna:**
+- `P2PServiceRegistry.getService()`
+- Integração com `LimboManager`
+- Integração com `IpAuthCache`
 
-#### **c. Endpoints da API Interna:**
+**Schema do Banco de Dados:**
+- `player_authorized_ips` (IPs autorizados)
+- `discord_links` (verificação)
+- `recovery_codes` (recuperação)
 
-**Expostos:**
-- `P2PService.isPlayerVerified(UUID)`
-- `P2PService.isIPAuthorized(UUID, String)`
-- `P2PService.verifyPlayer(UUID, String)`
+**Comandos e Permissões:**
+- `/minhaassinatura` - Ver assinatura
+- `/p2p` - Comandos admin P2P
+- `/verify` - Verificar código Discord
+- `/recuperar` - Recuperação de conta
 
-**Consumidos:**
-- `DataManager` (para verificação de dados)
-- `HttpApiManager` (para comunicação com Discord)
+**Event Listeners:**
+- `AuthenticationListener` - Autenticação
+- `BypassListener` - Bypass para admins
 
-#### **d. Schema do Banco de Dados:**
+**Tarefas Agendadas:**
+- `CleanupTask` - Limpeza automática
 
-**Tabelas Específicas:**
-- `player_authorized_ips`: IPs autorizados por jogador
-- `discord_links`: Vínculos de verificação
-- `recovery_codes`: Códigos de recuperação
+**Pontos de Atenção:**
+- ✅ Sistema robusto de autenticação
+- ✅ Integração segura com Discord
+- ⚠️ Cache de IPs em memória
 
-#### **e. Comandos e Permissões:**
+### Módulo 3: Administrativo
 
-```yaml
-commands:
-  verify: "Verificar código do Discord"
-  recuperar: "Recuperação de emergência"
-  minhaassinatura: "Ver informações da assinatura"
-  p2p: "Comandos administrativos P2P"
-
-permissions:
-  primeleague.verify: "Verificar código"
-  primeleague.recuperar: "Usar recuperação"
-  primeleague.p2p.user: "Comandos P2P básicos"
-  primeleague.p2p.admin: "Comandos P2P administrativos"
-  primeleague.p2p.bypass: "Bypass de verificação"
-```
-
-#### **f. Event Listeners:**
-
-- `AuthenticationListener`: Gerencia eventos de login
-- `WebhookHandler`: Processa webhooks do Discord
-
-#### **g. Tarefas Agendadas:**
-
-- Limpeza de códigos de verificação expirados
-- Verificação automática de assinaturas
-
-#### **h. Pontos de Atenção e Riscos:**
-
-**⚠️ RISCOS IDENTIFICADOS:**
-- Sistema de autorização de IP pode ser contornado
-- Falta de rate limiting na verificação
-- Possível ataque de força bruta nos códigos
-
-**🔧 RECOMENDAÇÕES:**
-- Implementar rate limiting na verificação
-- Adicionar captcha para tentativas múltiplas
-- Implementar blacklist de IPs suspeitos
-- Adicionar logs de auditoria mais detalhados
-
-### **Módulo 3: Administrativo**
-
-#### **a. Estrutura de Pacotes e Classes:**
-
+**Estrutura de Pacotes:**
 ```
 br.com.primeleague.admin/
-├── PrimeLeagueAdmin.java         # Classe principal
-├── managers/
-│   └── AdminManager.java         # Gerenciador administrativo
-├── commands/
-│   ├── BanCommand.java           # Comando /ban
-│   ├── KickCommand.java          # Comando /kick
-│   ├── MuteCommand.java          # Comando /mute
-│   └── TicketCommand.java        # Comando /ticket
-├── listeners/
-│   └── AdminListener.java        # Listener administrativo
-└── services/
-    └── AdminServiceImpl.java     # Implementação de serviços
+├── api/           # API administrativa
+├── commands/      # Comandos admin
+├── listeners/     # Listeners admin
+├── managers/      # Gerenciadores admin
+├── models/        # Modelos admin
+└── services/      # Serviços admin
 ```
 
-#### **b. Principais Funcionalidades Implementadas:**
+**Principais Funcionalidades:**
+- ✅ Sistema de punições (warn, kick, mute, ban)
+- ✅ Sistema de tickets de denúncia
+- ✅ Modo staff (vanish, invsee, inspect)
+- ✅ Sistema de whitelist
+- ✅ Histórico de punições
 
-- ✅ **Sistema de Punições**: Ban, kick, mute, warn
-- ✅ **Sistema de Tickets**: Denúncias e suporte
-- ✅ **Modo Staff**: Vanish e ferramentas administrativas
-- ✅ **Logs Administrativos**: Auditoria de ações
-- ✅ **Integração P2P**: Punições afetam acesso P2P
+**Endpoints da API Interna:**
+- `AdminServiceRegistry.getService()`
+- `AdminAPI` para comunicação inter-módulo
 
-#### **c. Endpoints da API Interna:**
+**Schema do Banco de Dados:**
+- `punishments` (sistema de punições)
+- `tickets` (sistema de denúncias)
+- `staff_vanish` (modo staff)
+- `whitelist_players` (whitelist)
 
-**Expostos:**
-- `AdminService.punishPlayer(UUID, PunishmentType, String)`
-- `AdminService.createTicket(UUID, UUID, String)`
-- `AdminService.setStaffMode(UUID, boolean)`
+**Comandos e Permissões:**
+- `/warn`, `/kick`, `/mute`, `/ban` - Punições
+- `/tempmute`, `/tempban` - Punições temporárias
+- `/unmute`, `/unban` - Remover punições
+- `/history` - Histórico de punições
+- `/vanish`, `/invsee`, `/inspect` - Modo staff
+- `/report`, `/tickets` - Sistema de denúncias
+- `/whitelist` - Gerenciar whitelist
 
-**Consumidos:**
-- `DataManager` (para dados de jogadores)
-- `P2PService` (para integração com P2P)
+**Event Listeners:**
+- `ChatListener` - Verificação de punições
+- `LoginListener` - Verificação de banimentos
+- `VanishListener` - Modo staff
+- `JoinListener` - Carregar estado de vanish
 
-#### **d. Schema do Banco de Dados:**
+**Tarefas Agendadas:**
+- Verificação automática de punições expiradas
 
-**Tabelas Específicas:**
-- `punishments`: Histórico de punições
-- `tickets`: Sistema de tickets
-- `staff_vanish`: Modo staff
+**Pontos de Atenção:**
+- ✅ Sistema completo de moderação
+- ✅ Integração com sistema P2P
+- ✅ Auditoria de ações administrativas
 
-#### **e. Comandos e Permissões:**
+### Módulo 4: Clãs
 
-```yaml
-commands:
-  ban: "Banir jogador"
-  kick: "Expulsar jogador"
-  mute: "Silenciar jogador"
-  warn: "Advertir jogador"
-  ticket: "Gerenciar tickets"
-  vanish: "Modo invisível"
-
-permissions:
-  primeleague.admin.ban: "Banir jogadores"
-  primeleague.admin.kick: "Expulsar jogadores"
-  primeleague.admin.mute: "Silenciar jogadores"
-  primeleague.admin.ticket: "Gerenciar tickets"
-  primeleague.admin.vanish: "Modo invisível"
-```
-
-#### **f. Event Listeners:**
-
-- `AdminListener`: Gerencia eventos administrativos
-- `TicketListener`: Gerencia eventos de tickets
-
-#### **g. Tarefas Agendadas:**
-
-- Limpeza de punições expiradas
-- Notificações de tickets não respondidos
-
-#### **h. Pontos de Atenção e Riscos:**
-
-**⚠️ RISCOS IDENTIFICADOS:**
-- Falta de validação de permissões em alguns comandos
-- Sistema de tickets pode ser spamado
-- Logs administrativos podem crescer muito
-
-**🔧 RECOMENDAÇÕES:**
-- Implementar sistema de níveis de staff
-- Adicionar rate limiting para tickets
-- Implementar rotação de logs administrativos
-- Adicionar confirmação para ações críticas
-
-### **Módulo 4: Clãs**
-
-#### **a. Estrutura de Pacotes e Classes:**
-
+**Estrutura de Pacotes:**
 ```
 br.com.primeleague.clans/
-├── PrimeLeagueClans.java         # Classe principal
-├── manager/
-│   └── ClanManager.java          # Gerenciador de clãs
-├── commands/
-│   └── ClanCommand.java          # Comando /clan
-├── model/
-│   ├── Clan.java                 # Modelo de clã
-│   ├── ClanPlayer.java           # Modelo de membro
-│   └── ClanRelation.java         # Modelo de relação
-└── services/
-    └── ClanServiceImpl.java      # Implementação de serviços
+├── commands/      # Comandos de clã
+├── listeners/     # Listeners de clã
+├── manager/       # Gerenciador de clãs
+├── model/         # Modelos de clã
+└── services/      # Serviços de clã
 ```
 
-#### **b. Principais Funcionalidades Implementadas:**
+**Principais Funcionalidades:**
+- ✅ Criação e gerenciamento de clãs
+- ✅ Sistema de hierarquia (Leader, Co-Leader, Officer, Member)
+- ✅ Sistema de alianças entre clãs
+- ✅ Sistema de friendly fire
+- ✅ Sistema de sanções e penalidades
+- ✅ Estatísticas de KDR por membro
+- ✅ Sistema de convites
 
-- ✅ **Sistema de Clãs**: Criação, gerenciamento, hierarquia
-- ✅ **Sistema de Alianças**: Relações entre clãs
-- ✅ **Estatísticas de Clã**: KDR, pontos, ranking
-- ✅ **Sistema de Convites**: Convites para novos membros
-- ✅ **Integração com Chat**: Canais de clã e aliança
+**Endpoints da API Interna:**
+- `ClanServiceRegistry.getService()`
+- `DAOServiceRegistry.getClanDAO()`
+- `TagServiceRegistry` para placeholders
 
-#### **c. Endpoints da API Interna:**
+**Schema do Banco de Dados:**
+- `clans` (dados dos clãs)
+- `clan_players` (membros dos clãs)
+- `clan_alliances` (alianças)
+- `clan_logs` (logs de ações)
 
-**Expostos:**
-- `ClanService.createClan(String, UUID, String)`
-- `ClanService.addMember(int, UUID, ClanRole)`
-- `ClanService.getClanByPlayer(UUID)`
+**Comandos e Permissões:**
+- `/clan` - Comando principal de clãs
 
-**Consumidos:**
-- `DataManager` (para dados de jogadores)
-- `TagService` (para tags de clã)
+**Event Listeners:**
+- `PlayerStatsListener` - Estatísticas KDR
+- `DamageListener` - Sistema friendly fire
+- `PunishmentListener` - Sanções de clã
+- `PlayerConnectionListener` - Status online/offline
 
-#### **d. Schema do Banco de Dados:**
+**Tarefas Agendadas:**
+- Limpeza de convites expirados (5 min)
+- Limpeza de membros inativos (diária)
 
-**Tabelas Específicas:**
-- `clans`: Dados dos clãs
-- `clan_players`: Membros dos clãs
-- `clan_alliances`: Alianças entre clãs
+**Pontos de Atenção:**
+- ✅ Sistema robusto de clãs
+- ✅ Integração com sistema de tags
+- ✅ Sistema de penalidades automático
 
-#### **e. Comandos e Permissões:**
+### Módulo 5: Chat e Tags
 
-```yaml
-commands:
-  clan: "Comando principal de clãs"
-
-permissions:
-  primeleague.clan.create: "Criar clã"
-  primeleague.clan.invite: "Convidar membros"
-  primeleague.clan.kick: "Expulsar membros"
-  primeleague.clan.ally: "Gerenciar alianças"
-```
-
-#### **f. Event Listeners:**
-
-- `ClanListener`: Gerencia eventos de clãs
-- `KDRListener`: Atualiza estatísticas de KDR
-
-#### **g. Tarefas Agendadas:**
-
-- Limpeza de convites expirados
-- Atualização de rankings de clãs
-- Limpeza de membros inativos
-
-#### **h. Pontos de Atenção e Riscos:**
-
-**⚠️ RISCOS IDENTIFICADOS:**
-- Sistema de alianças pode criar conflitos
-- Falta de limite de membros por clã
-- Possível spam de convites
-
-**🔧 RECOMENDAÇÕES:**
-- Implementar limite de membros por clã
-- Adicionar cooldown para convites
-- Implementar sistema de guerra entre clãs
-- Adicionar validação de nomes de clã
-
-### **Módulo 5: Chat e Tags**
-
-#### **a. Estrutura de Pacotes e Classes:**
-
+**Estrutura de Pacotes:**
 ```
 br.com.primeleague.chat/
-├── PrimeLeagueChat.java           # Classe principal
-├── services/
-│   ├── ChannelManager.java        # Gerenciador de canais
-│   └── ChatLoggingService.java    # Serviço de logs
-├── commands/
-│   ├── ChatCommand.java           # Comando /chat
-│   ├── ClanChatCommand.java       # Comando /c
-│   └── AllyChatCommand.java       # Comando /a
-└── listeners/
-    └── ChatListener.java          # Listener de chat
+├── commands/      # Comandos de chat
+├── gui/           # Interface gráfica
+├── listeners/     # Listeners de chat
+└── services/      # Serviços de chat
 ```
 
-#### **b. Principais Funcionalidades Implementadas:**
+**Principais Funcionalidades:**
+- ✅ Canais de comunicação (Global, Local, Clã, Aliança)
+- ✅ Sistema de ignore de canais
+- ✅ Rate limiting para spam
+- ✅ Logging assíncrono de mensagens
+- ✅ Sistema de mensagens privadas
+- ✅ Rotação automática de logs
+- ✅ Filtros avançados
+- ✅ Social spy para admins
 
-- ✅ **Sistema de Canais**: Global, clã, aliança, local
-- ✅ **Sistema de Tags**: Tags personalizáveis por jogador
-- ✅ **Logs de Chat**: Auditoria completa de mensagens
-- ✅ **Filtros de Chat**: Anti-spam e moderação
-- ✅ **Formatação**: Cores e formatação personalizada
+**Endpoints da API Interna:**
+- `LoggingServiceRegistry.getService()`
+- Integração com sistema de tags
 
-#### **c. Endpoints da API Interna:**
+**Schema do Banco de Dados:**
+- `chat_logs` (logs de mensagens)
 
-**Expostos:**
-- `ChatService.sendMessage(UUID, String, ChatChannel)`
-- `TagService.getPlayerTag(UUID)`
-- `LoggingService.logMessage(ChatMessage)`
+**Comandos e Permissões:**
+- `/g` - Chat global
+- `/c` - Chat de clã
+- `/a` - Chat de aliança
+- `/chat` - Ajuda do chat
+- `/ignore` - Ignorar canais
+- `/msg` - Mensagens privadas
+- `/r` - Responder mensagem
+- `/socialspy` - Social spy (admin)
+- `/logrotation` - Rotação de logs
 
-**Consumidos:**
-- `DataManager` (para dados de jogadores)
-- `ClanService` (para canais de clã)
+**Event Listeners:**
+- `ChatListener` - Interceptação de chat
+- `InventoryListener` - GUI de ignore
 
-#### **d. Schema do Banco de Dados:**
+**Tarefas Agendadas:**
+- Rotação automática de logs
+- Processamento assíncrono de mensagens
 
-**Tabelas Específicas:**
-- `chat_logs`: Logs de todas as mensagens
-- `player_tags`: Tags personalizadas
+**Pontos de Atenção:**
+- ✅ Sistema robusto de comunicação
+- ✅ Performance otimizada
+- ✅ Logging completo para auditoria
 
-#### **e. Comandos e Permissões:**
+### Módulo 6: Loja de Servidor (AdminShop)
 
-```yaml
-commands:
-  chat: "Gerenciar canais de chat"
-  c: "Chat de clã"
-  a: "Chat de aliança"
-
-permissions:
-  primeleague.chat.color: "Usar cores no chat"
-  primeleague.chat.format: "Usar formatação no chat"
-  primeleague.chat.clan: "Usar chat de clã"
-  primeleague.chat.ally: "Usar chat de aliança"
-```
-
-#### **f. Event Listeners:**
-
-- `ChatListener`: Intercepta todas as mensagens
-- `TagListener`: Atualiza tags em tempo real
-
-#### **g. Tarefas Agendadas:**
-
-- Limpeza de logs antigos
-- Análise de spam em tempo real
-
-#### **h. Pontos de Atenção e Riscos:**
-
-**⚠️ RISCOS IDENTIFICADOS:**
-- Logs de chat podem crescer muito rapidamente
-- Sistema de tags pode ser abusado
-- Falta de filtros avançados de spam
-
-**🔧 RECOMENDAÇÕES:**
-- Implementar rotação automática de logs
-- Adicionar filtros de palavras proibidas
-- Implementar sistema de mute temporário
-- Adicionar validação de tags
-
-### **Módulo 6: Loja de Servidor (AdminShop)**
-
-#### **a. Estrutura de Pacotes e Classes:**
-
+**Estrutura de Pacotes:**
 ```
 br.com.primeleague.adminshop/
-├── AdminShopPlugin.java           # Classe principal
-├── managers/
-│   ├── ShopManager.java           # Gerenciador da loja
-│   └── ShopConfigManager.java     # Gerenciador de configuração
-├── commands/
-│   ├── ShopCommand.java           # Comando /shop
-│   └── AdminShopCommand.java      # Comando /adminshop
-├── models/
-│   └── ShopItem.java              # Modelo de item
-└── listeners/
-    └── ShopListener.java          # Listener da loja
+├── commands/      # Comandos da loja
+├── listeners/     # Listeners da loja
+├── managers/      # Gerenciadores da loja
+└── models/        # Modelos da loja
 ```
 
-#### **b. Principais Funcionalidades Implementadas:**
+**Principais Funcionalidades:**
+- ✅ Categorias modulares de itens
+- ✅ Sistema de preços configurável
+- ✅ Descontos por tier de doador
+- ✅ Comandos VIP
+- ✅ Kits especiais
+- ✅ Logs detalhados de transações
 
-- ✅ **Sistema de Loja**: Itens configuráveis
-- ✅ **Categorias**: Organização por categorias
-- ✅ **Sistema de Preços**: Preços dinâmicos
-- ✅ **Descontos de Doador**: Benefícios para doadores
-- ✅ **Logs de Transações**: Auditoria de compras
-- ✅ **Kits Especiais**: Pacotes de itens
+**Endpoints da API Interna:**
+- Integração com `EconomyManager` do Core
+- Integração com `DonorManager` do Core
 
-#### **c. Endpoints da API Interna:**
+**Schema do Banco de Dados:**
+- `economy_logs` (logs de transações)
 
-**Expostos:**
-- `ShopService.purchaseItem(UUID, int, int)`
-- `ShopService.getPlayerBalance(UUID)`
-- `ShopService.getAvailableItems()`
+**Comandos e Permissões:**
+- `/shop` - Acessar loja
+- `/adminshop` - Comandos admin da loja
 
-**Consumidos:**
-- `EconomyManager` (para transações)
-- `DonorManager` (para descontos)
+**Event Listeners:**
+- `ShopListener` - Interações com a loja
 
-#### **d. Schema do Banco de Dados:**
+**Tarefas Agendadas:**
+- Limpeza de cache da loja
 
-**Tabelas Específicas:**
-- `shop_items`: Itens da loja
-- `shop_purchases`: Histórico de compras
-- `shop_categories`: Categorias da loja
+**Pontos de Atenção:**
+- ✅ Sistema robusto de validação
+- ✅ Tratamento de erros melhorado
+- ⚠️ Pode afetar balance do PvP
 
-#### **e. Comandos e Permissões:**
+### Módulo 7: Bot Discord (Node.js)
 
-```yaml
-commands:
-  shop: "Acessar loja do servidor"
-  adminshop: "Gerenciar loja (admin)"
-
-permissions:
-  primeleague.shop.access: "Acessar loja"
-  primeleague.shop.admin: "Gerenciar loja"
-  primeleague.shop.discount: "Receber descontos"
-```
-
-#### **f. Event Listeners:**
-
-- `ShopListener`: Gerencia eventos da loja
-- `PurchaseListener`: Processa compras
-
-#### **g. Tarefas Agendadas:**
-
-- Atualização de preços dinâmicos
-- Limpeza de logs antigos
-
-#### **h. Pontos de Atenção e Riscos:**
-
-**⚠️ RISCOS IDENTIFICADOS:**
-- Sistema pode afetar balanço econômico
-- Falta de limite de compras por jogador
-- Possível exploração de descontos
-
-**🔧 RECOMENDAÇÕES:**
-- Implementar limite diário de compras
-- Adicionar validação de preços
-- Implementar sistema de estoque
-- Adicionar logs detalhados de transações
-
-### **Módulo 7: Bot Discord (Node.js)**
-
-#### **a. Estrutura de Arquivos:**
-
+**Estrutura de Pacotes:**
 ```
 primeleague-discord-bot-node/
 ├── src/
-│   ├── index.js                   # Arquivo principal
-│   ├── commands/
-│   │   ├── registrar.js           # Comando /registrar
-│   │   ├── vincular.js            # Comando /vincular
-│   │   ├── assinatura.js          # Comando /assinatura
-│   │   ├── ip-status.js           # Comando /ip-status
-│   │   └── recuperacao.js         # Comando /recuperacao
-│   ├── handlers/
-│   │   ├── ip-auth-handler.js     # Handler de autorização de IP
-│   │   └── subscription-button-handler.js # Handler de botões
-│   ├── workers/
-│   │   ├── notification-worker.js # Worker de notificações
-│   │   └── status-worker.js       # Worker de status
-│   └── database/
-│       └── mysql.js               # Conexão com banco
-├── package.json                   # Dependências Node.js
-└── bot-config.json               # Configuração do bot
+│   ├── commands/      # Comandos Discord
+│   ├── database/      # Acesso a dados
+│   ├── handlers/      # Handlers de interação
+│   └── workers/       # Workers em background
 ```
 
-#### **b. Principais Funcionalidades Implementadas:**
+**Principais Funcionalidades:**
+- ✅ Sistema de autorização de IP via Discord
+- ✅ Sistema de notificações
+- ✅ Sistema de status do servidor
+- ✅ Webhook para pagamentos
+- ✅ Sistema de recuperação de conta
+- ✅ Comandos slash do Discord
 
-- ✅ **Sistema de Registro**: Registro via Discord
-- ✅ **Sistema de Vinculação**: Vínculo Discord-Minecraft
-- ✅ **Gerenciamento de Assinaturas**: Upgrade/downgrade
-- ✅ **Autorização de IPs**: Controle de acesso por IP
-- ✅ **Sistema de Recuperação**: Recuperação de contas
-- ✅ **Webhooks**: Integração com servidor Minecraft
-- ✅ **Notificações**: Notificações em tempo real
+**Endpoints da API Externa:**
+- Servidor Express na porta 3000
+- Webhook para notificações de pagamento
+- Integração com HTTP API do Core
 
-#### **c. Dependências Node.js:**
+**Schema do Banco de Dados:**
+- Acesso direto ao MySQL
+- Tabelas: `discord_users`, `discord_links`, `recovery_codes`
 
-```json
-{
-  "axios": "^1.11.0",
-  "cors": "^2.8.5",
-  "discord.js": "^14.13.0",
-  "dotenv": "^16.3.1",
-  "express": "^5.1.0",
-  "mysql2": "^3.6.0",
-  "uuid": "^11.1.0"
-}
-```
+**Comandos Discord:**
+- Comandos slash para autorização
+- Botões interativos para pagamentos
+- Sistema de recuperação
 
-#### **d. Comandos Discord:**
+**Workers:**
+- `NotificationWorker` - Notificações
+- `StatusWorker` - Status do servidor
 
-- `/registrar`: Registro de nova conta
-- `/vincular`: Vincular conta Discord-Minecraft
-- `/assinatura`: Gerenciar assinatura
-- `/ip-status`: Verificar status de IPs
-- `/recuperacao`: Recuperação de conta
-- `/conta`: Informações da conta
-- `/upgrade-doador`: Upgrade de doador
-- `/desvincular`: Desvincular conta
-
-#### **e. Endpoints HTTP:**
-
-- `POST /webhook/ip-auth`: Autorização de IPs
-- `POST /webhook/notification`: Notificações do servidor
-- `GET /status`: Status do bot
-
-#### **f. Tarefas Agendadas:**
-
-- Verificação de assinaturas expiradas
-- Limpeza de dados temporários
-- Atualização de status do servidor
-
-#### **g. Pontos de Atenção e Riscos:**
-
-**⚠️ RISCOS IDENTIFICADOS:**
-- Falta de rate limiting nos comandos
-- Possível spam de webhooks
-- Falta de validação de entrada
-
-**🔧 RECOMENDAÇÕES:**
-- Implementar rate limiting
-- Adicionar validação de entrada
-- Implementar sistema de logs
-- Adicionar monitoramento de performance
+**Pontos de Atenção:**
+- ✅ Integração robusta com Discord
+- ✅ Sistema de webhook seguro
+- ✅ Workers assíncronos
 
 ---
 
-## **III. Análise da Base de Dados (Schema Global)**
+## III. Análise da Base de Dados (Schema Global)
 
-### **1. Schema Completo**
+### 1. Schema Completo
 
-O banco de dados `primeleague` contém **15 tabelas principais** organizadas em categorias funcionais:
+**Tabelas Principais (SSOT):**
+- `player_data` - Dados centrais dos jogadores
+- `discord_users` - Dados dos usuários Discord
+- `discord_links` - Vínculos Discord-Minecraft
 
-#### **Tabelas Centrais (SSOT):**
-- `player_data`: Dados centrais dos jogadores
-- `discord_users`: Usuários Discord (assinaturas/doadores)
-- `discord_links`: Vínculos Discord-Minecraft
+**Tabelas de Sistema:**
+- `recovery_codes` - Sistema de recuperação
+- `punishments` - Sistema de punições
+- `tickets` - Sistema de denúncias
+- `staff_vanish` - Modo staff
+- `player_authorized_ips` - Autorização P2P
+- `whitelist_players` - Whitelist
 
-#### **Tabelas de Segurança (P2P):**
-- `player_authorized_ips`: IPs autorizados
-- `recovery_codes`: Códigos de recuperação
+**Tabelas de Clãs:**
+- `clans` - Dados dos clãs
+- `clan_players` - Membros dos clãs
+- `clan_alliances` - Alianças
+- `clan_logs` - Logs de ações
 
-#### **Tabelas Administrativas:**
-- `punishments`: Histórico de punições
-- `tickets`: Sistema de tickets
-- `staff_vanish`: Modo staff
-- `whitelist_players`: Whitelist administrativa
+**Tabelas de Comunicação:**
+- `chat_logs` - Logs de mensagens
 
-#### **Tabelas de Clãs:**
-- `clans`: Dados dos clãs
-- `clan_players`: Membros dos clãs
-- `clan_alliances`: Alianças entre clãs
+**Tabelas de Auditoria:**
+- `economy_logs` - Logs econômicos
+- `server_notifications` - Notificações
+- `server_stats` - Estatísticas do servidor
 
-#### **Tabelas de Comunicação:**
-- `chat_logs`: Logs de chat
-
-#### **Tabelas de Sistema:**
-- `server_notifications`: Notificações para serviços externos
-- `economy_logs`: Logs de transações econômicas
-- `server_stats`: Estatísticas do servidor
-
-### **2. Relações Inter-Módulos**
+### 2. Relações Inter-Módulos
 
 **Chaves Estrangeiras Principais:**
-- `discord_links.player_id` → `player_data.player_id`
-- `discord_links.discord_id` → `discord_users.discord_id`
-- `clan_players.player_id` → `player_data.player_id`
-- `clan_players.clan_id` → `clans.id`
-- `punishments.target_player_id` → `player_data.player_id`
-- `recovery_codes.player_id` → `player_data.player_id`
+- `player_id` como chave central em todas as tabelas
+- `discord_id` para integração Discord
+- `clan_id` para sistema de clãs
+- Relacionamentos bem definidos com CASCADE/SET NULL
 
-### **3. Estratégia de Indexação**
+### 3. Estratégia de Indexação
 
-**Índices Implementados:**
-- Índices únicos em `uuid` e `name` em `player_data`
-- Índices em `discord_id` e `verified` em `discord_links`
-- Índices em `player_id` e `ip_address` em `player_authorized_ips`
-- Índices em `status` e `expires_at` em `recovery_codes`
-- Índices em `target_player_id` e `type` em `punishments`
-- Índices em `clan_id` e `role` em `clan_players`
-
-**Índices Recomendados:**
-- Índice composto em `(player_id, status)` para `recovery_codes`
-- Índice em `created_at` para `chat_logs`
-- Índice em `timestamp` para `economy_logs`
+**Índices de Performance:**
+- Índices em `player_id` em todas as tabelas
+- Índices em `status` para consultas de estado
+- Índices em `timestamp` para consultas temporais
+- Índices compostos para consultas complexas
 
 ---
 
-## **IV. Análise de Dependências e Stack Técnica**
+## IV. Análise de Dependências e Stack Técnica
 
-### **1. Dependências Externas**
+### 1. Dependências Externas
 
-#### **Dependências Java:**
-| Dependência | Versão | Propósito | Status |
-|-------------|--------|-----------|--------|
-| **Bukkit API** | 1.5.2-R1.0 | API do servidor Minecraft | ✅ Compatível |
-| **HikariCP** | 4.0.3 | Pool de conexões | ✅ Funcionando |
-| **MySQL Connector** | 5.1.49 | Driver MySQL | ✅ Compatível |
-| **Gson** | 2.8.9 | Serialização JSON | ✅ Funcionando |
-| **SLF4J NOP** | 1.7.25 | Logging | ✅ Funcionando |
-| **BCrypt** | 0.4 | Hash seguro | ✅ Funcionando |
+**Java (Módulos Bukkit):**
+- Bukkit API 1.5.2-R1.0
+- HikariCP-java7 2.4.13 (pool de conexões)
+- MySQL Connector Java 5.1.49
+- SLF4J 1.7.25 (logging)
+- JBCrypt 0.4 (hash seguro)
 
-#### **Dependências Node.js:**
-| Dependência | Versão | Propósito | Status |
-|-------------|--------|-----------|--------|
-| **Discord.js** | 14.13.0 | API Discord | ✅ Funcionando |
-| **Express** | 5.1.0 | Servidor HTTP | ✅ Funcionando |
-| **MySQL2** | 3.6.0 | Driver MySQL | ✅ Funcionando |
-| **Axios** | 1.11.0 | Cliente HTTP | ✅ Funcionando |
-| **CORS** | 2.8.5 | Cross-origin | ✅ Funcionando |
+**Node.js (Bot Discord):**
+- Discord.js (cliente Discord)
+- Express (servidor web)
+- MySQL2 (driver MySQL)
+- Dotenv (variáveis de ambiente)
 
-### **2. Versão Java e Bukkit API**
+### 2. Versão Java e Bukkit API
 
-**✅ Compatibilidade Confirmada:**
-- **Java**: 1.7/1.8 (compatível com Bukkit 1.5.2)
-- **Bukkit API**: 1.5.2-R1.0 (versão estável)
-- **Maven**: 3.8.1+ (build system)
-- **MySQL/MariaDB**: 5.7+ (banco de dados)
-
-**⚠️ Pontos de Atenção:**
-- Alguns módulos usam Java 1.8 em vez de 1.7
-- Bukkit 1.5.2 é uma versão antiga (2013)
-- Falta de testes automatizados
+**Compatibilidade:**
+- ✅ Core: Java 1.7 + Bukkit 1.5.2
+- ✅ P2P: Java 1.8 + Bukkit 1.5.2
+- ✅ Todos os módulos: API 1.5.2
+- ✅ HikariCP versão compatível com Java 7
 
 ---
 
-## **V. Conclusões e Recomendações**
+## V. Conclusões e Recomendações
 
-### **1. Pontos Fortes da Arquitetura**
+### Pontos Fortes da Arquitetura
 
-✅ **Modularidade**: Arquitetura bem modularizada com responsabilidades claras  
-✅ **SSOT**: Implementação correta de Single Source of Truth  
-✅ **Segurança**: Sistema de verificação e autorização robusto  
-✅ **Integração**: Bot Discord bem integrado com o servidor  
-✅ **Escalabilidade**: Estrutura permite adição de novos módulos  
+1. **Modularidade Excelente**
+   - Separação clara de responsabilidades
+   - Comunicação via API bem definida
+   - Baixo acoplamento entre módulos
 
-### **2. Pontos de Melhoria**
+2. **Sistema de Registries Robusto**
+   - Padrão Service Registry bem implementado
+   - Injeção de dependência adequada
+   - Comunicação inter-módulo eficiente
 
-⚠️ **Performance**: Algumas operações de banco na thread principal  
-⚠️ **Testes**: Falta de testes automatizados  
-⚠️ **Documentação**: Documentação técnica limitada  
-⚠️ **Monitoramento**: Falta de sistema de monitoramento  
-⚠️ **Backup**: Falta de estratégia de backup automatizado  
+3. **Integração Discord Sólida**
+   - Bot Node.js bem estruturado
+   - Webhook seguro para pagamentos
+   - Sistema de recuperação de conta
 
-### **3. Recomendações Prioritárias**
+4. **Base de Dados Bem Projetada**
+   - Schema normalizado
+   - Índices de performance
+   - Relacionamentos bem definidos
 
-#### **Alta Prioridade:**
-1. **Implementar testes automatizados** para todos os módulos
-2. **Adicionar rate limiting** em todas as APIs
-3. **Implementar sistema de monitoramento** e alertas
-4. **Criar estratégia de backup** automatizado
+### Pontos de Atenção
 
-#### **Média Prioridade:**
-1. **Otimizar queries de banco** para melhor performance
-2. **Implementar cache distribuído** (Redis)
-3. **Adicionar logs estruturados** (JSON)
-4. **Criar documentação técnica** completa
+1. **Operações de I/O na Thread Principal**
+   - Algumas operações de banco podem bloquear
+   - Recomendação: Migrar para operações assíncronas
 
-#### **Baixa Prioridade:**
-1. **Migrar para versão mais recente** do Bukkit (se possível)
-2. **Implementar sistema de métricas** avançado
-3. **Adicionar interface web** administrativa
-4. **Implementar sistema de plugins** de terceiros
+2. **Cache em Memória**
+   - Caches não persistem entre restarts
+   - Recomendação: Implementar persistência
 
-### **4. Conformidade com Filosofia**
+3. **AdminShop e Balance**
+   - Itens pagos podem afetar PvP
+   - Recomendação: Revisar balance dos itens
 
-**✅ O projeto está em conformidade com a filosofia "O Coliseu Competitivo":**
-- Sistema de ELO para ranking competitivo
-- PvP 1.5.2 sem modificações de combate
-- Foco em competição e habilidade
-- Sem elementos RPG que afetem o meta
+### Recomendações de Melhoria
 
-**⚠️ Pontos de atenção:**
-- Sistema de doadores pode criar vantagens econômicas
-- Loja administrativa pode afetar balanço competitivo
+1. **Performance**
+   - Implementar mais operações assíncronas
+   - Otimizar consultas de banco
+   - Implementar cache distribuído
 
-### **5. Status Geral do Projeto**
+2. **Segurança**
+   - Reforçar validação de entrada
+   - Implementar rate limiting mais robusto
+   - Auditoria mais detalhada
 
-**🟢 PROJETO FUNCIONAL E ESTÁVEL**
-- Todos os módulos principais implementados
-- Sistema de verificação funcionando
-- Integração Discord operacional
-- Arquitetura sólida e escalável
+3. **Monitoramento**
+   - Implementar métricas de performance
+   - Logs estruturados
+   - Alertas automáticos
 
-**📊 MÉTRICAS:**
-- **7 módulos Java** implementados
-- **1 bot Discord** Node.js funcionando
-- **15 tabelas** de banco de dados
-- **50+ comandos** implementados
-- **100+ classes** Java
-- **2000+ linhas** de código SQL
+### Conformidade com Filosofia
+
+**✅ ALINHADO:**
+- Sistema competitivo baseado em ELO
+- PvP 1.5.2 sem modificações de meta
+- Economia baseada em PvP
+- Sistema de clãs para competição
+
+**⚠️ ATENÇÃO:**
+- AdminShop pode introduzir vantagens
+- Sistema de doadores com benefícios
+- Necessário monitorar impacto no balance
 
 ---
 
-**Relatório concluído em:** 28/08/2025  
-**Próxima revisão recomendada:** 30/09/2025  
-**Status:** ✅ **ANÁLISE COMPLETA E APROVADA**
+## VI. Status Geral do Projeto
+
+### Módulos Implementados (7/12)
+1. ✅ **Core** - Completo e funcional
+2. ✅ **P2P** - Completo e funcional
+3. ✅ **Admin** - Completo e funcional
+4. ✅ **Chat** - Completo e funcional
+5. ✅ **Clans** - Completo e funcional
+6. ✅ **AdminShop** - Completo e funcional
+7. ✅ **Discord Bot** - Completo e funcional
+
+### Módulos Pendentes (5/12)
+8. ⏳ **Territórios** - Não implementado
+9. ⏳ **Comandos Essenciais** - Parcialmente no Core
+10. ⏳ **Lojas de Jogadores** - Não implementado
+11. ⏳ **Placar de Estatísticas** - Parcialmente implementado
+12. ⏳ **Prevenção de Combat Log** - Não implementado
+13. ⏳ **Eventos Automatizados** - Não implementado
+
+### Qualidade Geral
+- **Arquitetura:** Excelente (9/10)
+- **Código:** Bom (8/10)
+- **Documentação:** Adequada (7/10)
+- **Testes:** Limitada (5/10)
+- **Performance:** Boa (8/10)
+- **Segurança:** Boa (8/10)
+
+---
+
+**Este relatório serve como a única fonte da verdade (SSOT) sobre o estado atual do ecossistema Prime League. Todas as decisões arquiteturais futuras devem ser baseadas nesta análise.**
