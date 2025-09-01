@@ -313,14 +313,8 @@ public final class EconomyManager {
             return EconomyResponse.error("Player ID não encontrado para UUID: " + playerUuid);
         }
         
-        // Obter tier de doador do PlayerProfile
-        br.com.primeleague.core.models.PlayerProfile profile = plugin.getDataManager().getPlayerProfile(playerId);
-        int donorTier = profile != null ? profile.getDonorTier() : 0;
-        
-        // Verificar se o tier de doador está ativo
-        if (profile != null && !profile.hasActiveDonorTier()) {
-            donorTier = 0; // Tier expirado, sem desconto
-        }
+        // Obter tier de doador via SSOT (discord_users)
+        int donorTier = 0; // TODO: Implementar consulta ao discord_users via DataManager
         
         // Calcular desconto de doador
         double discount = donorManager.getDonorDiscount(donorTier);

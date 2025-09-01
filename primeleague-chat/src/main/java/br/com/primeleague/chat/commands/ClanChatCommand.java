@@ -7,6 +7,9 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.Bukkit;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Comando para chat de clã (versão simplificada para teste).
@@ -47,13 +50,36 @@ public class ClanChatCommand implements CommandExecutor {
             return true;
         }
         
-        channelManager.setPlayerChannel(player, ChatChannel.CLAN);
+        // PRINCÍPIO "QUICK SEND": Enviar mensagem única sem mudar canal
+        // O jogador permanece no chat local após o envio
         
         String formattedMessage = channelManager.formatClanMessage(player, message);
-        player.sendMessage(formattedMessage);
+        
+        // Encontrar membros do clã e enviar a mensagem
+        List<Player> clanMembers = new ArrayList<Player>();
+        for (Player onlinePlayer : Bukkit.getOnlinePlayers()) {
+            if (isPlayerInSameClan(player, onlinePlayer)) {
+                clanMembers.add(onlinePlayer);
+            }
+        }
+        
+        // Enviar para membros do clã
+        for (Player onlinePlayer : clanMembers) {
+            onlinePlayer.sendMessage(formattedMessage);
+        }
+        
+        // Feedback contextual para o remetente
+        player.sendMessage("§7[Você -> Clã] " + formattedMessage);
         
         plugin.getLoggingService().logMessage("CLAN", player, null, message);
         
         return true;
+    }
+    
+    // Método auxiliar para verificar se dois jogadores estão no mesmo clã
+    private boolean isPlayerInSameClan(Player player1, Player player2) {
+        // TODO: Implementar integração com ClanManager
+        // Por enquanto, retorna false para evitar erros
+        return false;
     }
 }

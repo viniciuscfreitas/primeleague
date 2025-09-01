@@ -10,12 +10,52 @@ depend: [PrimeLeague-Core, PrimeLeague-Clans]
 
 # Comandos
 commands:
+  g:
+    description: Envia uma mensagem única para o chat global (quick send).
+    usage: /g <mensagem>
   c:
-    description: Envia uma mensagem para o chat do clã.
+    description: Envia uma mensagem única para o chat do clã (quick send).
     usage: /c <mensagem>
   a:
-    description: Envia uma mensagem para o chat de aliança.
+    description: Envia uma mensagem única para o chat de aliança (quick send).
     usage: /a <mensagem>
   chat:
-    description: Gerencia os canais de chat.
-    usage: /chat <canal>
+    description: Mostra ajuda sobre o sistema de chat.
+    usage: /chat help
+  ignore:
+    description: Gerencia ignores - abre GUI ou ignora jogador rapidamente.
+    usage: /ignore [nome_do_jogador]
+  msg:
+    description: Envia uma mensagem privada para outro jogador.
+    usage: /msg <jogador> <mensagem>
+    aliases: [tell, w]
+  r:
+    description: Responde à última mensagem privada recebida.
+    usage: /r <mensagem>
+  socialspy:
+    description: Ativa/desativa o modo social spy para administradores.
+    usage: /socialspy [on|off|status]
+  logrotation:
+    description: Gerencia o sistema de rotação de logs.
+    usage: /logrotation <status|manual|start|config|help>
+
+# Permissões
+permissions:
+  primeleague.chat.bypass_rate_limit:
+    description: Permite ignorar o rate limiting do chat.
+    default: op
+  primeleague.chat.bypass_filters:
+    description: Permite ignorar os filtros avançados do chat.
+    default: op
+  primeleague.chat.color:
+    description: Permite o uso de códigos de cor no chat (&0-9, &a-f).
+    default: false
+  primeleague.chat.format:
+    description: Permite o uso de códigos de formatação no chat (&k, &l, &m, &n, &o).
+    default: false
+  primeleague.chat.admin:
+    description: Permite acesso a comandos administrativos do chat.
+    default: op
+  primeleague.chat.socialspy:
+    description: Permite usar o comando social spy para monitorar mensagens privadas.
+    default: op

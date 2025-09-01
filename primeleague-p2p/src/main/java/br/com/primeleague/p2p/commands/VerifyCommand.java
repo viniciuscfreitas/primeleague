@@ -51,7 +51,20 @@ public class VerifyCommand implements CommandExecutor {
             return true;
         }
 
-        // Verificar argumentos
+        // 🎯 VERIFICAÇÃO: Impedir que jogadores já verificados usem o comando (ANTES de verificar argumentos)
+        // Usar UUID canônico para verificação correta
+        UUID canonicalUuid = PrimeLeagueAPI.getDataManager().getCanonicalUuid(player.getUniqueId());
+        boolean isVerified = PrimeLeagueAPI.getDataManager().isPlayerVerified(canonicalUuid);
+        PrimeLeagueP2P.getInstance().getLogger().info("[VERIFY-COMMAND] Jogador " + player.getName() + " - Bukkit UUID: " + player.getUniqueId() + " - Canonical UUID: " + canonicalUuid + " - Verificado: " + isVerified);
+        
+        if (isVerified) {
+            player.sendMessage("§c❌ Você já está verificado no Discord!");
+            player.sendMessage("§7💡 Este comando é apenas para jogadores que ainda não verificaram sua conta.");
+            PrimeLeagueP2P.getInstance().getLogger().info("[VERIFY-COMMAND] Jogador " + player.getName() + " BLOQUEADO - já verificado");
+            return true;
+        }
+
+        // Verificar argumentos (apenas para jogadores não verificados)
         if (args.length != 1) {
             player.sendMessage("§c❌ Uso correto: /verify <código>");
             player.sendMessage("§7💡 Digite o código de 6 dígitos recebido no Discord.");
@@ -84,8 +97,23 @@ public class VerifyCommand implements CommandExecutor {
                                 // VERIFICAR ASSINATURA IMEDIATAMENTE APÓS VERIFICAÇÃO
                                 checkSubscriptionAndKickIfNeeded(player);
                                 
-                                // Notificar Discord sobre sucesso
-                                notifyDiscordSuccess(player.getName());
+                                // Notificar Discord sobre sucesso e autorizar IP
+                                String playerIp = player.getAddress().getAddress().getHostAddress();
+                                notifyDiscordSuccess(player.getName(), playerIp);
+                                
+                                // 🎯 UX PERFEITA: Informar sobre autorização de IP
+                                player.sendMessage("");
+                                player.sendMessage("§a§l🎉 VERIFICAÇÃO CONCLUÍDA COM SUCESSO!");
+                                player.sendMessage("");
+                                player.sendMessage("§f✅ Sua conta Discord foi vinculada!");
+                                player.sendMessage("§f✅ Sua assinatura está ativa!");
+                                player.sendMessage("");
+                                player.sendMessage("§e🔐 SEGURANÇA DE IP:");
+                                player.sendMessage("§f✅ Seu IP atual (§e" + playerIp + "§f) foi autorizado automaticamente");
+                                player.sendMessage("§f💡 Se conectar de outro local, você precisará autorizar via Discord");
+                                player.sendMessage("");
+                                player.sendMessage("§a🔄 Você pode jogar normalmente!");
+                                player.sendMessage("");
                             } else {
                                 player.sendMessage("§c❌ Código inválido ou expirado!");
                                 player.sendMessage("§7💡 Verifique se digitou corretamente e se não expirou (5 minutos).");
@@ -126,6 +154,23 @@ public class VerifyCommand implements CommandExecutor {
 
         try {
             connection = PrimeLeagueAPI.getDataManager().getConnection();
+            
+            // PRIMEIRO: Verificar se o jogador já está verificado
+            String checkVerifiedSql = "SELECT dl.verified FROM discord_links dl JOIN player_data pd ON dl.player_id = pd.player_id WHERE pd.name = ? LIMIT 1";
+            stmt = connection.prepareStatement(checkVerifiedSql);
+            stmt.setString(1, playerName);
+            rs = stmt.executeQuery();
+            
+            if (rs.next()) {
+                boolean isVerified = rs.getBoolean("verified");
+                if (isVerified) {
+                    PrimeLeagueP2P.getInstance().getLogger().info("Jogador " + playerName + " já está verificado - não precisa de código");
+                    return false; // Já verificado, não precisa de código
+                }
+            }
+            
+            rs.close();
+            stmt.close();
             
             // Usar a procedure do banco de dados
             stmt = connection.prepareStatement("CALL VerifyDiscordLink(?, ?)");
@@ -439,20 +484,22 @@ public class VerifyCommand implements CommandExecutor {
     }
 
     /**
-     * Notifica o Discord sobre a verificação bem-sucedida.
+     * Notifica o Discord sobre a verificação bem-sucedida e autoriza automaticamente o IP.
      * 
      * @param playerName Nome do jogador verificado
+     * @param playerIp IP do jogador (usado durante verificação)
      */
-    private void notifyDiscordSuccess(String playerName) {
+    private void notifyDiscordSuccess(String playerName, String playerIp) {
         try {
             Connection connection = PrimeLeagueAPI.getDataManager().getConnection();
             
-            // Criar notificação para o Discord
+            // 1. Criar notificação para o Discord
             String sql = "INSERT INTO server_notifications (action_type, payload) VALUES (?, ?)";
             
             Map<String, Object> payload = new HashMap<>();
             payload.put("player_name", playerName);
             payload.put("verified_at", System.currentTimeMillis());
+            payload.put("verification_ip", playerIp); // Armazenar IP da verificação
             payload.put("status", "success");
             
             PreparedStatement stmt = connection.prepareStatement(sql);
@@ -460,12 +507,42 @@ public class VerifyCommand implements CommandExecutor {
             stmt.setString(2, new com.google.gson.Gson().toJson(payload));
             
             stmt.executeUpdate();
+            stmt.close();
             
+            // 2. AUTORIZAR AUTOMATICAMENTE O IP ESPECÍFICO USADO NA VERIFICAÇÃO
+            String playerSql = "SELECT pd.uuid, pd.player_id FROM player_data pd WHERE pd.name = ?";
+            stmt = connection.prepareStatement(playerSql);
+            stmt.setString(1, playerName);
+            
+            java.sql.ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                String playerUuid = rs.getString("uuid");
+                int playerId = rs.getInt("player_id");
+                
+                // Autorizar especificamente o IP usado na verificação
+                String autoAuthSql = "INSERT INTO player_authorized_ips (player_id, ip_address, description, authorized_at) " +
+                                   "VALUES (?, ?, ?, NOW()) " +
+                                   "ON DUPLICATE KEY UPDATE authorized_at = NOW()";
+                
+                PreparedStatement authStmt = connection.prepareStatement(autoAuthSql);
+                authStmt.setInt(1, playerId);
+                authStmt.setString(2, playerIp); // IP específico da verificação
+                authStmt.setString(3, "Autorização automática após verificação Discord");
+                
+                authStmt.executeUpdate();
+                authStmt.close();
+                
+                PrimeLeagueP2P.getInstance().getLogger().info(
+                    "IP " + playerIp + " autorizado automaticamente para " + playerName + " após verificação bem-sucedida"
+                );
+            }
+            
+            rs.close();
             stmt.close();
             connection.close();
             
         } catch (SQLException e) {
-            PrimeLeagueP2P.getInstance().getLogger().warning("Erro ao notificar Discord: " + e.getMessage());
+            PrimeLeagueP2P.getInstance().getLogger().warning("Erro ao notificar Discord e autorizar IP: " + e.getMessage());
         }
     }
 }

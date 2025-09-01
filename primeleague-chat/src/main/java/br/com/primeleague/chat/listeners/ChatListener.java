@@ -3,6 +3,7 @@ package br.com.primeleague.chat.listeners;
 import br.com.primeleague.chat.PrimeLeagueChat;
 import br.com.primeleague.chat.services.ChannelManager;
 import br.com.primeleague.chat.services.ChannelManager.ChatChannel;
+import br.com.primeleague.chat.services.RateLimitService;
 import br.com.primeleague.api.P2PServiceRegistry;
 import br.com.primeleague.core.api.PrimeLeagueAPI;
 import org.bukkit.Bukkit;
@@ -12,7 +13,11 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import java.util.UUID;
+import java.util.ArrayList;
+import java.util.List;
+import br.com.primeleague.chat.services.AdvancedFilterService;
 
 /**
  * Listener para interceptar eventos de chat (versão simplificada para teste).
@@ -21,16 +26,23 @@ public class ChatListener implements Listener {
     
     private final PrimeLeagueChat plugin;
     private final ChannelManager channelManager;
+    private final RateLimitService rateLimitService;
     
     public ChatListener(PrimeLeagueChat plugin) {
         this.plugin = plugin;
         this.channelManager = plugin.getChannelManager();
+        this.rateLimitService = new RateLimitService(plugin);
     }
     
     @EventHandler(priority = EventPriority.LOWEST)
     public void onPlayerChat(AsyncPlayerChatEvent event) {
         Player player = event.getPlayer();
         String message = event.getMessage();
+        
+        // IGNORAR COMANDOS - deixar o Bukkit processar comandos normalmente
+        if (message.startsWith("/")) {
+            return; // Não cancelar, deixar o comando ser processado
+        }
         
         // BARRERA DE SEGURANÇA: Verificar se o perfil do jogador está carregado
         // USAR TRADUTOR DE IDENTIDADE para obter UUID canônico
@@ -66,42 +78,67 @@ public class ChatListener implements Listener {
             return;
         }
         
+        // BARRERA DE SEGURANÇA: Rate Limiting
+        RateLimitService.RateLimitResult rateLimitResult = rateLimitService.checkRateLimit(player, message);
+        if (!rateLimitResult.isAllowed()) {
+            plugin.getLogger().info("🚫 [CHAT-EVENT] Rate limit violado:");
+            plugin.getLogger().info("   👤 Jogador: " + player.getName() + " (UUID: " + player.getUniqueId() + ")");
+            plugin.getLogger().info("   📝 Mensagem: " + message);
+            plugin.getLogger().info("   ⏳ Cooldown: " + rateLimitResult.getRemainingCooldownMs() + "ms");
+
+            event.setCancelled(true);
+            player.sendMessage(rateLimitResult.getMessage());
+            return;
+        }
+        
+        // BARRERA DE SEGURANÇA: Filtros Avançados
+        AdvancedFilterService.FilterResult filterResult = plugin.getAdvancedFilterService().checkMessage(player, message);
+        if (!filterResult.passed()) {
+            plugin.getLogger().info("🚫 [CHAT-EVENT] Filtro violado (" + filterResult.getFilterType() + "):");
+            plugin.getLogger().info("   👤 Jogador: " + player.getName() + " (UUID: " + player.getUniqueId() + ")");
+            plugin.getLogger().info("   📝 Mensagem: " + message);
+            plugin.getLogger().info("   🛡️ Motivo: " + filterResult.getReason());
+
+            event.setCancelled(true);
+            player.sendMessage(filterResult.getReason());
+            return;
+        }
+        
         // Cancelar o evento padrão para processar manualmente
         event.setCancelled(true);
         
-        // Obter o canal ativo do jogador
-        ChatChannel activeChannel = channelManager.getPlayerChannel(player);
-        
-
-        
-        // Processar a mensagem baseada no canal
-        switch (activeChannel) {
-            case GLOBAL:
-                handleGlobalChat(player, message);
-                break;
-            case CLAN:
-                handleClanChat(player, message);
-                break;
-            case ALLY:
-                handleAllyChat(player, message);
-                break;
-            case LOCAL:
-                handleLocalChat(player, message);
-                break;
-        }
+        // PRINCÍPIO "LOCAL É REI": Todas as mensagens normais vão para o chat local
+        // Não há mais sistema de "sticky channel" - simplicidade absoluta
+        handleLocalChat(player, message);
     }
     
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
         // Limpar canal do jogador quando ele sai
         channelManager.clearPlayerChannel(event.getPlayer().getUniqueId());
+        
+        // Limpar histórico de rate limiting
+        rateLimitService.clearPlayerHistory(event.getPlayer().getUniqueId());
+        
+        // Limpar histórico de ignore de canais
+        plugin.getIgnoreService().clearPlayerHistory(event.getPlayer().getUniqueId());
+        
+        // Limpar rastreamento de mensagens privadas
+        plugin.getPrivateMessageService().onPlayerQuit(event.getPlayer());
     }
     
     private void handleGlobalChat(Player player, String message) {
         String formattedMessage = channelManager.formatGlobalMessage(player, message);
         
-        // Enviar para todos os jogadores online
-        for (Player onlinePlayer : Bukkit.getOnlinePlayers()) {
+        // Obter todos os jogadores online e filtrar os que estão ignorando o canal OU o remetente
+        List<Player> allPlayers = new ArrayList<Player>();
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            allPlayers.add(p);
+        }
+        List<Player> filteredPlayers = plugin.getIgnoreService().filterIgnoringChannelAndSender(allPlayers, ChannelManager.ChatChannel.GLOBAL, player);
+        
+        // Enviar para jogadores que não estão ignorando o canal nem o remetente
+        for (Player onlinePlayer : filteredPlayers) {
             onlinePlayer.sendMessage(formattedMessage);
         }
         
@@ -124,11 +161,19 @@ public class ChatListener implements Listener {
         
         String formattedMessage = channelManager.formatClanMessage(player, message);
         
-        // Enviar para membros do clã
+        // Encontrar membros do clã e filtrar os que estão ignorando o canal OU o remetente
+        List<Player> clanMembers = new ArrayList<Player>();
         for (Player onlinePlayer : Bukkit.getOnlinePlayers()) {
             if (isPlayerInSameClan(player, onlinePlayer)) {
-                onlinePlayer.sendMessage(formattedMessage);
+                clanMembers.add(onlinePlayer);
             }
+        }
+        
+        List<Player> filteredPlayers = plugin.getIgnoreService().filterIgnoringChannelAndSender(clanMembers, ChannelManager.ChatChannel.CLAN, player);
+        
+        // Enviar para membros do clã que não estão ignorando o canal nem o remetente
+        for (Player onlinePlayer : filteredPlayers) {
+            onlinePlayer.sendMessage(formattedMessage);
         }
         
         // Log da mensagem
@@ -150,11 +195,19 @@ public class ChatListener implements Listener {
         
         String formattedMessage = channelManager.formatAllyMessage(player, message);
         
-        // Enviar para membros do clã e aliados
+        // Encontrar membros do clã e aliados, e filtrar os que estão ignorando o canal OU o remetente
+        List<Player> allyMembers = new ArrayList<Player>();
         for (Player onlinePlayer : Bukkit.getOnlinePlayers()) {
             if (isPlayerInSameClan(player, onlinePlayer) || isPlayerInAlliedClan(player, onlinePlayer)) {
-                onlinePlayer.sendMessage(formattedMessage);
+                allyMembers.add(onlinePlayer);
             }
+        }
+        
+        List<Player> filteredPlayers = plugin.getIgnoreService().filterIgnoringChannelAndSender(allyMembers, ChannelManager.ChatChannel.ALLY, player);
+        
+        // Enviar para membros e aliados que não estão ignorando o canal nem o remetente
+        for (Player onlinePlayer : filteredPlayers) {
+            onlinePlayer.sendMessage(formattedMessage);
         }
         
         // Log da mensagem
@@ -166,12 +219,20 @@ public class ChatListener implements Listener {
         
         int radius = channelManager.getLocalChatRadius();
         
-        // Encontrar jogadores dentro do raio
+        // Encontrar jogadores dentro do raio e filtrar os que estão ignorando o canal OU o remetente
+        List<Player> localPlayers = new ArrayList<Player>();
         for (Player onlinePlayer : Bukkit.getOnlinePlayers()) {
             if (onlinePlayer.getWorld().equals(player.getWorld()) &&
                 onlinePlayer.getLocation().distance(player.getLocation()) <= radius) {
-                onlinePlayer.sendMessage(formattedMessage);
+                localPlayers.add(onlinePlayer);
             }
+        }
+        
+        List<Player> filteredPlayers = plugin.getIgnoreService().filterIgnoringChannelAndSender(localPlayers, ChannelManager.ChatChannel.LOCAL, player);
+        
+        // Enviar para jogadores locais que não estão ignorando o canal nem o remetente
+        for (Player onlinePlayer : filteredPlayers) {
+            onlinePlayer.sendMessage(formattedMessage);
         }
         
         // Log da mensagem

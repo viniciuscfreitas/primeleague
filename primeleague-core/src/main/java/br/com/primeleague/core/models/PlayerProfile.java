@@ -8,11 +8,13 @@ import java.math.BigDecimal;
  * DTO (Data Transfer Object) para informações do jogador.
  * Contém dados essenciais do jogador para uso em toda a aplicação.
  * 
- * REFATORADO para usar BigDecimal no campo money, garantindo precisão absoluta
- * em operações monetárias conforme diretrizes do Arquiteto.
+ * REFATORADO para arquitetura SSOT (Single Source of Truth):
+ * - Removidos campos de assinatura/doação (agora em discord_users)
+ * - PlayerProfile foca apenas em dados de gameplay
+ * - BigDecimal para precisão monetária
  * 
  * @author PrimeLeague Team
- * @version 1.1
+ * @version 2.0 (SSOT Architecture)
  */
 public class PlayerProfile {
     
@@ -22,12 +24,9 @@ public class PlayerProfile {
     private BigDecimal money; // REFATORADO: BigDecimal para precisão monetária
     private Integer clanId;
     private long totalPlaytime;
-    private Date subscriptionExpiry;
     private Date lastSeen;
     private int totalLogins;
     private PlayerStatus status;
-    private int donorTier;
-    private Date donorTierExpiresAt;
     private Date createdAt;
     private Date updatedAt;
     
@@ -59,7 +58,6 @@ public class PlayerProfile {
         this.money = BigDecimal.ZERO; // REFATORADO: BigDecimal.ZERO em vez de 0.0
         this.totalLogins = 0;
         this.totalPlaytime = 0;
-        this.donorTier = 0; // Sem tier de doador por padrão
     }
     
     /**
@@ -162,13 +160,7 @@ public class PlayerProfile {
         this.totalPlaytime = totalPlaytime;
     }
     
-    public Date getSubscriptionExpiry() {
-        return subscriptionExpiry;
-    }
-    
-    public void setSubscriptionExpiry(Date subscriptionExpiry) {
-        this.subscriptionExpiry = subscriptionExpiry;
-    }
+
     
     public Date getLastSeen() {
         return lastSeen;
@@ -210,109 +202,11 @@ public class PlayerProfile {
         this.updatedAt = updatedAt;
     }
     
-    // ==================== DOADOR TIER ====================
+
     
-    public int getDonorTier() {
-        return donorTier;
-    }
+
     
-    public void setDonorTier(int donorTier) {
-        this.donorTier = Math.max(0, donorTier); // Garantir que não seja negativo
-    }
-    
-    public Date getDonorTierExpiresAt() {
-        return donorTierExpiresAt;
-    }
-    
-    public void setDonorTierExpiresAt(Date donorTierExpiresAt) {
-        this.donorTierExpiresAt = donorTierExpiresAt;
-    }
-    
-    /**
-     * Verifica se o tier de doador está ativo (não expirou).
-     * 
-     * @return true se o tier está ativo, false caso contrário
-     */
-    public boolean hasActiveDonorTier() {
-        if (donorTier <= 0) {
-            return false; // Sem tier de doador
-        }
-        
-        if (donorTierExpiresAt == null) {
-            return true; // Tier permanente
-        }
-        
-        return donorTierExpiresAt.after(new Date());
-    }
-    
-    /**
-     * Verifica se o tier de doador expira em menos de X dias.
-     * 
-     * @param days Número de dias para verificar
-     * @return true se expira em menos de X dias, false caso contrário
-     */
-    public boolean isDonorTierExpiringSoon(int days) {
-        if (donorTier <= 0 || donorTierExpiresAt == null) {
-            return false;
-        }
-        
-        long currentTime = System.currentTimeMillis();
-        long expiryTime = donorTierExpiresAt.getTime();
-        long daysInMillis = days * 24 * 60 * 60 * 1000L;
-        
-        return (expiryTime - currentTime) <= daysInMillis;
-    }
-    
-    /**
-     * Verifica se o jogador tem acesso ativo (assinatura válida).
-     * 
-     * @return true se o jogador tem acesso, false caso contrário
-     */
-    public boolean hasActiveAccess() {
-        if (subscriptionExpiry == null) {
-            return false;
-        }
-        return subscriptionExpiry.after(new Date());
-    }
-    
-    /**
-     * Verifica se a assinatura expira em menos de X dias.
-     * 
-     * @param days Número de dias para verificar
-     * @return true se expira em menos de X dias, false caso contrário
-     */
-    public boolean isExpiringSoon(int days) {
-        if (subscriptionExpiry == null) {
-            return false;
-        }
-        
-        long currentTime = System.currentTimeMillis();
-        long expiryTime = subscriptionExpiry.getTime();
-        long daysInMillis = days * 24 * 60 * 60 * 1000L;
-        
-        return (expiryTime - currentTime) <= daysInMillis;
-    }
-    
-    /**
-     * Calcula quantos dias restam até a expiração.
-     * 
-     * @return Número de dias restantes, -1 se não há data de expiração
-     */
-    public int getDaysUntilExpiry() {
-        if (subscriptionExpiry == null) {
-            return -1;
-        }
-        
-        long currentTime = System.currentTimeMillis();
-        long expiryTime = subscriptionExpiry.getTime();
-        long diffInMillis = expiryTime - currentTime;
-        
-        if (diffInMillis <= 0) {
-            return 0;
-        }
-        
-        return (int) (diffInMillis / (24 * 60 * 60 * 1000L));
-    }
+
     
     /**
      * Adiciona uma quantia ao saldo do jogador.
@@ -359,7 +253,6 @@ public class PlayerProfile {
                 ", elo=" + elo +
                 ", money=" + money +
                 ", status=" + status +
-                ", hasActiveAccess=" + hasActiveAccess() +
                 '}';
     }
 }

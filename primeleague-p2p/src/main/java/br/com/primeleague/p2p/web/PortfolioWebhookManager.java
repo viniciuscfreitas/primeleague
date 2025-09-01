@@ -204,7 +204,7 @@ public final class PortfolioWebhookManager {
     private Date calculateNewExpiryDate(PlayerProfile playerProfile, int daysToAdd) {
         Calendar calendar = Calendar.getInstance();
         
-        Date currentExpiry = playerProfile.getSubscriptionExpiry();
+        Date currentExpiry = null; // TODO: Implementar consulta SSOT via DataManager
         
         if (currentExpiry == null || currentExpiry.before(new Date())) {
             // Assinatura expirada ou nunca teve - começar de agora
@@ -235,7 +235,7 @@ public final class PortfolioWebhookManager {
                 // Atualizar cache se o jogador estiver online
                 PlayerProfile cachedProfile = PrimeLeagueAPI.getDataManager().getPlayerProfileFromCache(playerUuid);
                 if (cachedProfile != null) {
-                    cachedProfile.setSubscriptionExpiry(newExpiryDate);
+                    // TODO: Implementar atualização SSOT via DataManager
                 }
             }
             

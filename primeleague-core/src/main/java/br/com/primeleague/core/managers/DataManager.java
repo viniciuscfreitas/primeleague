@@ -189,7 +189,6 @@ public final class DataManager {
                             profile.setClanId(null);
                             profile.setTotalPlaytime(rs.getLong("total_playtime"));
                             // subscription_expires_at e donor_tier agora estão em discord_users
-                            profile.setSubscriptionExpiry(null); // Será carregado via Discord ID
                             profile.setLastSeen(rs.getTimestamp("last_seen"));
                             profile.setTotalLogins(rs.getInt("total_logins"));
                             
@@ -201,8 +200,6 @@ public final class DataManager {
                             }
                             
                             // Dados de doador agora estão em discord_users
-                            profile.setDonorTier(0); // Será carregado via Discord ID
-                            profile.setDonorTierExpiresAt(null); // Será carregado via Discord ID
                         } else {
                             // JOGADOR NOVO - Criar perfil e salvar no banco
                             profile = new PlayerProfile();
@@ -258,7 +255,7 @@ public final class DataManager {
                             profile.setMoney(rs.getBigDecimal("money"));
                             profile.setClanId(null);
                             profile.setTotalPlaytime(rs.getLong("total_playtime"));
-                            profile.setSubscriptionExpiry(null); // Será carregado via Discord ID
+                            
                             profile.setLastSeen(rs.getTimestamp("last_seen"));
                             profile.setTotalLogins(rs.getInt("total_logins"));
                             
@@ -269,8 +266,8 @@ public final class DataManager {
                                 profile.setStatus(PlayerProfile.PlayerStatus.ACTIVE);
                             }
                             
-                            profile.setDonorTier(0); // Será carregado via Discord ID
-                            profile.setDonorTierExpiresAt(null); // Será carregado via Discord ID
+                            
+                            
                         }
                         // Se não existir, retorna null (NÃO cria automaticamente)
                     } finally {
@@ -315,8 +312,7 @@ public final class DataManager {
                             profile.setElo(rs.getInt("elo"));
                             profile.setMoney(rs.getBigDecimal("money"));
                             profile.setTotalPlaytime(rs.getLong("total_playtime"));
-                            // subscription_expires_at agora está em discord_users
-                            profile.setSubscriptionExpiry(null); // Será carregado via Discord ID
+                            // subscription_expires_at agora está em discord_users (SSOT)
                             profile.setLastSeen(rs.getTimestamp("last_seen"));
                             profile.setTotalLogins(rs.getInt("total_logins"));
                             
@@ -327,9 +323,7 @@ public final class DataManager {
                                 profile.setStatus(PlayerProfile.PlayerStatus.ACTIVE);
                             }
                             
-                            // Dados de doador agora estão em discord_users
-                            profile.setDonorTier(0); // Será carregado via Discord ID
-                            profile.setDonorTierExpiresAt(null); // Será carregado via Discord ID
+                            // Dados de doador agora estão em discord_users (SSOT)
                             
                             // Obter informações de clã via LEFT JOIN
                             int clanId = rs.getInt("clan_id");
@@ -515,9 +509,7 @@ public final class DataManager {
                     profile.setMoney(rs.getBigDecimal("money"));
                     profile.setClanId(null); // clan_id não existe mais em player_data
                     profile.setTotalPlaytime(rs.getLong("total_playtime"));
-                    // subscription_expires_at agora está em discord_users
-                    profile.setSubscriptionExpiry(null); // Será carregado via Discord ID
-                    profile.setLastSeen(rs.getTimestamp("last_seen"));
+                    // subscription_expires_at agora está em discord_usersprofile.setLastSeen(rs.getTimestamp("last_seen"));
                     profile.setTotalLogins(rs.getInt("total_logins"));
                     
                     String statusStr = rs.getString("status");
@@ -527,11 +519,7 @@ public final class DataManager {
                         profile.setStatus(PlayerProfile.PlayerStatus.ACTIVE);
                     }
                     
-                    // Dados de doador agora estão em discord_users
-                    profile.setDonorTier(0); // Será carregado via Discord ID
-                    profile.setDonorTierExpiresAt(null); // Será carregado via Discord ID
-                    
-                    // Adicionar ao cache
+                    // Dados de doador agora estão em discord_users// Adicionar ao cache
                     profileCache.put(uuid, profile);
                     return profile;
                 }
@@ -562,9 +550,7 @@ public final class DataManager {
                     profile.setMoney(rs.getBigDecimal("money"));
                     profile.setClanId(null); // clan_id não existe mais em player_data
                     profile.setTotalPlaytime(rs.getLong("total_playtime"));
-                    // subscription_expires_at agora está em discord_users
-                    profile.setSubscriptionExpiry(null); // Será carregado via Discord ID
-                    profile.setLastSeen(rs.getTimestamp("last_seen"));
+                    // subscription_expires_at agora está em discord_usersprofile.setLastSeen(rs.getTimestamp("last_seen"));
                     profile.setTotalLogins(rs.getInt("total_logins"));
                     
                     String statusStr = rs.getString("status");
@@ -574,11 +560,7 @@ public final class DataManager {
                         profile.setStatus(PlayerProfile.PlayerStatus.ACTIVE);
                     }
                     
-                    // Dados de doador agora estão em discord_users
-                    profile.setDonorTier(0); // Será carregado via Discord ID
-                    profile.setDonorTierExpiresAt(null); // Será carregado via Discord ID
-                    
-                    return profile;
+                    // Dados de doador agora estão em discord_usersreturn profile;
                 }
             }
         } catch (SQLException e) {
@@ -607,9 +589,7 @@ public final class DataManager {
                     profile.setMoney(rs.getBigDecimal("money"));
                     profile.setClanId(null); // clan_id não existe mais em player_data
                     profile.setTotalPlaytime(rs.getLong("total_playtime"));
-                    // subscription_expires_at agora está em discord_users
-                    profile.setSubscriptionExpiry(null); // Será carregado via Discord ID
-                    profile.setLastSeen(rs.getTimestamp("last_seen"));
+                    // subscription_expires_at agora está em discord_usersprofile.setLastSeen(rs.getTimestamp("last_seen"));
                     profile.setTotalLogins(rs.getInt("total_logins"));
                     
                     String statusStr = rs.getString("status");
@@ -619,11 +599,7 @@ public final class DataManager {
                         profile.setStatus(PlayerProfile.PlayerStatus.ACTIVE);
                     }
                     
-                    // Dados de doador agora estão em discord_users
-                    profile.setDonorTier(0); // Será carregado via Discord ID
-                    profile.setDonorTierExpiresAt(null); // Será carregado via Discord ID
-                    
-                    return profile;
+                    // Dados de doador agora estão em discord_usersreturn profile;
                 }
             }
         } catch (SQLException e) {
@@ -704,9 +680,7 @@ public final class DataManager {
                     // clan_id não existe mais em player_data
                     profile.setClanId(null);
                     profile.setTotalPlaytime(rs.getLong("total_playtime"));
-                    // subscription_expires_at agora está em discord_users
-                    profile.setSubscriptionExpiry(null); // Será carregado via Discord ID
-                    profile.setLastSeen(rs.getTimestamp("last_seen"));
+                    // subscription_expires_at agora está em discord_usersprofile.setLastSeen(rs.getTimestamp("last_seen"));
                     profile.setTotalLogins(rs.getInt("total_logins"));
                     
                     String statusStr = rs.getString("status");
@@ -744,9 +718,7 @@ public final class DataManager {
                     profile.setElo(rs.getInt("elo"));
                     profile.setMoney(rs.getBigDecimal("money"));
                     profile.setTotalPlaytime(rs.getLong("total_playtime"));
-                    // subscription_expires_at agora está em discord_users
-                    profile.setSubscriptionExpiry(null); // Será carregado via Discord ID
-                    profile.setLastSeen(rs.getTimestamp("last_seen"));
+                    // subscription_expires_at agora está em discord_usersprofile.setLastSeen(rs.getTimestamp("last_seen"));
                     profile.setTotalLogins(rs.getInt("total_logins"));
                     
                     String statusStr = rs.getString("status");
@@ -851,7 +823,12 @@ public final class DataManager {
         }
 
         try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(UPDATE_SUBSCRIPTION_SQL)) {
+             PreparedStatement stmt = conn.prepareStatement(
+                     "UPDATE discord_users du " +
+                     "JOIN discord_links dl ON du.discord_id = dl.discord_id " +
+                     "JOIN player_data pd ON dl.player_id = pd.player_id " +
+                     "SET du.subscription_expires_at = ? " +
+                     "WHERE pd.uuid = ? AND dl.verified = TRUE")) {
             
             if (expiryDate == null) {
                 stmt.setNull(1, java.sql.Types.TIMESTAMP);
@@ -881,7 +858,15 @@ public final class DataManager {
         }
 
         try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(ADD_SUBSCRIPTION_DAYS_SQL)) {
+             PreparedStatement stmt = conn.prepareStatement(
+                     "UPDATE discord_users du " +
+                     "JOIN discord_links dl ON du.discord_id = dl.discord_id " +
+                     "JOIN player_data pd ON dl.player_id = pd.player_id " +
+                     "SET du.subscription_expires_at = CASE " +
+                     "WHEN du.subscription_expires_at IS NULL OR du.subscription_expires_at < NOW() THEN DATE_ADD(NOW(), INTERVAL ? DAY) " +
+                     "ELSE DATE_ADD(du.subscription_expires_at, INTERVAL ? DAY) " +
+                     "END " +
+                     "WHERE pd.uuid = ? AND dl.verified = TRUE")) {
             
             stmt.setInt(1, days);
             stmt.setInt(2, days);
@@ -1235,6 +1220,189 @@ public final class DataManager {
         
         return null;
     }
+    
+    /**
+     * Verifica se um jogador tem assinatura ativa usando a nova arquitetura SSOT.
+     * 
+     * @param playerUuid UUID do jogador
+     * @return true se tem assinatura ativa, false caso contrário
+     */
+    public boolean hasActiveSubscription(UUID playerUuid) {
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(
+                     "SELECT du.subscription_expires_at " +
+                     "FROM discord_users du " +
+                     "JOIN discord_links dl ON du.discord_id = dl.discord_id " +
+                     "JOIN player_data pd ON dl.player_id = pd.player_id " +
+                     "WHERE pd.uuid = ? AND dl.verified = TRUE " +
+                     "AND du.subscription_expires_at > NOW() " +
+                     "LIMIT 1")) {
+            
+            stmt.setString(1, playerUuid.toString());
+            try (ResultSet rs = stmt.executeQuery()) {
+                return rs.next(); // Retorna true se encontrou uma assinatura ativa
+            }
+            
+        } catch (SQLException e) {
+            plugin.getLogger().severe("🚨 [DATA-MANAGER] Erro ao verificar assinatura ativa para " + playerUuid + ": " + e.getMessage());
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Verifica se um jogador está verificado no Discord.
+     * 
+     * @param playerUuid UUID do jogador
+     * @return true se está verificado, false caso contrário
+     */
+    public boolean isPlayerVerified(UUID playerUuid) {
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(
+                     "SELECT 1 FROM discord_links dl " +
+                     "JOIN player_data pd ON dl.player_id = pd.player_id " +
+                     "WHERE pd.uuid = ? AND dl.verified = TRUE " +
+                     "LIMIT 1")) {
+            
+            stmt.setString(1, playerUuid.toString());
+            try (ResultSet rs = stmt.executeQuery()) {
+                return rs.next(); // Retorna true se encontrou um vínculo verificado
+            }
+            
+        } catch (SQLException e) {
+            plugin.getLogger().severe("🚨 [DATA-MANAGER] Erro ao verificar status de verificação para " + playerUuid + ": " + e.getMessage());
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Obtém dados de assinatura de um jogador por player_id.
+     * 
+     * @param playerId ID do jogador
+     * @return SubscriptionData ou null se não encontrado
+     */
+    public SubscriptionData getSubscriptionData(int playerId) {
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(
+                     "SELECT du.donor_tier, du.donor_tier_expires_at, du.subscription_expires_at, du.subscription_type, du.discord_id " +
+                     "FROM discord_users du " +
+                     "JOIN discord_links dl ON du.discord_id = dl.discord_id " +
+                     "WHERE dl.player_id = ? AND dl.verified = TRUE " +
+                     "LIMIT 1")) {
+            
+            stmt.setInt(1, playerId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return new SubscriptionData(
+                        rs.getString("discord_id"),
+                        rs.getInt("donor_tier"),
+                        rs.getTimestamp("donor_tier_expires_at"),
+                        rs.getTimestamp("subscription_expires_at"),
+                        rs.getString("subscription_type")
+                    );
+                }
+            }
+            
+        } catch (SQLException e) {
+            plugin.getLogger().severe("🚨 [DATA-MANAGER] Erro ao buscar dados de assinatura para player_id " + playerId + ": " + e.getMessage());
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Obtém a data de expiração da assinatura de um jogador.
+     * 
+     * @param playerUuid UUID do jogador
+     * @return Timestamp da expiração ou null se não encontrado
+     */
+    public java.sql.Timestamp getSubscriptionExpiry(UUID playerUuid) {
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(
+                     "SELECT du.subscription_expires_at " +
+                     "FROM discord_users du " +
+                     "JOIN discord_links dl ON du.discord_id = dl.discord_id " +
+                     "JOIN player_data pd ON dl.player_id = pd.player_id " +
+                     "WHERE pd.uuid = ? AND dl.verified = TRUE " +
+                     "LIMIT 1")) {
+            
+            stmt.setString(1, playerUuid.toString());
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getTimestamp("subscription_expires_at");
+                }
+            }
+            
+        } catch (SQLException e) {
+            plugin.getLogger().severe("🚨 [DATA-MANAGER] Erro ao buscar expiração da assinatura para " + playerUuid + ": " + e.getMessage());
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Obtém o tier de doador de um jogador.
+     * 
+     * @param playerUuid UUID do jogador
+     * @return Tier de doador ou null se não encontrado
+     */
+    public Integer getDonorTier(UUID playerUuid) {
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(
+                     "SELECT du.donor_tier " +
+                     "FROM discord_users du " +
+                     "JOIN discord_links dl ON du.discord_id = dl.discord_id " +
+                     "JOIN player_data pd ON dl.player_id = pd.player_id " +
+                     "WHERE pd.uuid = ? AND dl.verified = TRUE " +
+                     "LIMIT 1")) {
+            
+            stmt.setString(1, playerUuid.toString());
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt("donor_tier");
+                }
+            }
+            
+        } catch (SQLException e) {
+            plugin.getLogger().severe("🚨 [DATA-MANAGER] Erro ao buscar tier de doador para " + playerUuid + ": " + e.getMessage());
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Atualiza o tier de doador de um Discord ID.
+     * 
+     * @param discordId Discord ID do usuário
+     * @param tier Novo tier de doador
+     * @param expiresAt Data de expiração do tier
+     * @return true se atualizado com sucesso, false caso contrário
+     */
+    public boolean updateDonorTier(String discordId, int tier, java.util.Date expiresAt) {
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(
+                     "UPDATE discord_users SET donor_tier = ?, donor_tier_expires_at = ? WHERE discord_id = ?")) {
+            
+            stmt.setInt(1, tier);
+            if (expiresAt == null) {
+                stmt.setNull(2, java.sql.Types.TIMESTAMP);
+            } else {
+                stmt.setTimestamp(2, new java.sql.Timestamp(expiresAt.getTime()));
+            }
+            stmt.setString(3, discordId);
+            
+            int affectedRows = stmt.executeUpdate();
+            return affectedRows > 0;
+            
+        } catch (SQLException e) {
+            plugin.getLogger().severe("🚨 [DATA-MANAGER] Erro ao atualizar tier de doador para " + discordId + ": " + e.getMessage());
+        }
+        
+        return false;
+    }
+    
+
     
     /**
      * Autoriza um IP permanentemente para um player.

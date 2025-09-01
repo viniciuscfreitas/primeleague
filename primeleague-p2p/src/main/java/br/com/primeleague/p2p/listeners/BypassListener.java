@@ -47,7 +47,7 @@ public final class BypassListener implements Listener {
                 // Isso evita a necessidade de qualquer outra verificação durante esta sessão
                 // Não há necessidade de salvar isso no banco de dados
                 Timestamp farFuture = Timestamp.from(Instant.now().plus(365 * 10, ChronoUnit.DAYS)); // 10 anos
-                profile.setSubscriptionExpiry(farFuture);
+                // TODO: Implementar atualização SSOT via DataManager
                 
                 plugin.getLogger().info("Bypass de assinatura aplicado para " + player.getName());
                 

@@ -310,6 +310,31 @@ CREATE TABLE `clan_alliances` (
     FOREIGN KEY (`created_by_player_id`) REFERENCES `player_data` (`player_id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Tabela de Logs de Ações dos Clãs
+CREATE TABLE `clan_logs` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `clan_id` INT NOT NULL,
+  `actor_player_id` INT NOT NULL,
+  `actor_name` VARCHAR(16) NOT NULL,
+  `action_type` INT NOT NULL,
+  `target_player_id` INT NULL DEFAULT NULL,
+  `target_name` VARCHAR(16) NULL DEFAULT NULL,
+  `details` TEXT NOT NULL,
+  `timestamp` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_clan_logs_clan_id` (`clan_id`),
+  KEY `idx_clan_logs_actor_player_id` (`actor_player_id`),
+  KEY `idx_clan_logs_target_player_id` (`target_player_id`),
+  KEY `idx_clan_logs_action_type` (`action_type`),
+  KEY `idx_clan_logs_timestamp` (`timestamp`),
+  CONSTRAINT `fk_clan_logs_clan` 
+    FOREIGN KEY (`clan_id`) REFERENCES `clans` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_clan_logs_actor_player` 
+    FOREIGN KEY (`actor_player_id`) REFERENCES `player_data` (`player_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_clan_logs_target_player` 
+    FOREIGN KEY (`target_player_id`) REFERENCES `player_data` (`player_id`) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- =====================================================
 -- TABELAS DE COMUNICAÇÃO
 -- =====================================================
@@ -466,7 +491,8 @@ BEGIN
     END IF;
     
     -- Retornar resultado
-    SELECT v_success as success, v_message as message, v_discord_id as discord_id, v_player_uuid as player_uuid;
+    SELECT v_success as success, v_message as message, v_discord_id as discord_id, v_player_uuid as player_uuid, 
+           (SELECT player_id FROM player_data WHERE name = p_player_name) as player_id;
 END //
 
 -- Procedure para limpar dados expirados

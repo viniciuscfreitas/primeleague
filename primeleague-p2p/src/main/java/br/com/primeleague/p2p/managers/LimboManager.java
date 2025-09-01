@@ -237,6 +237,10 @@ public final class LimboManager implements Listener {
         player.sendMessage("   §7→ Digite §a/registrar " + player.getName() + " §7no Discord");
         player.sendMessage("   §7→ Depois use §a/verify <código> §7aqui");
         player.sendMessage("");
+        player.sendMessage("§e🔐 SEGURANÇA DE IP:");
+        player.sendMessage("§f• Seu IP atual será autorizado automaticamente após verificação");
+        player.sendMessage("§f• Se conectar de outro local, você precisará autorizar via Discord");
+        player.sendMessage("");
         player.sendMessage("§a💡 Dica: Sua assinatura será compartilhada automaticamente!");
         player.sendMessage("§e⏱️ Você tem 5 minutos para verificar");
         player.sendMessage("§b🔗 Discord: §adiscord.gg/primeleague");
@@ -256,6 +260,10 @@ public final class LimboManager implements Listener {
         player.sendMessage("§f📱 Para jogar, conecte sua conta Discord:");
         player.sendMessage("   §7→ Digite §a/registrar " + player.getName() + " §7no Discord");
         player.sendMessage("   §7→ Depois use §a/verify <código> §7aqui");
+        player.sendMessage("");
+        player.sendMessage("§e🔐 SEGURANÇA DE IP:");
+        player.sendMessage("§f• Seu IP atual será autorizado automaticamente após verificação");
+        player.sendMessage("§f• Se conectar de outro local, você precisará autorizar via Discord");
         player.sendMessage("");
         player.sendMessage("§e⏱️ Você tem 5 minutos para verificar");
         player.sendMessage("§b🔗 Discord: §adiscord.gg/primeleague");

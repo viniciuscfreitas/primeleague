@@ -4,24 +4,16 @@
 # Configurações dos canais de chat
 channels:
   global:
-    format: "&7[&aGlobal&7] {clan_tag}&f{player}&7: &f{message}"
-    allow_colors: true
-    allow_formatting: true
+    format: "&7[&aGlobal&7] &f{player}&7: &f{message}"
     
   clan:
-    format: "&7[&bClã&7] {clan_tag}&f{player}&7: &f{message}"
-    allow_colors: true
-    allow_formatting: true
+    format: "&7[&bClã&7] &f{player}&7: &f{message}"
     
   ally:
-    format: "&7[&dAliança&7] {clan_tag}&f{player}&7: &f{message}"
-    allow_colors: true
-    allow_formatting: true
+    format: "&7[&dAliança&7] &f{player}&7: &f{message}"
     
   local:
-    format: "&7[&eLocal&7] {clan_tag}&f{player}&7: &f{message}"
-    allow_colors: true
-    allow_formatting: true
+    format: "&7[&eLocal&7] &f{player}&7: &f{message}"
     radius: 100
 
 # Configurações de logging
@@ -42,3 +34,87 @@ permissions:
   clan_chat: "primeleague.chat.clan"
   ally_chat: "primeleague.chat.ally"
   admin_chat: "primeleague.chat.admin"
+  bypass_rate_limit: "primeleague.chat.bypass_rate_limit"
+
+# SISTEMA DE FORMATAÇÃO GRANULAR (Fase 2.3)
+# O controle de cores e formatação agora é baseado em permissões:
+# - primeleague.chat.color: Permite usar códigos de cor (&0-9, &a-f)
+# - primeleague.chat.format: Permite usar códigos de formatação (&k, &l, &m, &n, &o)
+# 
+# Exemplos de uso:
+# - VIPs podem receber primeleague.chat.color para usar cores
+# - Staff pode receber primeleague.chat.format para usar negrito/itálico
+# - Jogadores sem permissão terão códigos removidos automaticamente
+
+# Configurações de rate limiting (Fase 1: Blindagem)
+rate_limiting:
+  # Intervalo mínimo entre mensagens (em millisegundos)
+  min_interval_ms: 1000  # 1 segundo
+  
+  # Cooldown para mensagens idênticas (em millisegundos)
+  identical_cooldown_ms: 5000  # 5 segundos
+  
+  # Máximo de mensagens por minuto (implementação futura)
+  max_messages_per_minute: 30
+  
+  # Configurações de cache para formatação otimizada
+  format_cache_size: 1000  # Máximo de entradas no cache
+  auto_clear_cache: true   # Limpar cache automaticamente quando muito grande
+
+# Configurações de filtros avançados (Fase 2: Moderação)
+filters:
+  # Filtro de CAPS (excesso de letras maiúsculas)
+  caps:
+    max_percentage: 70  # Percentual máximo de letras maiúsculas
+    min_length: 5       # Comprimento mínimo para aplicar o filtro
+
+  # Filtro de Links
+  links:
+    allow: false        # Se true, permite links de domínios autorizados
+    allowed_domains:    # Lista de domínios permitidos (quando allow: true)
+      - "primeleague.com.br"
+      - "youtube.com"
+      - "twitch.tv"
+
+  # Filtro de Palavras Proibidas
+  words:
+    enable: true        # Se true, ativa o filtro de palavras
+    banned:             # Lista de palavras proibidas
+      - "palavrão1"
+      - "palavrão2"
+      - "spam"
+
+# SISTEMA DE ROTAÇÃO DE LOGS (Fase 3.1)
+# Sistema automático para limpeza e arquivamento de logs antigos
+log_rotation:
+  # Habilitar/desabilitar o sistema de rotação
+  enabled: true
+  
+  # Período de retenção de logs (em dias)
+  retention_days: 30
+  
+  # Intervalo de execução automática (em horas)
+  interval_hours: 24
+  
+  # Habilitar arquivamento de logs antigos
+  archive_enabled: true
+  
+  # Caminho para salvar arquivos de arquivo
+  archive_path: "logs/chat_archive"
+  
+  # Limpar logs de arquivo antigos
+  cleanup_file_logs: true
+  
+  # Caminho dos logs de arquivo para limpeza
+  file_logs_path: "logs"
+
+# Configurações de Mensagens Privadas
+private_messages:
+  # Formato da mensagem para quem envia
+  sender_format: "§d[Você -> {receiver}] §f{message}"
+  
+  # Formato da mensagem para quem recebe
+  receiver_format: "§d[{sender} -> Você] §f{message}"
+  
+  # Formato da mensagem para espiões sociais
+  spy_format: "§7[Spy: {sender} -> {receiver}] §f{message}"

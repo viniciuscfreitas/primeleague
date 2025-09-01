@@ -52,15 +52,15 @@ public final class LoginListener implements Listener {
                     }
 
                     // Verificar se a assinatura está ativa
-                    if (profile.getSubscriptionExpiry() == null || profile.getSubscriptionExpiry().before(new java.sql.Timestamp(System.currentTimeMillis()))) {
+                    // TODO: Implementar consulta SSOT via DataManager
+                    if (!PrimeLeagueAPI.getDataManager().hasActiveSubscription(player.getUniqueId())) {
                         player.kickPlayer(getMessage("access_expired"));
                         plugin.getLogger().info("Acesso negado para " + playerName + " - Assinatura expirada");
                         return;
                     }
 
                     // Se chegou até aqui, a assinatura está ativa
-                    plugin.getLogger().info("Acesso permitido para " + playerName + " - Assinatura válida até " +
-                                          (profile.getSubscriptionExpiry() != null ? profile.getSubscriptionExpiry().toString() : "N/A"));
+                    plugin.getLogger().info("Acesso permitido para " + playerName + " - Assinatura válida");
                 }
             }, 10L); // Aguardar 10 ticks (0.5 segundos)
 

@@ -26,7 +26,7 @@ async function getPlayerByNickname(nickname) {
             `SELECT pd.player_id, pd.name, pd.elo, pd.money,
              dl.discord_id, dl.verified
              FROM player_data pd
-             LEFT JOIN discord_links dl ON pd.uuid = dl.player_uuid
+             LEFT JOIN discord_links dl ON pd.player_id = dl.player_id
              WHERE pd.name = ?`,
             [nickname]
         );
@@ -41,7 +41,7 @@ async function getPlayerByNickname(nickname) {
 async function getDiscordLink(discordId) {
     try {
         const [rows] = await pool.execute(
-            'SELECT player_uuid FROM discord_links WHERE discord_id = ?',
+            'SELECT player_id FROM discord_links WHERE discord_id = ?',
             [discordId]
         );
         return rows[0];
@@ -51,20 +51,20 @@ async function getDiscordLink(discordId) {
     }
 }
 
-async function getDiscordLinkByPlayerUuid(playerUuid) {
+async function getDiscordLinkByPlayerId(playerId) {
     try {
         const [rows] = await pool.execute(
-            'SELECT discord_id, verified, verification_code, code_expires_at FROM discord_links WHERE player_uuid = ?',
-            [playerUuid]
+            'SELECT discord_id, verified, verification_code, code_expires_at FROM discord_links WHERE player_id = ?',
+            [playerId]
         );
         return rows[0];
     } catch (error) {
-        console.error('Erro ao buscar vínculo Discord por player_uuid:', error);
+        console.error('Erro ao buscar vínculo Discord por player_id:', error);
         return null;
     }
 }
 
-async function createDiscordLink(discordId, playerUuid, verifyCode = null) {
+async function createDiscordLink(discordId, playerId, verifyCode = null) {
     try {
         // 1. Primeiro, garantir que o discord_id existe em discord_users
         await pool.execute(
@@ -72,10 +72,10 @@ async function createDiscordLink(discordId, playerUuid, verifyCode = null) {
             [discordId, 'BASIC']
         );
         
-        // 2. Verificar se já existe um vínculo para este player_uuid
+        // 2. Verificar se já existe um vínculo para este player_id
         const [existingRows] = await pool.execute(
-            'SELECT link_id FROM discord_links WHERE player_uuid = ?',
-            [playerUuid]
+            'SELECT link_id FROM discord_links WHERE player_id = ?',
+            [playerId]
         );
         
         if (existingRows.length > 0) {
@@ -84,9 +84,9 @@ async function createDiscordLink(discordId, playerUuid, verifyCode = null) {
         
         const codeExpiresAt = verifyCode ? new Date(Date.now() + 5 * 60 * 1000) : null; // 5 minutos
         const [result] = await pool.execute(
-            `INSERT INTO discord_links (discord_id, player_uuid, verified, verification_code, code_expires_at)
+            `INSERT INTO discord_links (discord_id, player_id, verified, verification_code, code_expires_at)
              VALUES (?, ?, ?, ?, ?)`,
-            [discordId, playerUuid, false, verifyCode, codeExpiresAt]
+            [discordId, playerId, false, verifyCode, codeExpiresAt]
         );
         return result.affectedRows > 0;
     } catch (error) {
@@ -100,7 +100,7 @@ async function getPlayerAccountInfo(discordId) {
         const [rows] = await pool.execute(
             `SELECT pd.player_id, pd.name, pd.elo, pd.money
              FROM discord_links dl
-             JOIN player_data pd ON dl.player_uuid = pd.uuid
+             JOIN player_data pd ON dl.player_id = pd.player_id
              WHERE dl.discord_id = ? AND dl.verified = TRUE`,
             [discordId]
         );
@@ -116,8 +116,8 @@ async function getVerificationStatus(discordId, playerId = null) {
         let sql, params;
         
         if (playerId) {
-            // Buscar por discord_id E player_uuid específico
-            sql = 'SELECT verified, verification_code, code_expires_at FROM discord_links WHERE discord_id = ? AND player_uuid = ?';
+            // Buscar por discord_id E player_id específico
+            sql = 'SELECT verified, verification_code, code_expires_at FROM discord_links WHERE discord_id = ? AND player_id = ?';
             params = [discordId, playerId];
         } else {
             // Buscar por discord_id (comportamento original)
@@ -137,7 +137,7 @@ async function verifyDiscordLink(playerName, verifyCode) {
     try {
         const [result] = await pool.execute(
             `UPDATE discord_links dl
-             JOIN player_data pd ON dl.player_uuid = pd.uuid
+             JOIN player_data pd ON dl.player_id = pd.player_id
              SET dl.verified = TRUE, dl.verification_code = NULL, dl.code_expires_at = NULL, dl.verified_at = NOW()
              WHERE pd.name = ? AND dl.verification_code = ? AND dl.code_expires_at > NOW()`,
             [playerName, verifyCode]
@@ -186,7 +186,7 @@ async function getDiscordLinksById(discordId) {
             `SELECT dl.discord_id, pd.player_id, pd.name as player_name, dl.is_primary, dl.verified, 
                     dl.verification_code, dl.code_expires_at, dl.verified_at
              FROM discord_links dl
-             JOIN player_data pd ON dl.player_uuid = pd.uuid
+             JOIN player_data pd ON dl.player_id = pd.player_id
              WHERE dl.discord_id = ? 
              ORDER BY dl.is_primary DESC, dl.verified_at ASC`,
             [discordId]
@@ -318,7 +318,7 @@ async function getPortfolioByDiscordId(discordId) {
                     ELSE 0 
                 END as days_remaining
             FROM discord_links dl
-            LEFT JOIN player_data pd ON dl.player_uuid = pd.uuid
+            LEFT JOIN player_data pd ON dl.player_id = pd.player_id
             LEFT JOIN discord_users du ON dl.discord_id = du.discord_id
             WHERE dl.discord_id = ? AND dl.verified = TRUE
             ORDER BY dl.is_primary DESC, dl.verified_at ASC
@@ -343,7 +343,7 @@ async function getPortfolioStats(discordId) {
                 COUNT(CASE WHEN du.subscription_expires_at <= NOW() THEN 1 END) as expired_subscriptions,
                 COUNT(CASE WHEN du.subscription_expires_at IS NULL THEN 1 END) as never_subscribed
             FROM discord_links dl
-            LEFT JOIN player_data pd ON dl.player_uuid = pd.uuid
+            LEFT JOIN player_data pd ON dl.player_id = pd.player_id
             LEFT JOIN discord_users du ON dl.discord_id = du.discord_id
             WHERE dl.discord_id = ? AND dl.verified = TRUE
         `, [discordId]);
@@ -410,7 +410,7 @@ async function removeAccountFromPortfolio(discordId, playerName) {
     try {
         const [result] = await pool.execute(`
             DELETE dl FROM discord_links dl
-            JOIN player_data pd ON dl.player_uuid = pd.uuid
+            JOIN player_data pd ON dl.player_id = pd.player_id
             WHERE dl.discord_id = ? AND pd.name = ? AND dl.verified = TRUE
         `, [discordId, playerName]);
         
@@ -434,7 +434,7 @@ async function renewAccountSubscription(playerId, days = 30) {
         
         // Verificar se a conta existe e obter Discord ID
         const [playerCheck] = await pool.execute(
-            'SELECT pd.player_id, pd.name, dl.discord_id FROM player_data pd LEFT JOIN discord_links dl ON pd.uuid = dl.player_uuid WHERE pd.player_id = ? AND dl.verified = TRUE',
+            'SELECT pd.player_id, pd.name, dl.discord_id FROM player_data pd LEFT JOIN discord_links dl ON pd.player_id = dl.player_id WHERE pd.player_id = ? AND dl.verified = TRUE',
             [playerId]
         );
         
@@ -525,7 +525,7 @@ async function checkSubscriptionStatus(playerId) {
         
         // Primeiro obter o Discord ID do player
         const [playerInfo] = await pool.execute(
-            'SELECT pd.player_id, pd.name, dl.discord_id FROM player_data pd LEFT JOIN discord_links dl ON pd.uuid = dl.player_uuid WHERE pd.player_id = ? AND dl.verified = TRUE',
+            'SELECT pd.player_id, pd.name, dl.discord_id FROM player_data pd LEFT JOIN discord_links dl ON pd.player_id = dl.player_id WHERE pd.player_id = ? AND dl.verified = TRUE',
             [playerId]
         );
         
@@ -586,7 +586,7 @@ async function isNicknameAvailableForLinking(nickname) {
         const [existingLinks] = await pool.execute(`
             SELECT dl.discord_id 
             FROM discord_links dl
-            JOIN player_data pd ON dl.player_uuid = pd.uuid
+            JOIN player_data pd ON dl.player_id = pd.player_id
             WHERE pd.name = ? AND dl.verified = TRUE
         `, [nickname]);
 
@@ -632,7 +632,7 @@ async function getAccountInfoDetailed(playerName) {
                     ELSE 0 
                 END as days_remaining
             FROM player_data pd
-            LEFT JOIN discord_links dl ON pd.uuid = dl.player_uuid
+            LEFT JOIN discord_links dl ON pd.player_id = dl.player_id
             LEFT JOIN discord_users du ON dl.discord_id = du.discord_id
             WHERE pd.name = ?
         `, [playerName]);

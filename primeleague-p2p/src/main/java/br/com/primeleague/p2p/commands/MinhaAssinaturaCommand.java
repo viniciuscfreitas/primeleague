@@ -73,11 +73,11 @@ public class MinhaAssinaturaCommand implements CommandExecutor {
         player.sendMessage("");
         
         // Status da assinatura
-        if (profile.hasActiveAccess()) {
+        if (PrimeLeagueAPI.getDataManager().hasActiveSubscription(player.getUniqueId())) {
             player.sendMessage("§a✅ Status: §fATIVA");
             
             // Dias restantes
-            int daysRemaining = profile.getDaysUntilExpiry();
+            int daysRemaining = 0; // TODO: Implementar cálculo via DataManager
             if (daysRemaining > 0) {
                 if (daysRemaining == 1) {
                     player.sendMessage("§e⚠️ Expira: §fAmanhã");
@@ -89,9 +89,7 @@ public class MinhaAssinaturaCommand implements CommandExecutor {
             }
             
             // Data de expiração
-            if (profile.getSubscriptionExpiry() != null) {
-                player.sendMessage("§7Data de expiração: §f" + formatDate(profile.getSubscriptionExpiry()));
-            }
+            // TODO: Implementar consulta SSOT via DataManager
             
         } else {
             player.sendMessage("§c❌ Status: §fINATIVA");
@@ -112,11 +110,11 @@ public class MinhaAssinaturaCommand implements CommandExecutor {
         player.sendMessage("");
         
         // Mensagens de ajuda
-        if (!profile.hasActiveAccess()) {
+        if (!PrimeLeagueAPI.getDataManager().hasActiveSubscription(player.getUniqueId())) {
             player.sendMessage("§c💡 Para renovar sua assinatura:");
             player.sendMessage("§7  • Entre em contato com a administração");
             player.sendMessage("§7  • Use o comando /tickets para solicitar renovação");
-        } else if (profile.isExpiringSoon(3)) {
+        } else if (false) { // TODO: Implementar verificação via DataManager
             player.sendMessage("§e💡 Sua assinatura expira em breve!");
             player.sendMessage("§7  • Entre em contato com a administração para renovar");
         }

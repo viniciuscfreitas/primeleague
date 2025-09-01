@@ -85,30 +85,66 @@ public class MySqlClanDAO implements ClanDAO {
         String sql = "SELECT cp.*, pd.name as player_name FROM clan_players cp " +
                     "LEFT JOIN player_data pd ON cp.player_id = pd.player_id";
         
+        core.getLogger().info("🔧 [CLAN-LOAD-DEBUG] Carregando jogadores de clã...");
+        
         try (Connection conn = dataManager.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql);
              ResultSet rs = stmt.executeQuery()) {
             
             while (rs.next()) {
-                int playerId = rs.getInt("player_id");
-                String playerName = rs.getString("player_name"); // Obtido via JOIN
-                int clanId = rs.getInt("clan_id");
-                int role = rs.getInt("role");
-                int kills = rs.getInt("kills");
-                int deaths = rs.getInt("deaths");
-                Date joinDate = rs.getTimestamp("join_date");
-                
-                ClanPlayerDTO clanPlayerDTO = new ClanPlayerDTO(playerId, playerName, clanId, role, joinDate, kills, deaths);
-                clanPlayers.put(playerId, clanPlayerDTO);
+                try {
+                    int playerId = rs.getInt("player_id");
+                    String playerName = rs.getString("player_name"); // Obtido via JOIN
+                    int clanId = rs.getInt("clan_id");
+                    String roleString = rs.getString("role"); // CORRIGIDO: ler como string
+                    int kills = rs.getInt("kills");
+                    int deaths = rs.getInt("deaths");
+                    Date joinDate = rs.getTimestamp("join_date");
+                    
+                    // Converter string do role para int baseado no enum do banco
+                    int roleId = convertRoleStringToId(roleString);
+                    
+                    core.getLogger().info("🔧 [CLAN-LOAD-DEBUG] Jogador carregado: " + playerName + 
+                                        " (ID: " + playerId + ", Clan: " + clanId + 
+                                        ", Role: " + roleString + " -> " + roleId + ")");
+                    
+                    ClanPlayerDTO clanPlayerDTO = new ClanPlayerDTO(playerId, playerName, clanId, roleId, joinDate, kills, deaths);
+                    clanPlayers.put(playerId, clanPlayerDTO);
+                    
+                } catch (Exception e) {
+                    core.getLogger().severe("🔧 [CLAN-LOAD-DEBUG] Erro ao processar linha de clan_players: " + e.getMessage());
+                    e.printStackTrace();
+                }
             }
             
-            core.getLogger().info("Carregados " + clanPlayers.size() + " jogadores de clã do banco de dados.");
+            core.getLogger().info("🔧 [CLAN-LOAD-DEBUG] Carregados " + clanPlayers.size() + " jogadores de clã do banco de dados.");
             
         } catch (SQLException e) {
-            core.getLogger().severe("Erro ao carregar jogadores de clã: " + e.getMessage());
+            core.getLogger().severe("🔧 [CLAN-LOAD-DEBUG] Erro ao carregar jogadores de clã: " + e.getMessage());
+            e.printStackTrace();
         }
         
         return clanPlayers;
+    }
+    
+    /**
+     * Converte string do role do banco para ID do enum Java.
+     * Mapeamento: LEADER -> 2, CO_LEADER -> 2, OFFICER -> 1, MEMBER -> 1
+     */
+    private int convertRoleStringToId(String roleString) {
+        if (roleString == null) {
+            return 1; // MEMBER como default
+        }
+        
+        switch (roleString.toUpperCase()) {
+            case "LEADER":
+            case "CO_LEADER":
+                return 2; // LIDER
+            case "OFFICER":
+            case "MEMBER":
+            default:
+                return 1; // MEMBRO
+        }
     }
 
     @Override
@@ -152,7 +188,7 @@ public class MySqlClanDAO implements ClanDAO {
             try (PreparedStatement stmt = conn.prepareStatement(insertFounderSql)) {
                 stmt.setInt(1, clanDTO.getFounderPlayerId());
                 stmt.setInt(2, clanDTO.getId());
-                stmt.setInt(3, ClanRole.FUNDADOR.getId()); // Role 3 = Fundador
+                stmt.setString(3, "LEADER"); // CORRIGIDO: usar string do enum do banco
                 
                 if (stmt.executeUpdate() == 0) {
                     conn.rollback();

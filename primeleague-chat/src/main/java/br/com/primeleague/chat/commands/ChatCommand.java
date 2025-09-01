@@ -38,72 +38,32 @@ public class ChatCommand implements CommandExecutor {
         String subCommand = args[0].toLowerCase();
         
         switch (subCommand) {
-            case "global":
-            case "g":
-                setChannel(player, ChatChannel.GLOBAL);
-                break;
-            case "clan":
-            case "c":
-                if (player.hasPermission("primeleague.chat.clan")) {
-                    setChannel(player, ChatChannel.CLAN);
-                } else {
-                    player.sendMessage("§cVocê não tem permissão para usar o chat de clã.");
-                }
-                break;
-            case "ally":
-            case "a":
-                if (player.hasPermission("primeleague.chat.ally")) {
-                    setChannel(player, ChatChannel.ALLY);
-                } else {
-                    player.sendMessage("§cVocê não tem permissão para usar o chat de aliança.");
-                }
-                break;
-            case "local":
-            case "l":
-                setChannel(player, ChatChannel.LOCAL);
-                break;
             case "help":
             case "h":
                 showHelp(player);
                 break;
             default:
                 player.sendMessage("§cSubcomando desconhecido. Use /chat help para ver as opções.");
+                player.sendMessage("§7💡 Dica: Use /g, /c ou /a para enviar mensagens rápidas.");
                 break;
         }
         
         return true;
     }
     
-    private void setChannel(Player player, ChatChannel channel) {
-        channelManager.setPlayerChannel(player, channel);
-        
-        String channelName = getChannelDisplayName(channel);
-        player.sendMessage("§aCanal alterado para: §f" + channelName);
-    }
-    
     private void showHelp(Player player) {
-        player.sendMessage("§6=== Comandos de Chat ===");
-        player.sendMessage("§e/chat global §7- Alterar para chat global");
-        player.sendMessage("§e/chat clan §7- Alterar para chat de clã");
-        player.sendMessage("§e/chat ally §7- Alterar para chat de aliança");
-        player.sendMessage("§e/chat local §7- Alterar para chat local");
+        player.sendMessage("§6=== Sistema de Chat - Local é Rei ===");
+        player.sendMessage("§a📝 Chat Local: §7Digite normalmente no chat (padrão)");
+        player.sendMessage("");
+        player.sendMessage("§6=== Comandos de Envio Rápido ===");
+        player.sendMessage("§e/g <mensagem> §7- Enviar mensagem única para Global");
+        player.sendMessage("§e/c <mensagem> §7- Enviar mensagem única para Clã");
+        player.sendMessage("§e/a <mensagem> §7- Enviar mensagem única para Aliança");
+        player.sendMessage("");
+        player.sendMessage("§6=== Outros Comandos ===");
+        player.sendMessage("§e/ignore §7- Gerenciar ignores (GUI)");
         player.sendMessage("§e/chat help §7- Mostrar esta ajuda");
         player.sendMessage("");
-        player.sendMessage("§7Atalhos: §eg, c, a, l, h");
-    }
-    
-    private String getChannelDisplayName(ChatChannel channel) {
-        switch (channel) {
-            case GLOBAL:
-                return "§aGlobal";
-            case CLAN:
-                return "§bClã";
-            case ALLY:
-                return "§dAliança";
-            case LOCAL:
-                return "§eLocal";
-            default:
-                return "§7Desconhecido";
-        }
+        player.sendMessage("§7💡 Dica: Você sempre volta ao chat local após usar /g, /c ou /a");
     }
 }

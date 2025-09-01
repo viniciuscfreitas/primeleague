@@ -50,25 +50,33 @@ public final class AuthenticationListener implements Listener {
         final String playerName = event.getName();
         final String playerIp = event.getAddress().getHostAddress();
         
-        plugin.getLogger().info("[IP-AUTH] 🔍 Verificando IP para " + playerName + " (" + playerIp + ")");
+        plugin.getLogger().info("=== 🔐 INÍCIO DA VERIFICAÇÃO DE AUTENTICAÇÃO ===");
+        plugin.getLogger().info("[AUTH] 🎯 Jogador: " + playerName + " | IP: " + playerIp);
         
-        // Verificar se o jogador está na whitelist
+        // FASE 1: Verificar whitelist
+        plugin.getLogger().info("[AUTH] 📋 FASE 1: Verificando whitelist...");
         if (isPlayerWhitelisted(playerName)) {
-            plugin.getLogger().info("[IP-AUTH] ✅ Jogador na whitelist - bypass de IP");
+            plugin.getLogger().info("[AUTH] ✅ FASE 1: Jogador na whitelist - BYPASS TOTAL");
             event.allow();
             return;
         }
+        plugin.getLogger().info("[AUTH] ❌ FASE 1: Jogador não está na whitelist");
         
         try {
             final UUID playerUuid = UUIDUtils.offlineUUIDFromName(playerName);
+            plugin.getLogger().info("[AUTH] 🔄 UUID gerado: " + playerUuid.toString());
             
-            // Verificar se o player existe no banco
+            // FASE 2: Verificar se o player existe no banco
+            plugin.getLogger().info("[AUTH] 📋 FASE 2: Verificando existência no banco...");
             boolean playerExistsInDB = checkPlayerExistsInDatabase(playerUuid, playerName);
+            plugin.getLogger().info("[AUTH] 📊 FASE 2: Player existe no banco: " + playerExistsInDB);
             
             if (!playerExistsInDB) {
+                plugin.getLogger().info("[AUTH] 📋 FASE 2.1: Tentando carregar perfil offline...");
                 PlayerProfile profile = PrimeLeagueAPI.getDataManager().loadOfflinePlayerProfile(playerName);
                 
                 if (profile == null) {
+                    plugin.getLogger().info("[AUTH] ❌ FASE 2: Player não encontrado - REGISTRO NECESSÁRIO");
                     event.disallow(Result.KICK_OTHER, 
                         "§c§l❌ Registro Necessário\n\n" +
                         "§fVocê precisa se registrar no Discord primeiro!\n\n" +
@@ -76,41 +84,70 @@ public final class AuthenticationListener implements Listener {
                         "§e💬 Comando: §f/registrar " + playerName + "\n\n" +
                         "§a💡 Após o registro, use o código de verificação no servidor!");
                     return;
+                } else {
+                    plugin.getLogger().info("[AUTH] ✅ FASE 2: Perfil offline carregado com sucesso");
                 }
             }
             
-            // VERIFICAÇÃO DE PENDING_RELINK (FASE 2)
+            // FASE 3: Verificar PENDING_RELINK
+            plugin.getLogger().info("[AUTH] 📋 FASE 3: Verificando PENDING_RELINK...");
             if (isPlayerPendingRelink(playerName)) {
-                plugin.getLogger().info("[PENDING-RELINK] ⏳ Jogador em processo de recuperação: " + playerName + " - permitindo login");
-                // Permitir login - bypass de IP para jogadores em recuperação
+                plugin.getLogger().info("[AUTH] ✅ FASE 3: Jogador em PENDING_RELINK - BYPASS DE IP");
+                event.allow();
+                return;
+            }
+            plugin.getLogger().info("[AUTH] ❌ FASE 3: Jogador não está em PENDING_RELINK");
+            
+            // FASE 4: Verificar status de verificação
+            plugin.getLogger().info("[AUTH] 📋 FASE 4: Verificando status de verificação...");
+            boolean isVerified = isPlayerVerified(playerUuid);
+            plugin.getLogger().info("[AUTH] 📊 FASE 4: Status de verificação: " + (isVerified ? "VERIFICADO" : "NÃO VERIFICADO"));
+            
+            if (!isVerified) {
+                plugin.getLogger().info("[AUTH] ✅ FASE 4: Conta não verificada - PERMITINDO ENTRADA PARA VERIFICAÇÃO");
                 event.allow();
                 return;
             }
             
-            // VERIFICAÇÃO DE IP (CORREÇÃO ARQUITETURAL)
+            // FASE 5: Verificar autorização de IP
+            plugin.getLogger().info("[AUTH] 📋 FASE 5: Verificando autorização de IP...");
             if (!isIpAuthorized(playerName, playerIp)) {
-                plugin.getLogger().info("[IP-AUTH] ❌ IP não autorizado detectado: " + playerName + " (" + playerIp + ")");
-                
-                // Kick imediato com mensagem sobre DM
-                event.disallow(Result.KICK_OTHER,
-                    "§c§l🔐 IP Não Autorizado\n\n" +
-                    "§fDetectamos uma tentativa de conexão de um IP não autorizado.\n\n" +
-                    "§e📱 Verifique sua DM no Discord para autorizar este IP.\n" +
-                    "§e💬 Discord: §fdiscord.gg/primeleague\n\n" +
-                    "§a💡 Após autorizar, tente conectar novamente!"
-                );
-                
-                // Notificar Bot Discord de forma assíncrona (já estamos em thread assíncrona)
-                notifyBotAboutUnauthorizedIp(playerName, playerIp);
-                
-                return;
+                // VERIFICAÇÃO ESPECIAL: Se o jogador acabou de ser verificado E o IP é o mesmo da verificação
+                if (isPlayerRecentlyVerifiedWithSameIp(playerName, playerIp)) {
+                    plugin.getLogger().info("[AUTH] 🔄 FASE 5: Jogador recentemente verificado com mesmo IP - autorizando automaticamente");
+                    authorizeIpForPlayer(playerName, playerIp);
+                    plugin.getLogger().info("[AUTH] ✅ FASE 5: IP autorizado automaticamente após verificação");
+                } else {
+                    plugin.getLogger().info("[AUTH] ❌ FASE 5: IP não autorizado - BLOQUEANDO CONEXÃO");
+                    
+                    // 🎯 UX PERFEITA: Kick com orientações claras
+                    event.disallow(Result.KICK_OTHER,
+                        "§c§l🔐 IP Não Autorizado\n\n" +
+                        "§fDetectamos uma tentativa de conexão de um IP não autorizado.\n\n" +
+                        "§e📱 AUTORIZAÇÃO VIA DISCORD:\n" +
+                        "§f• Verifique sua DM no Discord para autorizar este IP\n" +
+                        "§f• Discord: §fdiscord.gg/primeleague\n\n" +
+                        "§e🔄 SE NÃO TEM ACESSO À DM:\n" +
+                        "§f• Primeiro gere um código de recuperação: §f/recuperacao\n" +
+                        "§f• Depois use o código: §f/recuperar <seu_nickname> <codigo>\n" +
+                        "§f⚠️ Sem o código de recuperação, você não conseguirá acessar!\n\n" +
+                        "§a💡 Após autorizar, tente conectar novamente!"
+                    );
+                    
+                    // Notificar Bot Discord de forma assíncrona (já estamos em thread assíncrona)
+                    notifyBotAboutUnauthorizedIp(playerName, playerIp);
+                    
+                    return;
+                }
             }
             
-            plugin.getLogger().info("[IP-AUTH] ✅ IP autorizado para " + playerName + " (" + playerIp + ")");
+            plugin.getLogger().info("[AUTH] ✅ FASE 5: IP autorizado - PERMITINDO CONEXÃO");
+            plugin.getLogger().info("=== ✅ VERIFICAÇÃO DE AUTENTICAÇÃO CONCLUÍDA COM SUCESSO ===");
             event.allow();
             
         } catch (Exception e) {
-            plugin.getLogger().severe("[IP-AUTH] ❌ Erro na verificação de IP para " + playerName + ": " + e.getMessage());
+            plugin.getLogger().severe("[AUTH] ❌ ERRO CRÍTICO na verificação: " + e.getMessage());
+            e.printStackTrace();
             event.disallow(Result.KICK_OTHER, "§c§l❌ Erro interno do servidor");
         }
     }
@@ -144,19 +181,25 @@ public final class AuthenticationListener implements Listener {
             plugin.getLogger().info("[JOIN-DEBUG] 🔄 UUID do jogador: " + playerUuid);
             plugin.getLogger().info("[JOIN-DEBUG] 🔄 UUID canônico: " + canonicalUuid);
             
-            // CORREÇÃO ARQUITETURAL: Verificar assinatura ativa PRIMEIRO (evita loop infinito)
-            PlayerProfile profile = PrimeLeagueAPI.getDataManager().loadOfflinePlayerProfile(playerName);
-            if (profile != null && profile.hasActiveAccess()) {
-                plugin.getLogger().info("[JOIN-DEBUG] ✅ Jogador com assinatura ativa: " + playerName + " - bypass de limbo");
-                plugin.getLogger().info("[JOIN-DEBUG] ✅ " + playerName + " entrou no servidor (assinatura ativa)");
-                
-                // Verificar se está em PENDING_RELINK e enviar mensagens persistentes
-                if (isPlayerPendingRelink(playerName)) {
-                    plugin.getLogger().info("[PENDING-RELINK] Iniciando mensagens persistentes para: " + playerName);
-                    startPendingRelinkReminders(player);
-                }
-                return; // Pula toda a lógica de limbo para jogadores com assinatura ativa
-            }
+                         // CORREÇÃO ARQUITETURAL: Verificar assinatura ativa usando nova arquitetura SSOT
+             boolean hasActiveSubscription = br.com.primeleague.core.PrimeLeagueCore.getInstance()
+                 .getDataManager()
+                 .hasActiveSubscription(canonicalUuid);
+             
+                                        if (hasActiveSubscription) {
+                 plugin.getLogger().info("[JOIN-DEBUG] ✅ Jogador com assinatura ativa: " + playerName + " - bypass de limbo");
+                 plugin.getLogger().info("[JOIN-DEBUG] ✅ " + playerName + " entrou no servidor (assinatura ativa)");
+                 
+                 // 🎯 MENSAGEM DE BOAS-VINDAS PARA JOGADORES AUTORIZADOS
+                 sendWelcomeMessage(player);
+                 
+                 // Verificar se está em PENDING_RELINK e enviar mensagens persistentes
+                 if (isPlayerPendingRelink(playerName)) {
+                     plugin.getLogger().info("[PENDING-RELINK] Iniciando mensagens persistentes para: " + playerName);
+                     startPendingRelinkReminders(player);
+                 }
+                 return; // Pula toda a lógica de limbo para jogadores com assinatura ativa
+             }
             
             // Se não tem assinatura ativa, verificar se o jogador tem registro pendente (não verificado)
             boolean hasPendingVerification = hasPendingVerification(canonicalUuid);
@@ -180,10 +223,13 @@ public final class AuthenticationListener implements Listener {
                         }
                     }
                 }, 20L); // 1 segundo de delay
-            } else {
-                // Jogador verificado e ativo - log de entrada
-                plugin.getLogger().info("[JOIN-DEBUG] ✅ " + playerName + " entrou no servidor (verificado e ativo)");
-            }
+                         } else {
+                 // Jogador verificado e ativo - log de entrada
+                 plugin.getLogger().info("[JOIN-DEBUG] ✅ " + playerName + " entrou no servidor (verificado e ativo)");
+                 
+                 // 🎯 MENSAGEM DE BOAS-VINDAS PARA JOGADORES AUTORIZADOS
+                 sendWelcomeMessage(player);
+             }
             
             // Verificar se está em PENDING_RELINK e enviar mensagens persistentes
             if (isPlayerPendingRelink(playerName)) {
@@ -369,65 +415,28 @@ public final class AuthenticationListener implements Listener {
 
     /**
      * Verifica se um jogador está verificado no Discord.
-     * DEBUG: Logs detalhados para troubleshooting.
+     * REFATORADO: Usa novo método do DataManager com arquitetura SSOT.
      * 
      * @param playerUuid UUID do jogador
      * @return true se o jogador está verificado
      */
     private boolean isPlayerVerified(UUID playerUuid) {
-        Connection conn = null;
-        PreparedStatement ps = null;
-        ResultSet rs = null;
-        
         plugin.getLogger().info("[VERIFY-DEBUG] 🔍 Verificando se está verificado para UUID: " + playerUuid);
         
         try {
-            // Obter conexão via API do Core
-            conn = br.com.primeleague.core.PrimeLeagueCore.getInstance().getDataManager().getConnection();
-            if (conn == null) {
-                plugin.getLogger().warning("[VERIFY-DEBUG] ❌ Conexão com banco nula");
-                return false;
-            }
+            // Usar novo método do DataManager
+            boolean isVerified = br.com.primeleague.core.PrimeLeagueCore.getInstance()
+                .getDataManager()
+                .isPlayerVerified(playerUuid);
             
-            plugin.getLogger().info("[VERIFY-DEBUG] ✅ Conexão obtida com sucesso");
+            plugin.getLogger().info("[VERIFY-DEBUG] " + (isVerified ? "✅" : "❌") + " Jogador " + (isVerified ? "VERIFICADO" : "NÃO VERIFICADO"));
             
-            // Query para verificar se está verificado
-            String sql = "SELECT COUNT(*) FROM discord_links dl JOIN player_data pd ON dl.player_id = pd.player_id WHERE pd.uuid = ? AND dl.verified = TRUE";
-            plugin.getLogger().info("[VERIFY-DEBUG] 📝 Executando query: " + sql);
-            plugin.getLogger().info("[VERIFY-DEBUG] 📝 Parâmetro UUID: " + playerUuid.toString());
-            
-            ps = conn.prepareStatement(sql);
-            ps.setString(1, playerUuid.toString());
-            
-            rs = ps.executeQuery();
-            if (rs.next()) {
-                int count = rs.getInt(1);
-                plugin.getLogger().info("[VERIFY-DEBUG] 📊 Resultado da query: " + count + " vínculos verificados encontrados");
-                
-                boolean isVerified = count > 0;
-                plugin.getLogger().info("[VERIFY-DEBUG] " + (isVerified ? "✅" : "❌") + " Jogador " + (isVerified ? "VERIFICADO" : "NÃO VERIFICADO"));
-                
-                return isVerified;
-            }
-            
-            plugin.getLogger().warning("[VERIFY-DEBUG] ❌ Nenhum resultado retornado pela query");
-            return false;
+            return isVerified;
             
         } catch (Exception e) {
             plugin.getLogger().severe("[VERIFY-DEBUG] ❌ Erro ao verificar status de verificação para " + playerUuid + ": " + e.getMessage());
             e.printStackTrace();
             return false;
-            
-        } finally {
-            // Cleanup de recursos
-            try {
-                if (rs != null) rs.close();
-                if (ps != null) ps.close();
-                if (conn != null) conn.close();
-                plugin.getLogger().info("[VERIFY-DEBUG] 🧹 Recursos de banco liberados");
-            } catch (Exception e) {
-                plugin.getLogger().warning("[VERIFY-DEBUG] ⚠️ Erro ao liberar recursos: " + e.getMessage());
-            }
         }
     }
 
@@ -815,52 +824,41 @@ public final class AuthenticationListener implements Listener {
         }
     }
     
-         /**
-      * Verifica se um jogador tem verificação pendente (registrado mas não verificado).
-      * 
-      * @param playerUuid UUID do jogador
-      * @return true se tem verificação pendente, false caso contrário
-      */
-     private boolean hasPendingVerification(UUID playerUuid) {
-         Connection conn = null;
-         PreparedStatement ps = null;
-         ResultSet rs = null;
-         
-         try {
-             // Obter conexão via API do Core
-             conn = br.com.primeleague.core.PrimeLeagueCore.getInstance().getDataManager().getConnection();
-             if (conn == null) {
-                 return false;
-             }
-             
-                         // Query para verificar se tem registro mas não está verificado
-            String sql = "SELECT COUNT(*) FROM discord_links dl JOIN player_data pd ON dl.player_id = pd.player_id WHERE pd.uuid = ? AND dl.verified = FALSE";
-            ps = conn.prepareStatement(sql);
-            ps.setString(1, playerUuid.toString());
-             
-             rs = ps.executeQuery();
-             if (rs.next()) {
-                 int count = rs.getInt(1);
-                 return count > 0; // Tem registro pendente se count > 0
-             }
-             
-             return false;
-             
-         } catch (Exception e) {
-             plugin.getLogger().severe("[AUTH] Erro ao verificar verificação pendente para " + playerUuid + ": " + e.getMessage());
-             return false;
-             
-         } finally {
-             // Cleanup de recursos
-             try {
-                 if (rs != null) rs.close();
-                 if (ps != null) ps.close();
-                 if (conn != null) conn.close();
-             } catch (Exception e) {
-                 plugin.getLogger().warning("[AUTH] Erro ao fechar recursos: " + e.getMessage());
-             }
-         }
-     }
+               /**
+       * Verifica se um jogador tem verificação pendente (registrado mas não verificado).
+       * REFATORADO: Usa nova arquitetura SSOT.
+       * 
+       * @param playerUuid UUID do jogador
+       * @return true se tem verificação pendente, false caso contrário
+       */
+      private boolean hasPendingVerification(UUID playerUuid) {
+          try {
+              // Verificar se tem vínculo Discord mas não está verificado
+              Connection conn = br.com.primeleague.core.PrimeLeagueCore.getInstance().getDataManager().getConnection();
+              if (conn == null) {
+                  return false;
+              }
+              
+              String sql = "SELECT COUNT(*) FROM discord_links dl JOIN player_data pd ON dl.player_id = pd.player_id WHERE pd.uuid = ? AND dl.verified = FALSE";
+              
+              try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                  ps.setString(1, playerUuid.toString());
+                  
+                  try (ResultSet rs = ps.executeQuery()) {
+                      if (rs.next()) {
+                          int count = rs.getInt(1);
+                          return count > 0; // Tem registro pendente se count > 0
+                      }
+                  }
+              }
+              
+              return false;
+              
+          } catch (Exception e) {
+              plugin.getLogger().severe("[AUTH] Erro ao verificar verificação pendente para " + playerUuid + ": " + e.getMessage());
+              return false;
+          }
+      }
      
      /**
       * Obtém o Discord ID de um jogador pelo UUID.
@@ -1347,24 +1345,20 @@ public final class AuthenticationListener implements Listener {
         try {
             conn = br.com.primeleague.core.PrimeLeagueCore.getInstance().getDataManager().getConnection();
             
-            String sql = "SELECT dl.status FROM discord_links dl " +
-                        "JOIN player_data pd ON dl.player_id = pd.player_id " +
-                        "WHERE pd.name = ? AND dl.verified = TRUE LIMIT 1";
+                         String sql = "SELECT dl.verified FROM discord_links dl " +
+                         "JOIN player_data pd ON dl.player_id = pd.player_id " +
+                         "WHERE pd.name = ? AND dl.verified = TRUE LIMIT 1";
             
             ps = conn.prepareStatement(sql);
             ps.setString(1, playerName);
             rs = ps.executeQuery();
             
-            if (rs.next()) {
-                String status = rs.getString("status");
-                boolean isPending = "PENDING_RELINK".equals(status);
-                
-                if (isPending) {
-                    plugin.getLogger().info("[PENDING-RELINK] Jogador " + playerName + " está em estado PENDING_RELINK");
-                }
-                
-                return isPending;
-            }
+                         if (rs.next()) {
+                 // Como não temos coluna status, vamos considerar que se está verificado, não está em PENDING_RELINK
+                 // PENDING_RELINK seria um estado temporário durante o processo de verificação
+                 plugin.getLogger().info("[PENDING-RELINK] Jogador " + playerName + " está verificado - não em PENDING_RELINK");
+                 return false;
+             }
             
         } catch (Exception e) {
             plugin.getLogger().severe("[PENDING-RELINK] Erro ao verificar estado PENDING_RELINK: " + e.getMessage());
@@ -1418,4 +1412,113 @@ public final class AuthenticationListener implements Listener {
             }
         }, 6000L, 6000L); // 5 minutos = 6000 ticks (20 ticks/segundo * 60 segundos * 5)
     }
+
+    /**
+     * Autoriza automaticamente o IP para um jogador após verificação bem-sucedida.
+     * 
+     * @param playerName Nome do jogador
+     * @param playerIp IP do jogador
+     */
+    private void authorizeIpForPlayer(String playerName, String playerIp) {
+        Connection conn = null;
+        PreparedStatement ps = null;
+        
+        try {
+            conn = br.com.primeleague.core.PrimeLeagueCore.getInstance().getDataManager().getConnection();
+            
+            // Buscar player_id
+            String playerSql = "SELECT player_id FROM player_data WHERE name = ?";
+            ps = conn.prepareStatement(playerSql);
+            ps.setString(1, playerName);
+            
+            java.sql.ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                int playerId = rs.getInt("player_id");
+                rs.close();
+                ps.close();
+                
+                // Inserir autorização de IP (usando colunas corretas da tabela)
+                String authSql = "INSERT INTO player_authorized_ips (player_id, ip_address, description, authorized_at) " +
+                               "VALUES (?, ?, ?, NOW()) " +
+                               "ON DUPLICATE KEY UPDATE authorized_at = NOW()";
+                
+                ps = conn.prepareStatement(authSql);
+                ps.setInt(1, playerId);
+                ps.setString(2, playerIp);
+                ps.setString(3, "Autorização automática após verificação Discord");
+                
+                ps.executeUpdate();
+                
+                plugin.getLogger().info("[AUTO-AUTH] IP " + playerIp + " autorizado automaticamente para " + playerName);
+            }
+            
+        } catch (Exception e) {
+            plugin.getLogger().severe("[AUTO-AUTH] Erro ao autorizar IP automaticamente: " + e.getMessage());
+        } finally {
+            try {
+                if (ps != null) ps.close();
+                if (conn != null) conn.close();
+            } catch (Exception e) {
+                // Ignorar erros de fechamento
+            }
+        }
+    }
+
+    /**
+     * Verifica se o jogador foi recentemente verificado com o mesmo IP.
+     * 
+     * @param playerName Nome do jogador
+     * @param playerIp IP do jogador
+     * @return true se o jogador foi recentemente verificado com o mesmo IP
+     */
+    private boolean isPlayerRecentlyVerifiedWithSameIp(String playerName, String playerIp) {
+        Connection conn = null;
+        PreparedStatement ps = null;
+        ResultSet rs = null;
+        
+        try {
+            conn = br.com.primeleague.core.PrimeLeagueCore.getInstance().getDataManager().getConnection();
+            
+            String sql = "SELECT COUNT(*) FROM player_authorized_ips WHERE player_id = (SELECT player_id FROM player_data WHERE name = ?) AND ip_address = ? AND authorized_at > NOW() - INTERVAL 1 HOUR";
+            ps = conn.prepareStatement(sql);
+            ps.setString(1, playerName);
+            ps.setString(2, playerIp);
+            
+            rs = ps.executeQuery();
+            if (rs.next()) {
+                int count = rs.getInt(1);
+                return count > 0; // Se houver registros recentes, significa que o IP foi autorizado recentemente
+            }
+            
+            return false;
+            
+        } catch (Exception e) {
+            plugin.getLogger().severe("[AUTH] Erro ao verificar autorização recente por IP: " + e.getMessage());
+            return false;
+        } finally {
+            try {
+                if (rs != null) rs.close();
+                if (ps != null) ps.close();
+                if (conn != null) conn.close();
+            } catch (Exception e) {
+                // Ignorar erros de fechamento
+            }
+        }
+    }
+
+         /**
+      * Envia uma mensagem de boas-vindas elaborada mas sem caracteres especiais para jogadores autorizados.
+      */
+     private void sendWelcomeMessage(final Player player) {
+         // Mensagem reduzida em 5 linhas
+         player.sendMessage("");
+         player.sendMessage("§b§l🎮 PRIME LEAGUE");
+         player.sendMessage("§fBem-vindo(a), §e" + player.getName() + "§f!");
+         player.sendMessage("§a💡 Comandos: §f/ajuda §7| §f/discord §7| §f/loja");
+         player.sendMessage("§e🔐 Sua conta está protegida e verificada!");
+         player.sendMessage("§a🎯 Divirta-se e aproveite sua experiência!");
+         player.sendMessage("");
+         
+         plugin.getLogger().info("[WELCOME] Mensagem de boas-vindas enviada para " + player.getName());
+     }
 }

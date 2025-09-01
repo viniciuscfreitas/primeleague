@@ -1,0 +1,44 @@
+# =========================================================
+# CONFIGURAÇÃO DO BOT DISCORD PRIME LEAGUE
+# =========================================================
+
+# Discord Bot Configuration
+DISCORD_BOT_TOKEN=seu_token_do_bot_aqui
+DISCORD_CLIENT_ID=seu_client_id_aqui
+DISCORD_GUILD_ID=1344225249826443266
+
+# Database Configuration
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=root
+DB_PASS=root
+DB_NAME=primeleague
+
+# Core API Configuration
+CORE_API_URL=http://localhost:8080
+API_BEARER_TOKEN=primeleague_api_token_2024
+API_TOKEN=primeleague_api_token_2024
+
+# Bot Configuration
+BOT_PREFIX=!
+BOT_OWNER_ID=seu_discord_id_aqui
+
+# Webhook Configuration
+WEBHOOK_PORT=3000
+
+# Status Configuration
+STATUS_CHANNEL_ID=1405718108768829592
+
+# Logging Configuration
+LOG_LEVEL=info
+LOG_FILE=bot.log
+
+# Verification Configuration
+VERIFICATION_CODE_LENGTH=6
+VERIFICATION_CODE_EXPIRY=300000
+
+# Account Limits
+MAX_ACCOUNTS_PER_USER=5
+
+# Subscription Configuration
+SUBSCRIPTION_WEBHOOK_URL=sua_webhook_url_aqui

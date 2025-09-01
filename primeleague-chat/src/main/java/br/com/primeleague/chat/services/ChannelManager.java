@@ -1,7 +1,6 @@
 package br.com.primeleague.chat.services;
 
 import br.com.primeleague.chat.PrimeLeagueChat;
-import br.com.primeleague.api.TagServiceRegistry;
 import br.com.primeleague.core.api.PrimeLeagueAPI;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
@@ -10,12 +9,13 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Gerenciador de canais de chat (versão simplificada para teste).
+ * Gerenciador de canais de chat com formatação otimizada.
  */
 public class ChannelManager {
     
     private final PrimeLeagueChat plugin;
     private final Map<UUID, ChatChannel> playerChannels = new HashMap<>();
+    private final OptimizedFormatService formatService;
     
     public enum ChatChannel {
         GLOBAL, CLAN, ALLY, LOCAL
@@ -23,6 +23,7 @@ public class ChannelManager {
     
     public ChannelManager(PrimeLeagueChat plugin) {
         this.plugin = plugin;
+        this.formatService = new OptimizedFormatService(plugin);
     }
     
     public ChatChannel getPlayerChannel(Player player) {
@@ -33,52 +34,26 @@ public class ChannelManager {
     }
     
     /**
-     * Formata uma mensagem usando o TagService para resolver placeholders.
+     * Formata uma mensagem usando o serviço otimizado.
      */
     private String formatMessage(Player player, String format, String message) {
-        try {
-            // Aplicar placeholders usando TagService
-            String formattedText = TagServiceRegistry.formatText(player, format);
-            
-            // Substituir {player} e {message} pelos valores reais
-            formattedText = formattedText.replace("{player}", player.getName());
-            formattedText = formattedText.replace("{message}", message);
-            
-            // Aplicar cores se permitido
-            if (plugin.getConfig().getBoolean("global.allow_colors", true)) {
-                formattedText = ChatColor.translateAlternateColorCodes('&', formattedText);
-            }
-            
-            return formattedText;
-        } catch (Exception e) {
-            // Fallback em caso de erro
-            plugin.getLogger().warning("Erro ao formatar mensagem: " + e.getMessage());
-            return "§7[§aChat§7] §f" + player.getName() + ": §7" + message;
-        }
+        return formatService.formatMessage(player, format, message);
     }
     
     public String formatGlobalMessage(Player player, String message) {
-        String format = plugin.getConfig().getString("channels.global.format", 
-            "&7[&aGlobal&7] {clan_tag}&f{player}&7: &f{message}");
-        return formatMessage(player, format, message);
+        return formatService.formatGlobalMessage(player, message);
     }
     
     public String formatClanMessage(Player player, String message) {
-        String format = plugin.getConfig().getString("channels.clan.format", 
-            "&7[&bClã&7] {clan_tag}&f{player}&7: &f{message}");
-        return formatMessage(player, format, message);
+        return formatService.formatClanMessage(player, message);
     }
     
     public String formatAllyMessage(Player player, String message) {
-        String format = plugin.getConfig().getString("channels.ally.format", 
-            "&7[&dAliança&7] {clan_tag}&f{player}&7: &f{message}");
-        return formatMessage(player, format, message);
+        return formatService.formatAllyMessage(player, message);
     }
     
     public String formatLocalMessage(Player player, String message) {
-        String format = plugin.getConfig().getString("channels.local.format", 
-            "&7[&eLocal&7] {clan_tag}&f{player}&7: &f{message}");
-        return formatMessage(player, format, message);
+        return formatService.formatLocalMessage(player, message);
     }
     
     public void setPlayerChannel(Player player, ChatChannel channel) {

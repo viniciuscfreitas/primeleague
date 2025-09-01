@@ -181,21 +181,13 @@ public class P2PAdminCommand implements CommandExecutor {
                     
                     // Calcular nova data de expiração
                     final Date newExpiryDate;
-                    if (profile.getSubscriptionExpiry() != null && profile.getSubscriptionExpiry().after(new Date())) {
-                        // Se já tem assinatura ativa, adicionar aos dias existentes
-                        Calendar cal = Calendar.getInstance();
-                        cal.setTime(profile.getSubscriptionExpiry());
-                        cal.add(Calendar.DAY_OF_MONTH, days);
-                        newExpiryDate = cal.getTime();
-                    } else {
-                        // Se não tem assinatura ativa, criar nova
-                        Calendar cal = Calendar.getInstance();
-                        cal.add(Calendar.DAY_OF_MONTH, days);
-                        newExpiryDate = cal.getTime();
-                    }
+                    // TODO: Implementar consulta SSOT via DataManager
+                    Calendar cal = Calendar.getInstance();
+                    cal.add(Calendar.DAY_OF_MONTH, days);
+                    newExpiryDate = cal.getTime();
                     
                     // Atualizar perfil
-                    profile.setSubscriptionExpiry(newExpiryDate);
+                    // TODO: Implementar atualização SSOT via DataManager
                     PrimeLeagueAPI.getDataManager().savePlayerProfileSync(profile);
                     final boolean success = true; // Assume sucesso se não houver exceção
                     
@@ -271,7 +263,7 @@ public class P2PAdminCommand implements CommandExecutor {
                     }
                     
                     // Revogar assinatura
-                    profile.setSubscriptionExpiry(null);
+                    // TODO: Implementar atualização SSOT via DataManager
                     PrimeLeagueAPI.getDataManager().savePlayerProfileSync(profile);
                     final boolean success = true; // Assume sucesso se não houver exceção
                     
@@ -330,11 +322,11 @@ public class P2PAdminCommand implements CommandExecutor {
         sender.sendMessage("");
         
         // Status da assinatura
-        if (profile.hasActiveAccess()) {
+        if (PrimeLeagueAPI.getDataManager().hasActiveSubscription(profile.getUuid())) {
             sender.sendMessage("§a✅ Status: §fATIVA");
             
             // Dias restantes
-            int daysRemaining = profile.getDaysUntilExpiry();
+            int daysRemaining = 0; // TODO: Implementar cálculo via DataManager
             if (daysRemaining > 0) {
                 sender.sendMessage("§e⚠️ Dias restantes: §f" + daysRemaining);
             } else {
@@ -342,9 +334,7 @@ public class P2PAdminCommand implements CommandExecutor {
             }
             
             // Data de expiração
-            if (profile.getSubscriptionExpiry() != null) {
-                sender.sendMessage("§7Data de expiração: §f" + formatDate(profile.getSubscriptionExpiry()));
-            }
+            // TODO: Implementar consulta SSOT via DataManager
             
         } else {
             sender.sendMessage("§c❌ Status: §fINATIVA");

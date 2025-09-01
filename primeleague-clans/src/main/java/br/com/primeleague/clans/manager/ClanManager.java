@@ -249,18 +249,40 @@ public class ClanManager {
      * REFATORADO: Usa player_id como identificador principal
      */
     public Clan createClan(String tag, String name, Player leader) {
+        plugin.getLogger().info("🔧 [CLAN-MANAGER-DEBUG] Iniciando criação do clã: " + tag + " (" + name + ")");
+        plugin.getLogger().info("🔧 [CLAN-MANAGER-DEBUG] Líder: " + leader.getName());
+        
         // REFATORADO: Obter player_id através do IdentityManager
         int leaderPlayerId = PrimeLeagueAPI.getIdentityManager().getPlayerId(leader);
+        plugin.getLogger().info("🔧 [CLAN-MANAGER-DEBUG] Player ID do líder: " + leaderPlayerId);
+        
         if (leaderPlayerId == -1) {
-            plugin.getLogger().severe("FALHA CRÍTICA: Não foi possível obter player_id para " + leader.getName());
+            plugin.getLogger().severe("🔧 [CLAN-MANAGER-DEBUG] FALHA CRÍTICA: Não foi possível obter player_id para " + leader.getName());
             return null;
         }
         
         // Validações prévias (tag/nome disponível, jogador sem clã)
-        if (getClanByTag(tag) != null || getClanByName(name) != null || getClanByPlayer(leader) != null) {
-            plugin.getLogger().warning("Falha na pré-validação para criar clã: " + tag);
+        plugin.getLogger().info("🔧 [CLAN-MANAGER-DEBUG] Executando validações prévias...");
+        
+        Clan existingByTag = getClanByTag(tag);
+        if (existingByTag != null) {
+            plugin.getLogger().warning("🔧 [CLAN-MANAGER-DEBUG] Tag já existe: " + tag);
             return null;
         }
+        
+        Clan existingByName = getClanByName(name);
+        if (existingByName != null) {
+            plugin.getLogger().warning("🔧 [CLAN-MANAGER-DEBUG] Nome já existe: " + name);
+            return null;
+        }
+        
+        Clan existingByPlayer = getClanByPlayer(leader);
+        if (existingByPlayer != null) {
+            plugin.getLogger().warning("🔧 [CLAN-MANAGER-DEBUG] Jogador já está em um clã: " + existingByPlayer.getTag());
+            return null;
+        }
+        
+        plugin.getLogger().info("🔧 [CLAN-MANAGER-DEBUG] ✅ Validações prévias passaram");
 
         // 1. Criar o DTO com os dados corretos PRIMEIRO
         ClanDTO clanToCreate = new ClanDTO();
@@ -270,34 +292,51 @@ public class ClanManager {
         clanToCreate.setFounderName(leader.getName());
         clanToCreate.setFriendlyFireEnabled(false);
         clanToCreate.setCreationDate(new Date());
+        
+        plugin.getLogger().info("🔧 [CLAN-MANAGER-DEBUG] DTO criado, chamando DAO...");
 
         // 2. Tentar persistir no banco de dados
         ClanDTO savedClanDTO = clanDAO.createClan(clanToCreate);
+        
+        plugin.getLogger().info("🔧 [CLAN-MANAGER-DEBUG] Resposta do DAO: " + (savedClanDTO != null ? "SUCESSO" : "FALHA"));
 
         // 3. VERIFICAÇÃO CRÍTICA: Se a persistência falhou, o DAO retorna null.
         if (savedClanDTO == null || savedClanDTO.getId() <= 0) {
-            plugin.getLogger().severe("FALHA CRÍTICA: O DAO retornou nulo ou um ID inválido ao tentar criar o clã " + tag);
+            plugin.getLogger().severe("🔧 [CLAN-MANAGER-DEBUG] FALHA CRÍTICA: O DAO retornou nulo ou um ID inválido ao tentar criar o clã " + tag);
             return null;
         }
+        
+        plugin.getLogger().info("🔧 [CLAN-MANAGER-DEBUG] Clã persistido com ID: " + savedClanDTO.getId());
 
         // 4. Se a persistência foi bem-sucedida, crie os objetos de negócio
         Clan clan = fromDTO(savedClanDTO);
         clans.put(clan.getId(), clan);
+        
+        plugin.getLogger().info("🔧 [CLAN-MANAGER-DEBUG] Objeto Clan criado e adicionado ao cache");
 
         // 5. Criar e configurar o ClanPlayer do fundador
         ClanPlayer founderPlayer = getClanPlayer(leader);
         if (founderPlayer == null) {
             founderPlayer = new ClanPlayer(leader); // Cria um novo se não existir
             clanPlayers.put(leaderPlayerId, founderPlayer); // REFATORADO: Usar player_id
+            plugin.getLogger().info("🔧 [CLAN-MANAGER-DEBUG] Novo ClanPlayer criado para o fundador");
+        } else {
+            plugin.getLogger().info("🔧 [CLAN-MANAGER-DEBUG] ClanPlayer existente encontrado para o fundador");
         }
+        
         founderPlayer.setClan(clan);
         founderPlayer.setRole(ClanPlayer.ClanRole.FUNDADOR);
         founderPlayer.setJoinDate(System.currentTimeMillis());
+        
+        plugin.getLogger().info("🔧 [CLAN-MANAGER-DEBUG] ClanPlayer configurado: clan=" + clan.getTag() + ", role=FUNDADOR");
 
         // 6. Persistir o ClanPlayer do fundador
+        plugin.getLogger().info("🔧 [CLAN-MANAGER-DEBUG] Persistindo ClanPlayer do fundador...");
         clanDAO.saveOrUpdateClanPlayer(toDTO(founderPlayer));
+        plugin.getLogger().info("🔧 [CLAN-MANAGER-DEBUG] ClanPlayer do fundador persistido");
 
         // 7. Registrar log da criação do clã
+        plugin.getLogger().info("🔧 [CLAN-MANAGER-DEBUG] Registrando log da criação...");
         clanDAO.logAction(
             clan.getId(),
             leaderPlayerId, // REFATORADO: Usar player_id diretamente
@@ -307,8 +346,9 @@ public class ClanManager {
             null,
             "Clã criado: " + tag + " (" + name + ")"
         );
+        plugin.getLogger().info("🔧 [CLAN-MANAGER-DEBUG] Log registrado");
 
-        plugin.getLogger().info("Clã " + tag + " criado com sucesso e persistido no DB.");
+        plugin.getLogger().info("🔧 [CLAN-MANAGER-DEBUG] ✅ Clã " + tag + " criado com sucesso e persistido no DB.");
         return clan;
     }
 
@@ -1209,10 +1249,16 @@ public class ClanManager {
      * @param message A mensagem
      */
     public void notifyClanMembers(Clan clan, String message) {
+        if (clan == null || message == null) {
+            return;
+        }
+        
         for (String memberName : clan.getAllMemberNames()) {
-            org.bukkit.entity.Player member = org.bukkit.Bukkit.getPlayerExact(memberName);
-            if (member != null && member.isOnline()) {
-                member.sendMessage(message);
+            if (memberName != null) {
+                org.bukkit.entity.Player member = org.bukkit.Bukkit.getPlayerExact(memberName);
+                if (member != null && member.isOnline()) {
+                    member.sendMessage(message);
+                }
             }
         }
     }
@@ -2265,6 +2311,10 @@ public class ClanManager {
      * Itera apenas sobre o cache de membros online para máxima performance.
      */
     public void notifyClanMembers(Clan clan, String message, int... exclusions) {
+        if (clan == null || message == null) {
+            return;
+        }
+        
         List<Integer> excludedPlayerIds = new ArrayList<>();
         for (int exclusion : exclusions) {
             excludedPlayerIds.add(exclusion);
@@ -2281,7 +2331,7 @@ public class ClanManager {
 
             ClanPlayer member = getClanPlayer(playerId);
             // Verificar se o membro online pertence ao clã alvo
-            if (member != null && member.hasClan() && member.getClan().equals(clan)) {
+            if (member != null && member.hasClan() && member.getClan() != null && member.getClan().equals(clan)) {
                 onlinePlayer.sendMessage(message);
             }
         }
@@ -2292,12 +2342,18 @@ public class ClanManager {
      */
     @Deprecated
     public void notifyClanMembers(Clan clan, String message, UUID... exclusions) {
+        if (clan == null || message == null) {
+            return;
+        }
+        
         // REFATORADO: Converter UUIDs para player_ids
         List<Integer> excludedPlayerIds = new ArrayList<>();
         for (UUID uuid : exclusions) {
-            int playerId = PrimeLeagueAPI.getIdentityManager().getPlayerIdByUuid(uuid);
-            if (playerId != -1) {
-                excludedPlayerIds.add(playerId);
+            if (uuid != null) {
+                int playerId = PrimeLeagueAPI.getIdentityManager().getPlayerIdByUuid(uuid);
+                if (playerId != -1) {
+                    excludedPlayerIds.add(playerId);
+                }
             }
         }
         
