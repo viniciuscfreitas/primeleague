@@ -12,8 +12,8 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven.compiler.source>1.8</maven.compiler.source>
-        <maven.compiler.target>1.8</maven.compiler.target>
+        <maven.compiler.source>1.7</maven.compiler.source>
+        <maven.compiler.target>1.7</maven.compiler.target>
     </properties>
 
     <dependencies>
@@ -33,11 +33,11 @@
             <systemPath>${project.basedir}/../lib/craftbukkit-1.5.2-R1.0.jar</systemPath>
         </dependency>
 
-        <!-- Pool de conexões HikariCP -->
+        <!-- Pool de conexões HikariCP - versão compatível com Java 7 -->
         <dependency>
             <groupId>com.zaxxer</groupId>
-            <artifactId>HikariCP</artifactId>
-            <version>4.0.3</version>
+            <artifactId>HikariCP-java7</artifactId>
+            <version>2.4.13</version>
         </dependency>
 
         <!-- Driver MySQL compatível com Java 7 -->

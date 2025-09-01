@@ -152,16 +152,18 @@ public class InspectCommand implements CommandExecutor {
         sender.sendMessage(ChatColor.YELLOW + "=== INFORMAÇÕES P2P ===");
 
         try {
-            PlayerProfile profile = PrimeLeagueAPI.getPlayerProfile(targetUuid);
-            if (profile != null && profile.getSubscriptionExpiry() != null) {
-                boolean isActive = profile.hasActiveAccess();
-                String status = isActive ? ChatColor.GREEN + "ATIVA" : ChatColor.RED + "EXPIRADA";
-
-                sender.sendMessage(ChatColor.GRAY + "Status da assinatura: " + status);
-                sender.sendMessage(ChatColor.GRAY + "Expira em: " + ChatColor.WHITE +
-                    dateFormat.format(profile.getSubscriptionExpiry()));
+            // Verificar se o jogador tem acesso P2P ativo
+            Integer playerId = PrimeLeagueAPI.getIdentityManager().getPlayerIdByUuid(targetUuid);
+            if (playerId != null) {
+                Integer donorTier = PrimeLeagueAPI.getDataManager().getDonorTier(targetUuid);
+                if (donorTier != null && donorTier > 0) {
+                    sender.sendMessage(ChatColor.GRAY + "Status da assinatura: " + ChatColor.GREEN + "ATIVA");
+                    sender.sendMessage(ChatColor.GRAY + "Tier de doador: " + ChatColor.WHITE + donorTier);
+                } else {
+                    sender.sendMessage(ChatColor.RED + "Sem assinatura P2P ativa.");
+                }
             } else {
-                sender.sendMessage(ChatColor.RED + "Sem assinatura P2P ativa.");
+                sender.sendMessage(ChatColor.RED + "Jogador não encontrado no sistema.");
             }
         } catch (Exception e) {
             sender.sendMessage(ChatColor.RED + "Erro ao obter informações P2P: " + e.getMessage());

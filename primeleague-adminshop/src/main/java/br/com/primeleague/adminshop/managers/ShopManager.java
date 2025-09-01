@@ -122,7 +122,8 @@ public class ShopManager {
             
             // 3. Calcular desconto baseado no donor_tier (usando DonorManager como fonte única)
             DonorManager donorManager = PrimeLeagueAPI.getDonorManager();
-            double discount = donorManager.getDiscountForTier(profile.getDonorTier());
+            Integer donorTier = PrimeLeagueAPI.getDataManager().getDonorTier(profile.getUuid());
+            double discount = donorManager.getDiscountForTier(donorTier != null ? donorTier : 0);
             double finalPrice = item.getPrice() * (1.0 - discount);
             
             // 4. Verificar saldo
@@ -319,7 +320,8 @@ public class ShopManager {
         if (playerId != null) {
             PlayerProfile profile = PrimeLeagueAPI.getDataManager().getPlayerProfile(playerId);
             if (profile != null) {
-                discount = PrimeLeagueAPI.getDonorManager().getDiscountForTier(profile.getDonorTier());
+                Integer donorTier = PrimeLeagueAPI.getDataManager().getDonorTier(profile.getUuid());
+                discount = PrimeLeagueAPI.getDonorManager().getDiscountForTier(donorTier != null ? donorTier : 0);
             }
         }
         

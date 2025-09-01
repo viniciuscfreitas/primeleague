@@ -284,11 +284,31 @@ public class ShopConfigManager {
      */
     private ShopItem loadShopItem(Map<?, ?> itemMap) {
         try {
+            // Validar campos obrigatórios
+            if (!itemMap.containsKey("id") || !itemMap.containsKey("material") || !itemMap.containsKey("price")) {
+                logger.warning("⚠️ Item com campos obrigatórios ausentes: " + itemMap);
+                return null;
+            }
+            
             String id = (String) itemMap.get("id");
             String name = (String) itemMap.get("name");
             String description = (String) itemMap.get("description");
             String materialName = (String) itemMap.get("material");
-            double price = ((Number) itemMap.get("price")).doubleValue();
+            
+            // Validar e converter preço com valor padrão
+            Object priceObj = itemMap.get("price");
+            double price;
+            if (priceObj == null) {
+                logger.warning("⚠️ Preço ausente para item '" + id + "', usando valor padrão 100.0");
+                price = 100.0;
+            } else {
+                try {
+                    price = ((Number) priceObj).doubleValue();
+                } catch (ClassCastException e) {
+                    logger.warning("⚠️ Formato de preço inválido para item '" + id + "', usando valor padrão 100.0");
+                    price = 100.0;
+                }
+            }
             
             // Validar material
             Material material = Material.getMaterial(materialName);
@@ -301,66 +321,207 @@ public class ShopConfigManager {
             
             // Carregar quantidade
             if (itemMap.containsKey("amount")) {
-                item.setAmount(((Number) itemMap.get("amount")).intValue());
-            }
-            
-            // Carregar lore
-            if (itemMap.containsKey("lore")) {
-                List<String> lore = (List<String>) itemMap.get("lore");
-                item.setLore(lore);
-            }
-            
-            // Carregar encantamentos
-            if (itemMap.containsKey("enchantments")) {
-                Map<String, Object> enchantMap = (Map<String, Object>) itemMap.get("enchantments");
-                for (Map.Entry<String, Object> entry : enchantMap.entrySet()) {
-                    Enchantment enchant = Enchantment.getByName(entry.getKey());
-                    if (enchant != null) {
-                        int level = ((Number) entry.getValue()).intValue();
-                        item.addEnchantment(enchant, level);
+                Object amountObj = itemMap.get("amount");
+                if (amountObj != null) {
+                    try {
+                        int amount = ((Number) amountObj).intValue();
+                        item.setAmount(amount);
+                    } catch (ClassCastException e) {
+                        logger.warning("⚠️ Formato de quantidade inválido para item '" + id + "', usando padrão 1");
+                        item.setAmount(1);
                     }
                 }
             }
             
-            // Carregar efeitos de poção
+            // Carregar lore
+            if (itemMap.containsKey("lore")) {
+                Object loreObj = itemMap.get("lore");
+                if (loreObj instanceof List) {
+                    @SuppressWarnings("unchecked")
+                    List<String> lore = (List<String>) loreObj;
+                    item.setLore(lore);
+                }
+            }
+            
+            // Carregar encantamentos
+            if (itemMap.containsKey("enchantments")) {
+                Object enchantObj = itemMap.get("enchantments");
+                if (enchantObj instanceof Map) {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> enchantMap = (Map<String, Object>) enchantObj;
+                    for (Map.Entry<String, Object> entry : enchantMap.entrySet()) {
+                        Enchantment enchant = Enchantment.getByName(entry.getKey());
+                        if (enchant != null && entry.getValue() != null) {
+                            try {
+                                int level = ((Number) entry.getValue()).intValue();
+                                item.addEnchantment(enchant, level);
+                            } catch (ClassCastException e) {
+                                logger.warning("⚠️ Nível de encantamento inválido para '" + entry.getKey() + "' no item '" + id + "'");
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Carregar efeitos de poção com validação melhorada
             if (itemMap.containsKey("potion_effects")) {
-                Map<String, Object> effectsMap = (Map<String, Object>) itemMap.get("potion_effects");
-                for (Map.Entry<String, Object> entry : effectsMap.entrySet()) {
-                    PotionEffectType effectType = PotionEffectType.getByName(entry.getKey());
-                    if (effectType != null) {
-                        String[] parts = entry.getValue().toString().split(":");
-                        int level = Integer.parseInt(parts[0]);
-                        int duration = Integer.parseInt(parts[1]);
-                        item.addPotionEffect(new PotionEffect(effectType, duration * 20, level - 1));
+                Object effectsObj = itemMap.get("potion_effects");
+                if (effectsObj instanceof Map) {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> effectsMap = (Map<String, Object>) effectsObj;
+                    for (Map.Entry<String, Object> entry : effectsMap.entrySet()) {
+                        PotionEffectType effectType = PotionEffectType.getByName(entry.getKey());
+                        if (effectType != null && entry.getValue() != null) {
+                            try {
+                                String effectValue = entry.getValue().toString();
+                                String[] parts = effectValue.split(":");
+                                
+                                if (parts.length >= 2) {
+                                    int level = Integer.parseInt(parts[0]);
+                                    int duration = Integer.parseInt(parts[1]);
+                                    item.addPotionEffect(new PotionEffect(effectType, duration * 20, level - 1));
+                                } else {
+                                    logger.warning("⚠️ Formato de efeito de poção inválido para '" + entry.getKey() + "' no item '" + id + "': " + effectValue);
+                                }
+                            } catch (NumberFormatException e) {
+                                logger.warning("⚠️ Valores numéricos inválidos para efeito de poção '" + entry.getKey() + "' no item '" + id + "': " + entry.getValue());
+                            }
+                        }
                     }
                 }
             }
             
             // Carregar comandos
             if (itemMap.containsKey("commands")) {
-                List<String> commands = (List<String>) itemMap.get("commands");
-                item.setCommands(commands);
+                Object commandsObj = itemMap.get("commands");
+                if (commandsObj instanceof List) {
+                    @SuppressWarnings("unchecked")
+                    List<String> commands = (List<String>) commandsObj;
+                    item.setCommands(commands);
+                }
             }
             
             // Carregar itens do kit
             if (itemMap.containsKey("kit_items")) {
-                List<Map<?, ?>> kitItemsList = (List<Map<?, ?>>) itemMap.get("kit_items");
-                List<ShopItem> kitItems = new ArrayList<>();
-                
-                for (Map<?, ?> kitItemMap : kitItemsList) {
-                    ShopItem kitItem = loadShopItem(kitItemMap);
-                    if (kitItem != null) {
-                        kitItems.add(kitItem);
+                Object kitItemsObj = itemMap.get("kit_items");
+                if (kitItemsObj instanceof List) {
+                    @SuppressWarnings("unchecked")
+                    List<Map<?, ?>> kitItemsList = (List<Map<?, ?>>) kitItemsObj;
+                    List<ShopItem> kitItems = new ArrayList<>();
+                    
+                    for (Map<?, ?> kitItemMap : kitItemsList) {
+                        // Para itens de kit, criar um item básico se não tiver campos obrigatórios
+                        ShopItem kitItem = createKitItemFromMap(kitItemMap, id);
+                        if (kitItem != null) {
+                            kitItems.add(kitItem);
+                        }
                     }
+                    
+                    item.setKitItems(kitItems);
                 }
-                
-                item.setKitItems(kitItems);
             }
             
             return item;
             
         } catch (Exception e) {
             logger.severe("❌ Erro ao carregar item: " + e.getMessage());
+            return null;
+        }
+    }
+    
+    /**
+     * Cria um item de kit a partir de um mapa, adicionando campos padrão se necessário.
+     * 
+     * @param kitItemMap mapa com dados do item do kit
+     * @param parentId ID do item pai (kit)
+     * @return ShopItem criado ou null se houver erro
+     */
+    private ShopItem createKitItemFromMap(Map<?, ?> kitItemMap, String parentId) {
+        try {
+            if (!kitItemMap.containsKey("material")) {
+                logger.warning("⚠️ Item de kit sem material para kit '" + parentId + "', pulando...");
+                return null;
+            }
+            
+            String materialName = (String) kitItemMap.get("material");
+            Material material = Material.getMaterial(materialName);
+            if (material == null) {
+                logger.warning("⚠️ Material inválido para item de kit em '" + parentId + "': " + materialName);
+                return null;
+            }
+            
+            // Criar item com campos padrão
+            String kitItemId = parentId + "_" + materialName.toLowerCase();
+            String kitItemName = materialName.replace("_", " ");
+            String kitItemDesc = "Item do kit " + parentId;
+            
+            ShopItem kitItem = new ShopItem(kitItemId, kitItemName, kitItemDesc, material, 0.0);
+            
+            // Carregar quantidade
+            if (kitItemMap.containsKey("amount")) {
+                Object amountObj = kitItemMap.get("amount");
+                if (amountObj != null) {
+                    try {
+                        int amount = ((Number) amountObj).intValue();
+                        kitItem.setAmount(amount);
+                    } catch (ClassCastException e) {
+                        kitItem.setAmount(1);
+                    }
+                }
+            }
+            
+            // Carregar encantamentos
+            if (kitItemMap.containsKey("enchantments")) {
+                Object enchantObj = kitItemMap.get("enchantments");
+                if (enchantObj instanceof Map) {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> enchantMap = (Map<String, Object>) enchantObj;
+                    for (Map.Entry<String, Object> entry : enchantMap.entrySet()) {
+                        Enchantment enchant = Enchantment.getByName(entry.getKey());
+                        if (enchant != null && entry.getValue() != null) {
+                            try {
+                                int level = ((Number) entry.getValue()).intValue();
+                                kitItem.addEnchantment(enchant, level);
+                            } catch (ClassCastException e) {
+                                logger.warning("⚠️ Nível de encantamento inválido para '" + entry.getKey() + "' no item de kit '" + kitItemId + "'");
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Carregar efeitos de poção para itens de kit
+            if (kitItemMap.containsKey("potion_effects")) {
+                Object effectsObj = kitItemMap.get("potion_effects");
+                if (effectsObj instanceof Map) {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> effectsMap = (Map<String, Object>) effectsObj;
+                    for (Map.Entry<String, Object> entry : effectsMap.entrySet()) {
+                        PotionEffectType effectType = PotionEffectType.getByName(entry.getKey());
+                        if (effectType != null && entry.getValue() != null) {
+                            try {
+                                String effectValue = entry.getValue().toString();
+                                String[] parts = effectValue.split(":");
+                                
+                                if (parts.length >= 2) {
+                                    int level = Integer.parseInt(parts[0]);
+                                    int duration = Integer.parseInt(parts[1]);
+                                    kitItem.addPotionEffect(new PotionEffect(effectType, duration * 20, level - 1));
+                                } else {
+                                    logger.warning("⚠️ Formato de efeito de poção inválido para '" + entry.getKey() + "' no item de kit '" + kitItemId + "': " + effectValue);
+                                }
+                            } catch (NumberFormatException e) {
+                                logger.warning("⚠️ Valores numéricos inválidos para efeito de poção '" + entry.getKey() + "' no item de kit '" + kitItemId + "': " + entry.getValue());
+                            }
+                        }
+                    }
+                }
+            }
+            
+            return kitItem;
+            
+        } catch (Exception e) {
+            logger.warning("⚠️ Erro ao criar item de kit para '" + parentId + "': " + e.getMessage());
             return null;
         }
     }

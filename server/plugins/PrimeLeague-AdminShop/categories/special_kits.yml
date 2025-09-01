@@ -39,7 +39,7 @@ items:
       - material: "POTION"
         amount: 8
         potion_effects:
-          HEAL: 1:1
+          HEAL: "1:1"
           
   - id: "mining_kit"
     name: "§6Kit de Mineracao"
@@ -52,11 +52,9 @@ items:
     kit_items:
       - material: "DIAMOND_PICKAXE"
         enchantments:
-          DIG_SPEED: 3
-          DURABILITY: 2
-      - material: "DIAMOND_SHOVEL"
+          DURABILITY: 3
+      - material: "STONE_SHOVEL"
         enchantments:
-          DIG_SPEED: 3
           DURABILITY: 2
       - material: "TORCH"
         amount: 64
@@ -74,11 +72,9 @@ items:
     kit_items:
       - material: "DIAMOND_AXE"
         enchantments:
-          DIG_SPEED: 3
-          DURABILITY: 2
-      - material: "DIAMOND_SHOVEL"
+          DURABILITY: 3
+      - material: "STONE_SHOVEL"
         enchantments:
-          DIG_SPEED: 3
           DURABILITY: 2
       - material: "STONE"
         amount: 64

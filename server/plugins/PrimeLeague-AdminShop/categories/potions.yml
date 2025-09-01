@@ -33,7 +33,7 @@ items:
     lore:
       - "§7Cura instantanea"
     potion_effects:
-      HEAL: 1:1
+      HEAL: "1:1"
       
   - id: "night_vision_potion"
     name: "§5Pocao de Visao Noturna"
