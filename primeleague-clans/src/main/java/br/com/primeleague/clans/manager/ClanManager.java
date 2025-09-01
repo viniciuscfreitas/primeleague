@@ -424,7 +424,6 @@ public class ClanManager {
                 
                 // 2. Salvar o ClanPlayer do fundador
                 ClanPlayer founderPlayer = new ClanPlayer(leader);
-                founderPlayer.setClanId(savedClanDTO.getId());
                 founderPlayer.setRole(ClanPlayer.ClanRole.FUNDADOR);
                 founderPlayer.setJoinDate(System.currentTimeMillis());
                 

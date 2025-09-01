@@ -230,6 +230,27 @@ public final class DataManager {
     }
 
     /**
+     * Carrega o perfil de um jogador de forma ASSÍNCRONA (com criação automática se necessário).
+     * 
+     * @param uuid UUID do jogador
+     * @param playerName Nome do jogador (para novos jogadores)
+     * @param callback Callback para receber o resultado
+     */
+    public void loadPlayerProfileWithCreationAsync(UUID uuid, String playerName, java.util.function.Consumer<PlayerProfile> callback) {
+        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
+            loadPlayerProfileWithCreation(uuid, playerName);
+            
+            // Obter o perfil do cache após a operação
+            PlayerProfile profile = profileCache.get(uuid);
+            
+            // Retornar para a thread principal
+            plugin.getServer().getScheduler().runTask(plugin, () -> {
+                callback.accept(profile);
+            });
+        });
+    }
+
+    /**
      * Carrega o perfil de um jogador SEM criar automaticamente.
      * Usado para verificação de autenticação.
      * 
@@ -285,6 +306,23 @@ public final class DataManager {
             e.printStackTrace();
             return null;
         }
+    }
+
+    /**
+     * Carrega o perfil de um jogador de forma ASSÍNCRONA.
+     * 
+     * @param uuid UUID do jogador
+     * @param callback Callback para receber o resultado
+     */
+    public void loadPlayerProfileAsync(UUID uuid, java.util.function.Consumer<PlayerProfile> callback) {
+        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
+            PlayerProfile profile = loadPlayerProfile(uuid);
+            
+            // Retornar para a thread principal
+            plugin.getServer().getScheduler().runTask(plugin, () -> {
+                callback.accept(profile);
+            });
+        });
     }
 
     /**

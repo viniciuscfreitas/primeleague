@@ -264,7 +264,10 @@ public final class EconomyManager {
      * @return true se tem saldo suficiente, false caso contrário
      */
     public boolean hasBalance(UUID playerUuid, double amount) {
-        BigDecimal balance = getBalance(playerUuid);
+        Integer playerId = plugin.getIdentityManager().getPlayerIdByUuid(playerUuid);
+        if (playerId == null) return false;
+        
+        BigDecimal balance = getBalance(playerId);
         if (balance == null) return false;
         return balance.compareTo(BigDecimal.valueOf(amount)) >= 0;
     }
@@ -294,7 +297,7 @@ public final class EconomyManager {
         if (playerId == null) {
             return EconomyResponse.error("Player ID não encontrado para UUID: " + playerUuid);
         }
-        return creditBalance(playerId, amount, reason);
+        return creditBalance(playerId.intValue(), amount, reason);
     }
     
     /**
@@ -322,7 +325,7 @@ public final class EconomyManager {
         if (playerId == null) {
             return EconomyResponse.error("Player ID não encontrado para UUID: " + playerUuid);
         }
-        return debitBalance(playerId, amount, reason);
+        return debitBalance(playerId.intValue(), amount, reason);
     }
     
     /**
@@ -682,6 +685,44 @@ public final class EconomyManager {
                 toLock.unlock();
             }
         }
+    }
+
+    /**
+     * Credita um valor na conta de um jogador de forma ASSÍNCRONA.
+     * 
+     * @param playerId ID do jogador
+     * @param amount Valor a creditar
+     * @param reason Motivo do crédito
+     * @param callback Callback para receber a resposta da operação
+     */
+    public void creditBalanceAsync(int playerId, double amount, String reason, java.util.function.Consumer<EconomyResponse> callback) {
+        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
+            EconomyResponse response = processTransaction(playerId, amount, TransactionReason.CREDIT, reason, null);
+            
+            // Retorna para a thread principal
+            plugin.getServer().getScheduler().runTask(plugin, () -> {
+                callback.accept(response);
+            });
+        });
+    }
+
+    /**
+     * Debita um valor da conta de um jogador de forma ASSÍNCRONA.
+     * 
+     * @param playerId ID do jogador
+     * @param amount Valor a debitar
+     * @param reason Motivo do débito
+     * @param callback Callback para receber a resposta da operação
+     */
+    public void debitBalanceAsync(int playerId, double amount, String reason, java.util.function.Consumer<EconomyResponse> callback) {
+        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
+            EconomyResponse response = processTransaction(playerId, -amount, TransactionReason.DEBIT, reason, null);
+            
+            // Retorna para a thread principal
+            plugin.getServer().getScheduler().runTask(plugin, () -> {
+                callback.accept(response);
+            });
+        });
     }
 
     /**

@@ -114,43 +114,50 @@ public class EcoCommand implements CommandExecutor {
                 adminName = ((Player) sender).getName();
             }
             
+            // Criar cópias finais para uso nos lambdas
+            final String finalAdminName = adminName;
+            final String finalAction = action;
+            final BigDecimal finalAmount = amount;
+            final Integer finalTargetPlayerId = targetPlayerId;
+            final String finalTargetName = targetName;
+            
             // Executar ação específica de forma assíncrona
             switch (action) {
                 case "give":
-                    PrimeLeagueAPI.getEconomyManager().creditBalanceAsync(targetPlayerId, amount.doubleValue(), "Admin Give by " + adminName, (response) -> {
-                        handleEcoResponse(sender, targetPlayer, targetName, response, "adicionado", adminName, action, amount);
+                    PrimeLeagueAPI.getEconomyManager().creditBalanceAsync(finalTargetPlayerId, finalAmount.doubleValue(), "Admin Give by " + finalAdminName, (response) -> {
+                        handleEcoResponse(sender, targetPlayer, finalTargetName, response, "adicionado", finalAdminName, finalAction, finalAmount);
                     });
                     break;
                     
                 case "take":
-                    PrimeLeagueAPI.getEconomyManager().debitBalanceAsync(targetPlayerId, amount.doubleValue(), "Admin Take by " + adminName, (response) -> {
-                        handleEcoResponse(sender, targetPlayer, targetName, response, "removido", adminName, action, amount);
+                    PrimeLeagueAPI.getEconomyManager().debitBalanceAsync(finalTargetPlayerId, finalAmount.doubleValue(), "Admin Take by " + finalAdminName, (response) -> {
+                        handleEcoResponse(sender, targetPlayer, finalTargetName, response, "removido", finalAdminName, finalAction, finalAmount);
                     });
                     break;
                     
                 case "set":
                     // Para set, precisamos calcular a diferença de forma assíncrona
-                    PrimeLeagueAPI.getEconomyManager().getBalanceAsync(targetPlayerId, (currentBalance) -> {
+                    PrimeLeagueAPI.getEconomyManager().getBalanceAsync(finalTargetPlayerId, (currentBalance) -> {
                         if (currentBalance == null) {
                             sender.sendMessage(ChatColor.RED + "Erro ao verificar saldo atual.");
                             return;
                         }
                         
-                        BigDecimal difference = amount.subtract(currentBalance);
+                        BigDecimal difference = finalAmount.subtract(currentBalance);
                         
                         if (difference.compareTo(BigDecimal.ZERO) > 0) {
                             // Precisa adicionar
-                            PrimeLeagueAPI.getEconomyManager().creditBalanceAsync(targetPlayerId, difference.doubleValue(), "Admin Set by " + adminName + " (added " + difference + ")", (response) -> {
-                                handleEcoResponse(sender, targetPlayer, targetName, response, "definido", adminName, action, amount);
+                            PrimeLeagueAPI.getEconomyManager().creditBalanceAsync(finalTargetPlayerId, difference.doubleValue(), "Admin Set by " + finalAdminName + " (added " + difference + ")", (response) -> {
+                                handleEcoResponse(sender, targetPlayer, finalTargetName, response, "definido", finalAdminName, finalAction, finalAmount);
                             });
                         } else if (difference.compareTo(BigDecimal.ZERO) < 0) {
                             // Precisa remover
-                            PrimeLeagueAPI.getEconomyManager().debitBalanceAsync(targetPlayerId, difference.abs().doubleValue(), "Admin Set by " + adminName + " (removed " + difference.abs() + ")", (response) -> {
-                                handleEcoResponse(sender, targetPlayer, targetName, response, "definido", adminName, action, amount);
+                            PrimeLeagueAPI.getEconomyManager().debitBalanceAsync(finalTargetPlayerId, difference.abs().doubleValue(), "Admin Set by " + finalAdminName + " (removed " + difference.abs() + ")", (response) -> {
+                                handleEcoResponse(sender, targetPlayer, finalTargetName, response, "definido", finalAdminName, finalAction, finalAmount);
                             });
                         } else {
                             // Já está no valor correto
-                            sender.sendMessage(ChatColor.YELLOW + "O saldo de " + targetName + " já está em $" + EconomyUtils.formatMoney(amount));
+                            sender.sendMessage(ChatColor.YELLOW + "O saldo de " + finalTargetName + " já está em $" + EconomyUtils.formatMoney(finalAmount));
                         }
                     });
                     break;

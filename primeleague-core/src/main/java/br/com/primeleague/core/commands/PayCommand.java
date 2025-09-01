@@ -115,6 +115,10 @@ public class PayCommand implements CommandExecutor {
                 return;
             }
 
+            // Criar cópias finais para uso nos lambdas
+            final Integer finalToPlayerId = toPlayerId;
+            final Player finalTargetPlayer = targetPlayer;
+
             // REFATORADO: Usar métodos assíncronos para evitar bloqueio da thread principal
             sender.sendMessage(ChatColor.YELLOW + "⏳ Processando transferência...");
 
@@ -136,7 +140,7 @@ public class PayCommand implements CommandExecutor {
                 }
 
                 // Se tem saldo suficiente, realizar transferência assíncrona
-                PrimeLeagueAPI.getEconomyManager().transferAsync(fromPlayerId, toPlayerId, amount.doubleValue(), (response) -> {
+                PrimeLeagueAPI.getEconomyManager().transferAsync(fromPlayerId, finalToPlayerId, amount.doubleValue(), (response) -> {
                     // HARDENING: Verificar se o sender ainda está online
                     if (!sender.isOnline()) {
                         return; // Sender não está mais online, abortar callback
@@ -149,18 +153,18 @@ public class PayCommand implements CommandExecutor {
                         sender.sendMessage(ChatColor.GREEN + "💳 Seu novo saldo: " + ChatColor.GOLD + "$" + EconomyUtils.formatMoney(response.getNewBalance()));
 
                         // Mensagem para o destinatário (se online)
-                        if (targetPlayer != null && targetPlayer.isOnline()) {
-                            targetPlayer.sendMessage(ChatColor.GREEN + "💰 Você recebeu " + ChatColor.GOLD + "$" + EconomyUtils.formatMoney(amount) + ChatColor.GREEN + " de " + ChatColor.YELLOW + sender.getName());
+                        if (finalTargetPlayer != null && finalTargetPlayer.isOnline()) {
+                            finalTargetPlayer.sendMessage(ChatColor.GREEN + "💰 Você recebeu " + ChatColor.GOLD + "$" + EconomyUtils.formatMoney(amount) + ChatColor.GREEN + " de " + ChatColor.YELLOW + sender.getName());
                             
                             // Atualizar saldo do destinatário no cache de forma assíncrona
-                            PrimeLeagueAPI.getEconomyManager().getBalanceAsync(toPlayerId, (newBalance) -> {
+                            PrimeLeagueAPI.getEconomyManager().getBalanceAsync(finalToPlayerId, (newBalance) -> {
                                 // HARDENING: Verificar se o targetPlayer ainda está online
-                                if (targetPlayer == null || !targetPlayer.isOnline()) {
+                                if (finalTargetPlayer == null || !finalTargetPlayer.isOnline()) {
                                     return; // Target player não está mais online, abortar callback
                                 }
                                 
                                 if (newBalance != null) {
-                                    targetPlayer.sendMessage(ChatColor.GREEN + "💳 Seu novo saldo: " + ChatColor.GOLD + "$" + EconomyUtils.formatMoney(newBalance));
+                                    finalTargetPlayer.sendMessage(ChatColor.GREEN + "💳 Seu novo saldo: " + ChatColor.GOLD + "$" + EconomyUtils.formatMoney(newBalance));
                                 }
                             });
                         }
