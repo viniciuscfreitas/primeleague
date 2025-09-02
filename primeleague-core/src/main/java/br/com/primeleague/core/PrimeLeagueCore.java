@@ -24,6 +24,7 @@ import br.com.primeleague.core.commands.ReplyCommand;
 import br.com.primeleague.core.commands.MoneyCommand;
 import br.com.primeleague.core.commands.PayCommand;
 import br.com.primeleague.core.commands.EcoCommand;
+import br.com.primeleague.core.validation.SchemaValidator;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.UUID;
@@ -42,6 +43,7 @@ public final class PrimeLeagueCore extends JavaPlugin {
     private EconomyManager economyManager;
     private HttpApiManager httpApiManager;
     private RecoveryCodeManager recoveryCodeManager;
+    private SchemaValidator schemaValidator;
 
     @Override
     public void onEnable() {
@@ -73,6 +75,23 @@ public final class PrimeLeagueCore extends JavaPlugin {
         
         // Inicializa o RecoveryCodeManager (sistema de recuperação de conta P2P)
         this.recoveryCodeManager = new RecoveryCodeManager(this, this.dataManager.getDataSource());
+        
+        // ========================================
+        // VALIDAÇÃO DO SCHEMA DO BANCO DE DADOS
+        // ========================================
+        // O GUARDIÃO DO SCHEMA - Valida integridade antes de continuar
+        this.schemaValidator = new SchemaValidator(this, this.dataManager);
+        
+        if (!this.schemaValidator.validateOnStartup()) {
+            if (getConfig().getBoolean("database.validation.fail-on-mismatch", true)) {
+                logger.severe("🚨 [SchemaValidator] FALHA CRÍTICA na validação do banco de dados!");
+                logger.severe("🚨 [SchemaValidator] O servidor será parado para prevenir corrupção de dados.");
+                getServer().shutdown();
+                return;
+            } else {
+                logger.warning("⚠️ [SchemaValidator] Problemas detectados no banco de dados, mas o servidor continuará.");
+            }
+        }
         
         // Inicializa API HTTP (para integração com bot Discord)
         if (getConfig().getBoolean("api.enabled", true)) {
@@ -179,6 +198,10 @@ public final class PrimeLeagueCore extends JavaPlugin {
     
     public RecoveryCodeManager getRecoveryCodeManager() {
         return recoveryCodeManager;
+    }
+    
+    public SchemaValidator getSchemaValidator() {
+        return schemaValidator;
     }
 }
 

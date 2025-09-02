@@ -1,105 +1,144 @@
-# PrimeLeague - Sistema de Servidor Minecraft com Integração Discord
+# 🔧 CORREÇÃO DO BANCO DE DADOS PRIMELEAGUE
 
-## 🎯 Status do Projeto
+Este projeto contém scripts para analisar e corrigir problemas de schema no banco de dados MariaDB/MySQL do PrimeLeague.
 
-### ✅ **CONCLUÍDO - PRONTO PARA PRODUÇÃO**
-- **FASE 1**: Sistema de Autorização de IP via Discord ✅
-- **FASE 2**: Sistema de Recuperação de Conta ✅
-- **Desenvolvimento**: 100% Concluído
-- **Deploy**: Pronto para Produção
+## 🚨 PROBLEMA IDENTIFICADO
 
-## 📋 Visão Geral
-
-O PrimeLeague é um sistema completo de servidor Minecraft com integração Discord, oferecendo:
-
-- **Sistema de Autorização de IP**: Controle de acesso via Discord
-- **Sistema de Recuperação de Conta**: Backup codes e transferência de assinaturas
-- **Integração Discord**: Bot com comandos slash para gerenciamento
-- **Plugins Modulares**: Core, P2P, Chat, Clans, Admin, AdminShop
-
-## 🚀 Instalação Rápida
-
-### Pré-requisitos
-- Java 8+
-- Node.js 16+
-- MySQL/MariaDB 10.5+
-- Git
-
-### Passos
-1. **Clonar**: `git clone <url-do-repositorio>`
-2. **Banco**: `mysql -u root -proot < database/SCHEMA-FINAL-AUTOMATIZADO.sql`
-3. **Compilar**: `mvn clean install`
-4. **Configurar**: Ver `INSTALACAO-PRIMELEAGUE.md`
-
-## 📁 Estrutura do Projeto
-
+O sistema de clãs está falhando com o erro:
 ```
-primeleague/
-├── database/
-│   └── SCHEMA-FINAL-AUTOMATIZADO.sql    # Schema completo v5.0
-├── primeleague-api/                      # API compartilhada (interfaces/DTOs)
-├── primeleague-core/                     # Plugin Core (API HTTP)
-├── primeleague-p2p/                      # Plugin P2P (Autenticação)
-├── primeleague-chat/                     # Plugin Chat
-├── primeleague-clans/                    # Plugin Clans
-├── primeleague-admin/                    # Plugin Admin
-├── primeleague-adminshop/                # Plugin AdminShop
-├── primeleague-discord-bot-node/         # Bot Discord (Node.js)
-├── server/                               # Servidor Minecraft
-├── test-end-to-end-recovery.sh          # Script de testes
-├── INSTALACAO-PRIMELEAGUE.md            # Guia completo
-└── README.md                            # Este arquivo
+Invalid value for getInt() - 'OFFICER'
 ```
 
-## 🔧 Funcionalidades Principais
+**Causa Raiz:** Inconsistência entre o banco de dados (que armazena roles como strings ENUM) e o código Java (que espera inteiros).
 
-### Sistema de Autorização de IP
-- Controle de acesso via Discord
-- Autorização de novos IPs via DM
-- Cache em tempo real
+## 📋 ARQUIVOS INCLUÍDOS
 
-### Sistema de Recuperação de Conta
-- Códigos de backup seguros (BCrypt)
-- Transferência de assinaturas
-- Fluxos de emergência e proativo
-- Auditoria completa
+- `analyze-database.js` - Script para analisar problemas no banco
+- `fix-database-schema.js` - Script para corrigir problemas automaticamente
+- `fix-database.sql` - Script SQL para correção manual
+- `run-database-fix.bat` - Script Windows para execução fácil
+- `package.json` - Dependências Node.js
 
-### Bot Discord
-- `/recuperacao` - Gerar códigos de backup
-- `/desvincular` - Desvincular conta
-- `/vincular` - Vincular com código
+## 🚀 EXECUÇÃO RÁPIDA (WINDOWS)
 
-## 🧪 Testes
+1. **Execute o script batch:**
+   ```cmd
+   run-database-fix.bat
+   ```
 
+2. **Escolha a opção desejada:**
+   - Opção 1: Analisar (apenas leitura)
+   - Opção 2: Corrigir automaticamente
+   - Opção 3: Executar script SQL
+
+## 🔧 EXECUÇÃO MANUAL
+
+### 1. Instalar Dependências
 ```bash
-# Verificar status
-curl -X GET http://localhost:8080/api/health
-
-# Executar testes (requer MySQL Client)
-./test-end-to-end-recovery.sh
+npm install
 ```
 
-## 📖 Documentação
+### 2. Configurar Conexão
+Edite os arquivos `.js` e ajuste:
+```javascript
+const dbConfig = {
+    host: 'localhost',
+    user: 'root',        // Seu usuário MySQL
+    password: '',         // Sua senha MySQL
+    database: 'primeleague',
+    port: 3306
+};
+```
 
-- **[INSTALACAO-PRIMELEAGUE.md](INSTALACAO-PRIMELEAGUE.md)** - Guia completo de instalação
-- **[.cursor/scratchpad.md](.cursor/scratchpad.md)** - Log detalhado do desenvolvimento
+### 3. Executar Análise
+```bash
+npm run analyze
+```
 
-## 🚨 Problemas Conhecidos
+### 4. Executar Correção
+```bash
+npm run fix
+```
 
-- **Testes**: Requer MySQL Client instalado para executar testes completos
-- **Status**: Sistema 100% funcional, apenas testes pendentes
+## 📊 O QUE OS SCRIPTS FAZEM
 
-## 📞 Suporte
+### Análise (`analyze-database.js`)
+- ✅ Verifica estrutura das tabelas
+- ✅ Analisa dados atuais
+- ✅ Identifica problemas de contagem
+- ✅ Verifica inconsistências
+- ✅ Detecta dados órfãos
 
-Para problemas específicos, consulte:
-- Logs do servidor em `server/logs/`
-- Logs do bot em `primeleague-discord-bot-node/logs/`
-- Scratchpad de desenvolvimento em `.cursor/scratchpad.md`
+### Correção (`fix-database-schema.js`)
+- 🔧 Corrige roles incorretos (`OFFICER` → `LEADER`)
+- 🧹 Remove dados duplicados
+- 👥 Adiciona fundadores como membros se necessário
+- 🗑️ Remove jogadores órfãos
+- 📊 Verifica integridade final
 
-## 🎉 Conclusão
+### SQL (`fix-database.sql`)
+- 📋 Script SQL completo para correção manual
+- 🔍 Comandos de verificação
+- 🔧 Comandos de correção
+- 📊 Verificações finais
 
-O sistema PrimeLeague está **100% funcional** e pronto para produção. Todas as funcionalidades de segurança e recuperação de conta estão implementadas e testadas.
+## 🎯 PROBLEMAS CORRIGIDOS
+
+1. **Roles Incorretos:**
+   - `OFFICER` → `LEADER`
+   - Mapeamento correto de todos os roles
+
+2. **Dados Duplicados:**
+   - Remoção de registros duplicados
+   - Manutenção de integridade
+
+3. **Clãs Sem Membros:**
+   - Adição automática de fundadores
+   - Verificação de consistência
+
+4. **Dados Órfãos:**
+   - Remoção de jogadores em clãs inexistentes
+   - Remoção de jogadores inexistentes
+
+## ⚠️ IMPORTANTE
+
+- **Faça backup** do banco antes de executar correções
+- **Teste em ambiente de desenvolvimento** primeiro
+- **Verifique as configurações** de conexão
+- **Execute com cuidado** as operações de modificação
+
+## 🔍 VERIFICAÇÃO PÓS-CORREÇÃO
+
+Após a correção, verifique:
+
+1. **Comando `/clan info`** funciona sem erros
+2. **Contagem de membros** está correta
+3. **Roles dos jogadores** estão mapeados corretamente
+4. **Não há erros SQL** nos logs
+
+## 🆘 SOLUÇÃO DE PROBLEMAS
+
+### Erro de Conexão
+- Verifique se o MariaDB está rodando
+- Confirme usuário e senha
+- Verifique se o banco `primeleague` existe
+
+### Erro de Permissão
+- Use um usuário com privilégios adequados
+- Verifique se o usuário tem acesso às tabelas
+
+### Erro de Dependência
+- Execute `npm install` para instalar dependências
+- Verifique se o Node.js está instalado
+
+## 📞 SUPORTE
+
+Se encontrar problemas:
+1. Execute a análise primeiro (`npm run analyze`)
+2. Verifique os logs de erro
+3. Confirme as configurações de conexão
+4. Execute a correção com cuidado
 
 ---
 
-**Desenvolvido com ❤️ para a comunidade PrimeLeague**
+**🎯 Objetivo:** Corrigir o erro `Invalid value for getInt() - 'OFFICER'` e restaurar o funcionamento do sistema de clãs.

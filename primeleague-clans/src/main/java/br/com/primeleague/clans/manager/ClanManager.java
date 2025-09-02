@@ -531,6 +531,91 @@ public class ClanManager {
         }
     }
 
+    /**
+     * Dissolve um clã de forma ASSÍNCRONA.
+     * Implementa o padrão arquitetural aprovado com validações thread-safe e consistência do cache pós-callback.
+     *
+     * @param clan O clã a ser dissolvido
+     * @param callback Callback para receber o resultado da operação
+     */
+    public void disbandClanAsync(Clan clan, java.util.function.Consumer<Boolean> callback) {
+        // ========================================
+        // VALIDAÇÕES THREAD-SAFE (Thread Principal)
+        // ========================================
+        if (clan == null) {
+            callback.accept(false);
+            return;
+        }
+
+        // ========================================
+        // PREPARAÇÃO DOS DADOS (Thread Principal)
+        // ========================================
+        final Clan finalClan = clan;
+        final org.bukkit.plugin.Plugin finalPlugin = plugin;
+        final java.util.function.Consumer<Boolean> finalCallback = callback;
+
+        // ========================================
+        // OPERAÇÃO ASSÍNCRONA (Thread Separada)
+        // ========================================
+        // Usar o Bukkit Scheduler para executar a operação pesada em thread separada
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            try {
+                // Remover todos os membros
+                Set<String> allMembers = finalClan.getAllMemberNames();
+                
+                for (String memberName : allMembers) {
+                    // REFATORADO: Obter player_id através do IdentityManager em vez de usar UUID diretamente
+                    Integer playerId = PrimeLeagueAPI.getIdentityManager().getPlayerIdByName(memberName);
+                    if (playerId != null) {
+                        ClanPlayer clanPlayer = clanPlayers.get(playerId);
+                        if (clanPlayer != null) {
+                            clanPlayer.setClan(null);
+                            clanPlayer.setRole(ClanPlayer.ClanRole.MEMBRO);
+                            // Persistir mudança do jogador
+                            clanDAO.saveOrUpdateClanPlayer(toDTO(clanPlayer));
+                        }
+                    }
+                }
+
+                // Registrar log da dissolução do clã ANTES de deletar
+                clanDAO.logAction(
+                    finalClan.getId(),
+                    0, // Sistema como autor
+                    "Sistema",
+                    LogActionType.CLAN_DISBAND,
+                    0, // Não há alvo específico
+                    null,
+                    "Clã dissolvido: " + finalClan.getTag() + " (" + finalClan.getName() + ")"
+                );
+
+                // Deletar o clã do banco de dados
+                clanDAO.deleteClan(toDTO(finalClan));
+
+                // ========================================
+                // CALLBACK FINAL (Thread Principal)
+                // ========================================
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    // ATUALIZAR ESTADO EM MEMÓRIA (Consistência do Cache Pós-Callback)
+                    clans.remove(finalClan.getId());
+                    
+                    finalPlugin.getLogger().info("Clã dissolvido: " + finalClan.getTag() + " (" + finalClan.getName() + ")");
+                    finalCallback.accept(true);
+                });
+
+            } catch (Exception e) {
+                finalPlugin.getLogger().severe("Erro ao dissolver clã no banco de dados: " + e.getMessage());
+                e.printStackTrace();
+                
+                // ========================================
+                // CALLBACK DE ERRO (Thread Principal)
+                // ========================================
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    finalCallback.accept(false);
+                });
+            }
+        });
+    }
+
     // --- Métodos de Busca ---
 
     /**
@@ -754,17 +839,23 @@ public class ClanManager {
     }
 
     /**
-     * Remove um jogador de um clã.
+     * Remove um jogador de um clã de forma ASSÍNCRONA.
+     * Implementa o padrão arquitetural aprovado com validações thread-safe e consistência do cache pós-callback.
      *
      * @param clan O clã
-     * @param playerName O nome do jogador
-     * @return true se foi removido com sucesso
+     * @param playerName O nome do jogador a ser removido
+     * @param callback Callback para receber o resultado da operação
      */
-    public boolean removePlayerFromClan(Clan clan, String playerName) {
+    public void removeMemberAsync(Clan clan, String playerName, java.util.function.Consumer<Boolean> callback) {
+        // ========================================
+        // VALIDAÇÕES THREAD-SAFE (Thread Principal)
+        // ========================================
         if (clan == null || playerName == null) {
-            return false;
+            callback.accept(false);
+            return;
         }
 
+        // Buscar o jogador no cache
         ClanPlayer clanPlayer = null;
         for (ClanPlayer p : clanPlayers.values()) {
             if (p.getPlayerName().equalsIgnoreCase(playerName) && p.getClan() != null && p.getClan().equals(clan)) {
@@ -772,33 +863,51 @@ public class ClanManager {
                 break;
             }
         }
+        
         if (clanPlayer == null) {
-            return false;
+            callback.accept(false);
+            return;
         }
 
-        try {
-            // Remover do clã
-            clan.removeMember(playerName);
-            clanPlayer.setClan(null);
-            clanPlayer.setRole(ClanPlayer.ClanRole.MEMBRO);
+        // ========================================
+        // PREPARAÇÃO DOS DADOS (Thread Principal)
+        // ========================================
+        // Preparar o objeto para remoção
+        clanPlayer.setClan(null);
+        clanPlayer.setRole(ClanPlayer.ClanRole.MEMBRO);
 
-            // Persistir mudança no banco de dados
-            clanDAO.saveOrUpdateClanPlayer(toDTO(clanPlayer));
+        // ========================================
+        // OPERAÇÃO ASSÍNCRONA (Thread Separada)
+        // ========================================
+        final ClanPlayer finalClanPlayer = clanPlayer;
+        final String finalPlayerName = playerName;
+        final Clan finalClan = clan;
+        final Map<Integer, ClanPlayer> finalClanPlayers = clanPlayers;
+        final org.bukkit.plugin.Plugin finalPlugin = plugin;
+        final java.util.function.Consumer<Boolean> finalCallback = callback;
+        
+        clanDAO.saveOrUpdateClanPlayerAsync(toDTO(clanPlayer), (success) -> {
+            // ========================================
+            // CALLBACK FINAL (Thread Principal)
+            // ========================================
+            if (success) {
+                // ATUALIZAR ESTADO EM MEMÓRIA (Consistência do Cache Pós-Callback)
+                finalClan.removeMember(finalPlayerName);
+                
+                // REFATORADO: Remover do cache principal para evitar memory leak
+                // Converter UUID para player_id para remoção do cache
+                int playerId = PrimeLeagueAPI.getIdentityManager().getPlayerIdByUuid(finalClanPlayer.getPlayerUUID());
+                if (playerId != -1) {
+                    finalClanPlayers.remove(playerId);
+                }
 
-            // REFATORADO: Remover do cache principal para evitar memory leak
-            // Converter UUID para player_id para remoção do cache
-            int playerId = PrimeLeagueAPI.getIdentityManager().getPlayerIdByUuid(clanPlayer.getPlayerUUID());
-            if (playerId != -1) {
-                clanPlayers.remove(playerId);
+                finalPlugin.getLogger().info("Jogador " + finalPlayerName + " removido do clã " + finalClan.getTag());
+                finalCallback.accept(true);
+            } else {
+                finalPlugin.getLogger().severe("Erro ao remover jogador do clã no banco de dados");
+                finalCallback.accept(false);
             }
-
-            plugin.getLogger().info("Jogador " + playerName + " removido do clã " + clan.getTag());
-            return true;
-        } catch (Exception e) {
-            plugin.getLogger().severe("Erro ao remover jogador do clã no banco de dados: " + e.getMessage());
-            e.printStackTrace();
-            return false;
-        }
+        });
     }
 
     /**
@@ -873,6 +982,115 @@ public class ClanManager {
     }
 
     /**
+     * Expulsa um jogador de um clã de forma ASSÍNCRONA.
+     * Implementa o padrão arquitetural aprovado com validações thread-safe e consistência do cache pós-callback.
+     *
+     * @param clan O clã
+     * @param playerName O nome do jogador a ser expulso
+     * @param kickerName O nome do jogador que está expulsando
+     * @param callback Callback para receber o resultado da operação
+     */
+    public void kickPlayerFromClanAsync(Clan clan, String playerName, String kickerName, java.util.function.Consumer<KickResult> callback) {
+        // ========================================
+        // VALIDAÇÕES THREAD-SAFE (Thread Principal)
+        // ========================================
+        if (clan == null || playerName == null) {
+            callback.accept(KickResult.PLAYER_NOT_FOUND);
+            return;
+        }
+
+        // Verificar se está tentando expulsar a si mesmo
+        if (playerName.equalsIgnoreCase(kickerName)) {
+            callback.accept(KickResult.CANNOT_KICK_SELF);
+            return;
+        }
+
+        ClanPlayer clanPlayer = null;
+        for (ClanPlayer p : clanPlayers.values()) {
+            if (p.getPlayerName().equalsIgnoreCase(playerName) && p.getClan() != null && p.getClan().equals(clan)) {
+                clanPlayer = p;
+                break;
+            }
+        }
+        if (clanPlayer == null) {
+            callback.accept(KickResult.PLAYER_NOT_FOUND);
+            return;
+        }
+        
+        if (!clan.equals(clanPlayer.getClan())) {
+            callback.accept(KickResult.NOT_IN_SAME_CLAN);
+            return;
+        }
+
+        // Verificar se está tentando expulsar o fundador (regra de negócio final)
+        if (clanPlayer.isFounder()) {
+            callback.accept(KickResult.CANNOT_KICK_LEADER);
+            return;
+        }
+
+        // ========================================
+        // PREPARAÇÃO DOS DADOS (Thread Principal)
+        // ========================================
+        final Clan finalClan = clan;
+        final String finalPlayerName = playerName;
+        final String finalKickerName = kickerName;
+        final ClanPlayer finalClanPlayer = clanPlayer;
+        final org.bukkit.plugin.Plugin finalPlugin = plugin;
+        final java.util.function.Consumer<KickResult> finalCallback = callback;
+
+        // ========================================
+        // OPERAÇÃO ASSÍNCRONA (Thread Separada)
+        // ========================================
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            try {
+                // Expulsar o jogador
+                finalClan.removeMember(finalPlayerName);
+                finalClanPlayer.setClan(null);
+                finalClanPlayer.setRole(ClanPlayer.ClanRole.MEMBRO);
+
+                // Persistir mudança no banco de dados
+                clanDAO.saveOrUpdateClanPlayer(toDTO(finalClanPlayer));
+
+                // REFATORADO: Remover do cache principal para evitar memory leak
+                int playerId = PrimeLeagueAPI.getIdentityManager().getPlayerIdByName(finalPlayerName);
+                if (playerId != -1) {
+                    clanPlayers.remove(playerId);
+                }
+
+                // Registrar log da expulsão
+                clanDAO.logAction(
+                    finalClan.getId(),
+                    getPlayerIdByName(finalKickerName), // player_id do kicker
+                    finalKickerName,
+                    LogActionType.PLAYER_KICK,
+                    getPlayerIdByName(finalPlayerName), // player_id do alvo
+                    finalPlayerName,
+                    "Expulso por " + finalKickerName
+                );
+
+                // ========================================
+                // CALLBACK FINAL (Thread Principal)
+                // ========================================
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    finalPlugin.getLogger().info("Jogador " + finalPlayerName + " expulso do clã " + finalClan.getTag() + " por " + finalKickerName);
+                    finalCallback.accept(KickResult.SUCCESS);
+                });
+
+            } catch (Exception e) {
+                finalPlugin.getLogger().severe("Erro ao expulsar jogador no banco de dados: " + e.getMessage());
+                e.printStackTrace();
+                
+                // ========================================
+                // CALLBACK DE ERRO (Thread Principal)
+                // ========================================
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    finalCallback.accept(KickResult.PLAYER_NOT_FOUND); // Fallback para erro de banco
+                });
+            }
+        });
+    }
+
+    /**
      * Promove um membro a líder.
      * Apenas o Fundador pode promover membros.
      *
@@ -939,6 +1157,106 @@ public class ClanManager {
     }
 
     /**
+     * Promove um membro a líder de forma ASSÍNCRONA.
+     * Implementa o padrão arquitetural aprovado com validações thread-safe e consistência do cache pós-callback.
+     *
+     * @param clan O clã
+     * @param playerName O nome do jogador
+     * @param callback Callback para receber o resultado da operação
+     */
+    public void promotePlayerAsync(Clan clan, String playerName, java.util.function.Consumer<PromoteResult> callback) {
+        // ========================================
+        // VALIDAÇÕES THREAD-SAFE (Thread Principal)
+        // ========================================
+        if (clan == null || playerName == null) {
+            callback.accept(PromoteResult.PLAYER_NOT_FOUND);
+            return;
+        }
+
+        ClanPlayer clanPlayer = null;
+        for (ClanPlayer p : clanPlayers.values()) {
+            if (p.getPlayerName().equalsIgnoreCase(playerName) && p.getClan() != null && p.getClan().equals(clan)) {
+                clanPlayer = p;
+                break;
+            }
+        }
+        if (clanPlayer == null) {
+            callback.accept(PromoteResult.PLAYER_NOT_FOUND);
+            return;
+        }
+        
+        if (!clan.equals(clanPlayer.getClan())) {
+            callback.accept(PromoteResult.NOT_IN_SAME_CLAN);
+            return;
+        }
+
+        // Verificar se já é fundador
+        if (clanPlayer.isFounder()) {
+            callback.accept(PromoteResult.ALREADY_LEADER); // Usar mensagem existente
+            return;
+        }
+
+        // Verificar se já é líder
+        if (clanPlayer.isLeader()) {
+            callback.accept(PromoteResult.ALREADY_OFFICER); // Usar mensagem existente
+            return;
+        }
+
+        // ========================================
+        // PREPARAÇÃO DOS DADOS (Thread Principal)
+        // ========================================
+        final Clan finalClan = clan;
+        final String finalPlayerName = playerName;
+        final ClanPlayer finalClanPlayer = clanPlayer;
+        final org.bukkit.plugin.Plugin finalPlugin = plugin;
+        final java.util.function.Consumer<PromoteResult> finalCallback = callback;
+
+        // ========================================
+        // OPERAÇÃO ASSÍNCRONA (Thread Separada)
+        // ========================================
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            try {
+                // Promover a líder
+                finalClan.promoteMember(finalPlayerName);
+                finalClanPlayer.setRole(ClanPlayer.ClanRole.LIDER);
+
+                // Persistir mudança no banco de dados
+                clanDAO.saveOrUpdateClanPlayer(toDTO(finalClanPlayer));
+
+                // Registrar log da promoção
+                clanDAO.logAction(
+                    finalClan.getId(),
+                    getPlayerIdByName(finalClan.getFounderName()), // player_id do fundador (quem promove)
+                    finalClan.getFounderName(),
+                    LogActionType.PLAYER_PROMOTE,
+                    getPlayerIdByName(finalPlayerName), // player_id do alvo
+                    finalPlayerName,
+                    "Promovido a Líder"
+                );
+
+                // ========================================
+                // CALLBACK FINAL (Thread Principal)
+                // ========================================
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    finalPlugin.getLogger().info("Jogador " + finalPlayerName + " promovido a líder no clã " + finalClan.getTag());
+                    finalCallback.accept(PromoteResult.SUCCESS);
+                });
+
+            } catch (Exception e) {
+                finalPlugin.getLogger().severe("Erro ao promover jogador no banco de dados: " + e.getMessage());
+                e.printStackTrace();
+                
+                // ========================================
+                // CALLBACK DE ERRO (Thread Principal)
+                // ========================================
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    finalCallback.accept(PromoteResult.PLAYER_NOT_FOUND); // Fallback para erro de banco
+                });
+            }
+        });
+    }
+
+    /**
      * Rebaixa um líder a membro.
      * Apenas o Fundador pode rebaixar líderes.
      *
@@ -1002,6 +1320,106 @@ public class ClanManager {
             e.printStackTrace();
             return DemoteResult.PLAYER_NOT_FOUND; // Fallback para erro de banco
         }
+    }
+
+    /**
+     * Rebaixa um líder a membro de forma ASSÍNCRONA.
+     * Implementa o padrão arquitetural aprovado com validações thread-safe e consistência do cache pós-callback.
+     *
+     * @param clan O clã
+     * @param playerName O nome do jogador
+     * @param callback Callback para receber o resultado da operação
+     */
+    public void demotePlayerAsync(Clan clan, String playerName, java.util.function.Consumer<DemoteResult> callback) {
+        // ========================================
+        // VALIDAÇÕES THREAD-SAFE (Thread Principal)
+        // ========================================
+        if (clan == null || playerName == null) {
+            callback.accept(DemoteResult.PLAYER_NOT_FOUND);
+            return;
+        }
+
+        ClanPlayer clanPlayer = null;
+        for (ClanPlayer p : clanPlayers.values()) {
+            if (p.getPlayerName().equalsIgnoreCase(playerName) && p.getClan() != null && p.getClan().equals(clan)) {
+                clanPlayer = p;
+                break;
+            }
+        }
+        if (clanPlayer == null) {
+            callback.accept(DemoteResult.PLAYER_NOT_FOUND);
+            return;
+        }
+        
+        if (!clan.equals(clanPlayer.getClan())) {
+            callback.accept(DemoteResult.NOT_IN_SAME_CLAN);
+            return;
+        }
+
+        // Verificar se é fundador (fundadores não podem ser rebaixados)
+        if (clanPlayer.isFounder()) {
+            callback.accept(DemoteResult.CANNOT_DEMOTE_LEADER); // Usar mensagem existente
+            return;
+        }
+
+        // Verificar se é líder
+        if (!clanPlayer.isLeader()) {
+            callback.accept(DemoteResult.NOT_AN_OFFICER); // Usar mensagem existente
+            return;
+        }
+
+        // ========================================
+        // PREPARAÇÃO DOS DADOS (Thread Principal)
+        // ========================================
+        final Clan finalClan = clan;
+        final String finalPlayerName = playerName;
+        final ClanPlayer finalClanPlayer = clanPlayer;
+        final org.bukkit.plugin.Plugin finalPlugin = plugin;
+        final java.util.function.Consumer<DemoteResult> finalCallback = callback;
+
+        // ========================================
+        // OPERAÇÃO ASSÍNCRONA (Thread Separada)
+        // ========================================
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            try {
+                // Rebaixar a membro
+                finalClan.demoteMember(finalPlayerName);
+                finalClanPlayer.setRole(ClanPlayer.ClanRole.MEMBRO);
+
+                // Persistir mudança no banco de dados
+                clanDAO.saveOrUpdateClanPlayer(toDTO(finalClanPlayer));
+
+                // Registrar log da demissão
+                clanDAO.logAction(
+                    finalClan.getId(),
+                    getPlayerIdByName(finalClan.getFounderName()), // player_id do fundador (quem rebaixa)
+                    finalClan.getFounderName(),
+                    LogActionType.PLAYER_DEMOTE,
+                    getPlayerIdByName(finalPlayerName), // player_id do alvo
+                    finalPlayerName,
+                    "Rebaixado a Membro"
+                );
+
+                // ========================================
+                // CALLBACK FINAL (Thread Principal)
+                // ========================================
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    finalPlugin.getLogger().info("Jogador " + finalPlayerName + " rebaixado a membro no clã " + finalClan.getTag());
+                    finalCallback.accept(DemoteResult.SUCCESS);
+                });
+
+            } catch (Exception e) {
+                finalPlugin.getLogger().severe("Erro ao rebaixar jogador no banco de dados: " + e.getMessage());
+                e.printStackTrace();
+                
+                // ========================================
+                // CALLBACK DE ERRO (Thread Principal)
+                // ========================================
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    finalCallback.accept(DemoteResult.PLAYER_NOT_FOUND); // Fallback para erro de banco
+                });
+            }
+        });
     }
 
     /**
@@ -2486,5 +2904,473 @@ public class ClanManager {
             exclusionsArray[i] = excludedPlayerIds.get(i);
         }
         notifyClanMembers(clan, message, exclusionsArray);
+    }
+
+    /**
+     * Adiciona um jogador a um clã de forma ASSÍNCRONA.
+     * Implementa o padrão arquitetural aprovado com validações thread-safe e consistência do cache pós-callback.
+     *
+     * @param clan O clã
+     * @param player O jogador a ser adicionado
+     * @param role O papel do jogador no clã
+     * @param callback Callback para receber o resultado da operação
+     */
+    public void addMemberAsync(Clan clan, Player player, ClanPlayer.ClanRole role, java.util.function.Consumer<Boolean> callback) {
+        // ========================================
+        // VALIDAÇÕES THREAD-SAFE (Thread Principal)
+        // ========================================
+        if (clan == null || player == null) {
+            callback.accept(false);
+            return;
+        }
+
+        // REFATORADO: Obter player_id através do IdentityManager
+        int playerId = PrimeLeagueAPI.getIdentityManager().getPlayerId(player);
+        if (playerId == -1) {
+            plugin.getLogger().severe("FALHA CRÍTICA: Não foi possível obter player_id para " + player.getName());
+            callback.accept(false);
+            return;
+        }
+
+        String playerName = player.getName();
+        
+        // Verificar se o jogador já pertence a um clã
+        ClanPlayer existingPlayer = getClanPlayer(playerId);
+        if (existingPlayer != null && existingPlayer.hasClan()) {
+            callback.accept(false);
+            return;
+        }
+
+        // ========================================
+        // PREPARAÇÃO DOS DADOS (Thread Principal)
+        // ========================================
+        // Criar ou atualizar o ClanPlayer
+        ClanPlayer clanPlayer = existingPlayer != null ? existingPlayer : new ClanPlayer(player);
+        clanPlayer.setClan(clan);
+        clanPlayer.setRole(role);
+        clanPlayer.setJoinDate(System.currentTimeMillis());
+
+        // ========================================
+        // OPERAÇÃO ASSÍNCRONA (Thread Separada)
+        // ========================================
+        clanDAO.saveOrUpdateClanPlayerAsync(toDTO(clanPlayer), (success) -> {
+            // ========================================
+            // CALLBACK FINAL (Thread Principal)
+            // ========================================
+            if (success) {
+                // ATUALIZAR ESTADO EM MEMÓRIA (Consistência do Cache Pós-Callback)
+                clan.addMember(playerName);
+                clanPlayers.put(playerId, clanPlayer); // REFATORADO: Usar player_id
+                
+                plugin.getLogger().info("Jogador " + playerName + " adicionado ao clã " + clan.getTag() + " como " + role.getDisplayName());
+                callback.accept(true);
+            } else {
+                plugin.getLogger().severe("Erro ao adicionar jogador ao clã no banco de dados");
+                callback.accept(false);
+            }
+        });
+    }
+
+    /**
+     * Altera o fundador de um clã de forma ASSÍNCRONA.
+     */
+    public void setFounderAsync(Clan clan, String newFounderName, java.util.function.Consumer<SetFounderResult> callback) {
+        // ========================================
+        // VALIDAÇÕES THREAD-SAFE (Thread Principal)
+        // ========================================
+        if (clan == null || newFounderName == null) {
+            callback.accept(SetFounderResult.PLAYER_NOT_FOUND);
+            return;
+        }
+
+        // Buscar o novo fundador
+        ClanPlayer newFounder = null;
+        for (ClanPlayer p : clanPlayers.values()) {
+            if (p.getPlayerName().equalsIgnoreCase(newFounderName) && p.getClan() != null && p.getClan().equals(clan)) {
+                newFounder = p;
+                break;
+            }
+        }
+        if (newFounder == null) {
+            callback.accept(SetFounderResult.PLAYER_NOT_FOUND);
+            return;
+        }
+
+        // Verificar se já é fundador
+        if (newFounder.isFounder()) {
+            callback.accept(SetFounderResult.ALREADY_FOUNDER);
+            return;
+        }
+
+        // Verificar se é líder (apenas líderes podem se tornar fundadores)
+        if (!newFounder.isLeader()) {
+            callback.accept(SetFounderResult.NOT_LEADER);
+            return;
+        }
+
+        // Buscar o fundador atual
+        ClanPlayer oldFounder = null;
+        for (ClanPlayer p : clanPlayers.values()) {
+            if (p.getPlayerName().equalsIgnoreCase(clan.getFounderName()) && p.getClan() != null && p.getClan().equals(clan)) {
+                oldFounder = p;
+                break;
+            }
+        }
+        if (oldFounder == null || !oldFounder.isFounder()) {
+            callback.accept(SetFounderResult.PLAYER_NOT_FOUND);
+            return;
+        }
+
+        // ========================================
+        // PREPARAÇÃO DOS DADOS (Thread Principal)
+        // ========================================
+        // Preparar os objetos para a transferência
+        final ClanPlayer finalOldFounder = oldFounder;
+        final ClanPlayer finalNewFounder = newFounder;
+        final String finalOldFounderName = oldFounder.getPlayerName();
+        final String finalNewFounderName = newFounder.getPlayerName();
+
+        // ========================================
+        // OPERAÇÃO ASSÍNCRONA (Thread Separada)
+        // ========================================
+        clanDAO.setFounderAsync(toDTO(clan), getPlayerIdByName(finalNewFounderName),
+            finalNewFounderName, getPlayerIdByName(finalOldFounderName),
+            (success) -> {
+                if (success) {
+                    // ATUALIZAR ESTADO EM MEMÓRIA (Consistência do Cache Pós-Callback)
+                    finalOldFounder.setRole(ClanPlayer.ClanRole.LIDER);
+                    finalNewFounder.setRole(ClanPlayer.ClanRole.FUNDADOR);
+                    clan.setFounderName(finalNewFounderName);
+                    
+                    // Persistir as mudanças dos jogadores
+                    clanDAO.saveOrUpdateClanPlayerAsync(toDTO(finalOldFounder), (oldSuccess) -> {
+                        if (oldSuccess) {
+                            clanDAO.saveOrUpdateClanPlayerAsync(toDTO(finalNewFounder), (newSuccess) -> {
+                                if (newSuccess) {
+                                    // Registrar log da transferência de fundador
+                                    clanDAO.logActionAsync(
+                                        clan.getId(),
+                                        getPlayerIdByName(finalOldFounderName), // player_id do antigo fundador (quem transferiu)
+                                        finalOldFounderName,
+                                        LogActionType.FOUNDER_CHANGE,
+                                        getPlayerIdByName(finalNewFounderName), // player_id do novo fundador
+                                        finalNewFounderName,
+                                        "Transferência de fundador: " + finalOldFounderName + " -> " + finalNewFounderName,
+                                        (logSuccess) -> {
+                                            if (logSuccess) {
+                                                plugin.getLogger().info("Fundador transferido: " + finalOldFounderName + " -> " + finalNewFounderName + " no clã " + clan.getTag());
+                                            } else {
+                                                plugin.getLogger().warning("Log de transferência de fundador falhou, mas operação foi bem-sucedida");
+                                            }
+                                        }
+                                    );
+                                    
+                                    plugin.getLogger().info("Fundador transferido: " + finalOldFounderName + " -> " + finalNewFounderName + " no clã " + clan.getTag());
+                                    callback.accept(SetFounderResult.SUCCESS);
+                                } else {
+                                    plugin.getLogger().severe("Falha ao persistir novo fundador no banco de dados");
+                                    callback.accept(SetFounderResult.PLAYER_NOT_FOUND);
+                                }
+                            });
+                        } else {
+                            plugin.getLogger().severe("Falha ao persistir antigo fundador no banco de dados");
+                            callback.accept(SetFounderResult.PLAYER_NOT_FOUND);
+                        }
+                    });
+                } else {
+                    plugin.getLogger().severe("Falha na transação de transferência de fundador no banco de dados");
+                    callback.accept(SetFounderResult.PLAYER_NOT_FOUND);
+                }
+            }
+        );
+    }
+
+    /**
+     * Envia um convite para um jogador de forma ASSÍNCRONA.
+     * Implementa o padrão arquitetural aprovado com validações thread-safe e consistência do cache pós-callback.
+     *
+     * @param inviter O jogador que está enviando o convite
+     * @param target O jogador que receberá o convite
+     * @param callback Callback para receber o resultado da operação
+     */
+    public void sendInvitationAsync(Player inviter, Player target, java.util.function.Consumer<Boolean> callback) {
+        // ========================================
+        // VALIDAÇÕES THREAD-SAFE (Thread Principal)
+        // ========================================
+        if (inviter == null || target == null) {
+            callback.accept(false);
+            return;
+        }
+
+        // Verificar se o convidador pode convidar
+        ClanPlayer clanPlayer = getClanPlayer(inviter);
+        if (clanPlayer == null || !clanPlayer.canInvite()) {
+            callback.accept(false);
+            return;
+        }
+
+        Clan clan = clanPlayer.getClan();
+        if (clan == null) {
+            callback.accept(false);
+            return;
+        }
+
+        // Verificar se o alvo já pertence a um clã
+        Clan targetClan = getClanByPlayer(target);
+        if (targetClan != null) {
+            callback.accept(false);
+            return;
+        }
+
+        // REFATORADO: Obter player_ids através do IdentityManager
+        int targetPlayerId = PrimeLeagueAPI.getIdentityManager().getPlayerId(target);
+        if (targetPlayerId == -1) {
+            plugin.getLogger().severe("FALHA CRÍTICA: Não foi possível obter player_id para " + target.getName());
+            callback.accept(false);
+            return;
+        }
+
+        // Verificar se já existe um convite pendente
+        ClanInvitation existingInvite = pendingInvites.get(targetPlayerId);
+        if (existingInvite != null && !existingInvite.isExpired()) {
+            callback.accept(false);
+            return;
+        }
+
+        // REFATORADO: Obter player_id do inviter
+        int inviterPlayerId = PrimeLeagueAPI.getIdentityManager().getPlayerId(inviter);
+        if (inviterPlayerId == -1) {
+            plugin.getLogger().severe("FALHA CRÍTICA: Não foi possível obter player_id para " + inviter.getName());
+            callback.accept(false);
+            return;
+        }
+
+        // ========================================
+        // PREPARAÇÃO DOS DADOS (Thread Principal)
+        // ========================================
+        // Criar o convite
+        ClanInvitation invitation = new ClanInvitation(inviter.getName(), targetPlayerId, clan);
+
+        // ========================================
+        // OPERAÇÃO ASSÍNCRONA (Thread Separada)
+        // ========================================
+        clanDAO.logActionAsync(
+            clan.getId(),
+            inviterPlayerId,
+            inviter.getName(),
+            LogActionType.PLAYER_INVITE,
+            targetPlayerId,
+            target.getName(),
+            "Convite enviado para " + target.getName(),
+            (success) -> {
+                // ========================================
+                // CALLBACK FINAL (Thread Principal)
+                // ========================================
+                if (success) {
+                    // ATUALIZAR ESTADO EM MEMÓRIA (Consistência do Cache Pós-Callback)
+                    pendingInvites.put(targetPlayerId, invitation);
+                    
+                    // HARDENING: Verificar se jogadores ainda estão online antes de notificar
+                    if (inviter.isOnline()) {
+                        inviter.sendMessage(org.bukkit.ChatColor.GREEN + "Convite enviado para " + target.getName() + "!");
+                    }
+                    
+                    if (target.isOnline()) {
+                        target.sendMessage(org.bukkit.ChatColor.GOLD + "=== Convite para Clã ===");
+                        target.sendMessage(org.bukkit.ChatColor.YELLOW + "Você foi convidado por " + inviter.getName() + " para entrar no clã " + clan.getTag() + "!");
+                        target.sendMessage(org.bukkit.ChatColor.YELLOW + "Use /clan accept para aceitar ou /clan deny para recusar.");
+                        target.sendMessage(org.bukkit.ChatColor.GRAY + "O convite expira em 5 minutos.");
+                    }
+
+                    plugin.getLogger().info("Convite enviado: " + inviter.getName() + " convidou " + target.getName() + " para o clã " + clan.getTag());
+                    callback.accept(true);
+                } else {
+                    plugin.getLogger().severe("Erro ao registrar log do convite no banco de dados");
+                    callback.accept(false);
+                }
+            }
+        );
+    }
+
+    /**
+     * Aceita um convite pendente de forma ASSÍNCRONA, encadeando a chamada para addMemberAsync.
+     *
+     * @param target O jogador que está aceitando o convite
+     * @param callback Callback para receber o resultado da operação
+     */
+    public void acceptInvitationAsync(Player target, java.util.function.Consumer<Boolean> callback) {
+        // ========================================
+        // VALIDAÇÕES THREAD-SAFE (Thread Principal)
+        // ========================================
+        if (target == null) {
+            callback.accept(false);
+            return;
+        }
+
+        int targetPlayerId = PrimeLeagueAPI.getIdentityManager().getPlayerId(target);
+        if (targetPlayerId == -1) {
+            plugin.getLogger().severe("FALHA CRÍTICA: Não foi possível obter player_id para " + target.getName());
+            callback.accept(false);
+            return;
+        }
+
+        ClanInvitation invitation = pendingInvites.get(targetPlayerId);
+        if (invitation == null || invitation.isExpired()) {
+            if (invitation != null) pendingInvites.remove(targetPlayerId); // Limpa convite expirado
+            callback.accept(false);
+            return;
+        }
+
+        Clan clan = invitation.getClan();
+
+        // ========================================
+        // DELEGAÇÃO ASSÍNCRONA (Cadeia de Callbacks)
+        // ========================================
+        addMemberAsync(clan, target, ClanPlayer.ClanRole.MEMBRO, (success) -> {
+            // ========================================
+            // CALLBACK FINAL (Thread Principal)
+            // ========================================
+            // HARDENING
+            if (!target.isOnline()) {
+                callback.accept(false); // Jogador desconectou durante a operação
+                return;
+            }
+
+            if (success) {
+                // ATUALIZAR ESTADO EM MEMÓRIA (Consistência do Cache Pós-Callback)
+                pendingInvites.remove(targetPlayerId);
+
+                // Notificar o convidador (com hardening)
+                Player inviter = org.bukkit.Bukkit.getPlayer(invitation.getInviterName());
+                if (inviter != null && inviter.isOnline()) {
+                    inviter.sendMessage(org.bukkit.ChatColor.GREEN + target.getName() + " aceitou seu convite e entrou no clã!");
+                }
+                
+                // Notificar o clã
+                notifyClanMembers(clan, org.bukkit.ChatColor.GREEN + target.getName() + " entrou no clã!");
+                
+                // Log da ação (assíncrono)
+                clanDAO.logActionAsync(
+                    clan.getId(), targetPlayerId, target.getName(),
+                    LogActionType.PLAYER_JOIN, 0, null,
+                    "Entrou no clã via convite de " + invitation.getInviterName(),
+                    (logSuccess) -> { /* Opcional: logar falha no log */ }
+                );
+
+                plugin.getLogger().info("Convite aceito: " + target.getName() + " entrou no clã " + clan.getTag());
+                callback.accept(true);
+            } else {
+                // addMemberAsync falhou, notificar o jogador
+                target.sendMessage(org.bukkit.ChatColor.RED + "Não foi possível entrar no clã. Talvez a vaga tenha sido preenchida?");
+                callback.accept(false);
+            }
+        });
+    }
+
+    /**
+     * Recusa um convite pendente de forma ASSÍNCRONA.
+     * Implementa o padrão arquitetural aprovado com validações thread-safe e consistência do cache pós-callback.
+     *
+     * @param target O jogador que está recusando o convite
+     * @param callback Callback para receber o resultado da operação
+     */
+    public void denyInvitationAsync(Player target, java.util.function.Consumer<Boolean> callback) {
+        // ========================================
+        // VALIDAÇÕES THREAD-SAFE (Thread Principal)
+        // ========================================
+        if (target == null) {
+            callback.accept(false);
+            return;
+        }
+
+        // REFATORADO: Obter player_id através do IdentityManager
+        int targetPlayerId = PrimeLeagueAPI.getIdentityManager().getPlayerId(target);
+        if (targetPlayerId == -1) {
+            plugin.getLogger().severe("FALHA CRÍTICA: Não foi possível obter player_id para " + target.getName());
+            callback.accept(false);
+            return;
+        }
+
+        ClanInvitation invitation = pendingInvites.get(targetPlayerId);
+        if (invitation == null) {
+            callback.accept(false);
+            return;
+        }
+
+        if (invitation.isExpired()) {
+            pendingInvites.remove(targetPlayerId);
+            callback.accept(false);
+            return;
+        }
+
+        // ========================================
+        // OPERAÇÃO ASSÍNCRONA (Thread Separada)
+        // ========================================
+        // Para este caso simples, não há I/O necessário no banco, mas mantemos o padrão para consistência
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            // Simular operação assíncrona para manter o padrão
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                // ========================================
+                // CALLBACK FINAL (Thread Principal)
+                // ========================================
+                
+                // ATUALIZAR ESTADO EM MEMÓRIA (Consistência do Cache Pós-Callback)
+                pendingInvites.remove(targetPlayerId);
+                
+                // HARDENING: Verificar se jogadores ainda estão online antes de notificar
+                Player inviter = org.bukkit.Bukkit.getPlayer(invitation.getInviterName());
+                if (inviter != null && inviter.isOnline()) {
+                    inviter.sendMessage(org.bukkit.ChatColor.RED + target.getName() + " recusou seu convite para o clã.");
+                }
+                
+                if (target.isOnline()) {
+                    target.sendMessage(org.bukkit.ChatColor.YELLOW + "Você recusou o convite para o clã " + invitation.getClan().getTag() + ".");
+                }
+                
+                plugin.getLogger().info("Convite recusado: " + target.getName() + " recusou convite para o clã " + invitation.getClan().getTag());
+                callback.accept(true);
+            });
+        });
+    }
+
+    /**
+     * Remove um jogador de um clã (método síncrono para compatibilidade).
+     * 
+     * @param clan O clã
+     * @param playerName O nome do jogador a ser removido
+     * @return true se o jogador foi removido com sucesso
+     */
+    public boolean removePlayerFromClan(Clan clan, String playerName) {
+        if (clan == null || playerName == null) {
+            return false;
+        }
+
+        ClanPlayer clanPlayer = null;
+        for (ClanPlayer p : clanPlayers.values()) {
+            if (p.getPlayerName().equalsIgnoreCase(playerName) && p.getClan() != null && p.getClan().equals(clan)) {
+                clanPlayer = p;
+                break;
+            }
+        }
+        if (clanPlayer == null) {
+            return false;
+        }
+
+        // Remover o jogador do clã
+        clanPlayer.setClan(null);
+        clanPlayer.setRole(ClanPlayer.ClanRole.MEMBRO);
+
+        // Persistir mudança no banco de dados
+        clanDAO.saveOrUpdateClanPlayer(toDTO(clanPlayer));
+
+        // Atualizar estado em memória
+        clan.removeMember(playerName);
+        int playerId = PrimeLeagueAPI.getIdentityManager().getPlayerIdByUuid(clanPlayer.getPlayerUUID());
+        if (playerId != -1) {
+            clanPlayers.remove(playerId);
+        }
+
+        plugin.getLogger().info("Jogador " + playerName + " removido do clã " + clan.getTag());
+        return true;
     }
 }

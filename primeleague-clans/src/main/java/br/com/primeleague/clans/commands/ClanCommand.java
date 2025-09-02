@@ -195,18 +195,23 @@ public class ClanCommand implements CommandExecutor {
             return;
         }
 
-        // Criar o clã
-        Clan clan = clanManager.createClan(tag, name, player);
-        if (clan != null) {
-            player.sendMessage(ChatColor.GREEN + "Clã " + clan.getTag() + " (" + clan.getName() + ") criado com sucesso!");
-            player.sendMessage(ChatColor.YELLOW + "Use /clan invite <jogador> para convidar membros.");
-        } else {
-            player.sendMessage(ChatColor.RED + "Erro ao criar clã. Verifique se a tag e nome estão disponíveis.");
-        }
+        // REFATORADO: Usar método assíncrono com callback
+        clanManager.createClanAsync(tag, name, player, (clan) -> {
+            // HARDENING: Verificar se o jogador ainda está online
+            if (!player.isOnline()) return; // Jogador desconectou
+            
+            if (clan != null) {
+                player.sendMessage(ChatColor.GREEN + "Clã " + clan.getTag() + " (" + clan.getName() + ") criado com sucesso!");
+                player.sendMessage(ChatColor.YELLOW + "Use /clan invite <jogador> para convidar membros.");
+            } else {
+                player.sendMessage(ChatColor.RED + "Erro ao criar clã. Verifique se a tag e nome estão disponíveis.");
+            }
+        });
     }
 
     /**
      * Manipula o comando /clan invite.
+     * REFATORADO: Usa o novo método assíncrono sendInvitationAsync com hardening.
      */
     private void handleInvite(Player player, String[] args) {
         if (!player.hasPermission("primeleague.clans.invite")) {
@@ -241,12 +246,19 @@ public class ClanCommand implements CommandExecutor {
             return;
         }
 
-        // Enviar convite usando o ClanManager
-        if (clanManager.sendInvitation(player, target)) {
-            // Mensagem já enviada pelo ClanManager
-        } else {
-            player.sendMessage(ChatColor.RED + "Erro ao enviar convite. Verifique se o jogador está online e não pertence a outro clã.");
-        }
+        // REFATORADO: Usar método assíncrono com callback
+        clanManager.sendInvitationAsync(player, target, (success) -> {
+            // HARDENING: Verificar se os jogadores ainda estão online
+            if (!player.isOnline()) return; // Jogador desconectou
+            if (!target.isOnline()) return; // Alvo desconectou
+            
+            if (success) {
+                // Mensagem de sucesso já enviada pelo ClanManager
+                player.sendMessage(ChatColor.GREEN + "Convite enviado para " + target.getName() + "!");
+            } else {
+                player.sendMessage(ChatColor.RED + "Erro ao enviar convite. Verifique se o jogador está online e não pertence a outro clã.");
+            }
+        });
     }
 
     /**
@@ -291,33 +303,37 @@ public class ClanCommand implements CommandExecutor {
             return;
         }
 
-        // Expulsar o jogador usando o novo método com enum
-        KickResult result = clanManager.kickPlayerFromClan(clan, targetName, player.getName());
-        switch (result) {
-            case SUCCESS:
-                player.sendMessage(ChatColor.GREEN + targetName + " foi expulso do clã!");
-                
-                // Notificar o clã sobre a expulsão
-                clanManager.notifyClanMembers(clan, ChatColor.RED + targetName + " foi expulso do clã por " + player.getName() + ".");
-                
-                Player targetPlayer = Bukkit.getPlayer(targetName);
-                if (targetPlayer != null) {
-                    targetPlayer.sendMessage(ChatColor.RED + "Você foi expulso do clã " + clan.getTag() + "!");
-                }
-                break;
-            case PLAYER_NOT_FOUND:
-                player.sendMessage(ChatColor.RED + targetName + " não foi encontrado ou não pertence ao seu clã!");
-                break;
-            case NOT_IN_SAME_CLAN:
-                player.sendMessage(ChatColor.RED + targetName + " não pertence ao seu clã!");
-                break;
-            case CANNOT_KICK_SELF:
-                player.sendMessage(ChatColor.RED + "Você não pode expulsar a si mesmo! Use /clan leave para sair.");
-                break;
-            case CANNOT_KICK_LEADER:
-                player.sendMessage(ChatColor.RED + "Você não pode expulsar o líder do clã!");
-                break;
-        }
+        // REFATORADO: Usar método assíncrono com callback
+        clanManager.kickPlayerFromClanAsync(clan, targetName, player.getName(), (result) -> {
+            // HARDENING: Verificar se os jogadores ainda estão online
+            if (!player.isOnline()) return; // Jogador desconectou
+            
+            switch (result) {
+                case SUCCESS:
+                    player.sendMessage(ChatColor.GREEN + targetName + " foi expulso do clã!");
+                    
+                    // Notificar o clã sobre a expulsão
+                    clanManager.notifyClanMembers(clan, ChatColor.RED + targetName + " foi expulso do clã por " + player.getName() + ".");
+                    
+                    Player targetPlayer = Bukkit.getPlayer(targetName);
+                    if (targetPlayer != null && targetPlayer.isOnline()) {
+                        targetPlayer.sendMessage(ChatColor.RED + "Você foi expulso do clã " + clan.getTag() + "!");
+                    }
+                    break;
+                case PLAYER_NOT_FOUND:
+                    player.sendMessage(ChatColor.RED + targetName + " não foi encontrado ou não pertence ao seu clã!");
+                    break;
+                case NOT_IN_SAME_CLAN:
+                    player.sendMessage(ChatColor.RED + targetName + " não pertence ao seu clã!");
+                    break;
+                case CANNOT_KICK_SELF:
+                    player.sendMessage(ChatColor.RED + "Você não pode expulsar a si mesmo! Use /clan leave para sair.");
+                    break;
+                case CANNOT_KICK_LEADER:
+                    player.sendMessage(ChatColor.RED + "Você não pode expulsar o líder do clã!");
+                    break;
+            }
+        });
     }
 
     /**
@@ -362,33 +378,37 @@ public class ClanCommand implements CommandExecutor {
             return;
         }
 
-        // Promover o jogador usando o novo método com enum
-        PromoteResult result = clanManager.promotePlayer(clan, targetName);
-        switch (result) {
-            case SUCCESS:
-                player.sendMessage(ChatColor.GREEN + targetName + " foi promovido a oficial!");
-                
-                // Notificar o clã sobre a promoção
-                clanManager.notifyClanMembers(clan, ChatColor.AQUA + targetName + " foi promovido a Oficial por " + player.getName() + ".");
-                
-                Player targetPlayer = Bukkit.getPlayer(targetName);
-                if (targetPlayer != null) {
-                    targetPlayer.sendMessage(ChatColor.GREEN + "Você foi promovido a oficial no clã " + clan.getTag() + "!");
-                }
-                break;
-            case PLAYER_NOT_FOUND:
-                player.sendMessage(ChatColor.RED + targetName + " não foi encontrado ou não pertence ao seu clã!");
-                break;
-            case NOT_IN_SAME_CLAN:
-                player.sendMessage(ChatColor.RED + targetName + " não pertence ao seu clã!");
-                break;
-            case ALREADY_LEADER:
-                player.sendMessage(ChatColor.RED + targetName + " já é o líder do clã!");
-                break;
-            case ALREADY_OFFICER:
-                player.sendMessage(ChatColor.RED + targetName + " já é um oficial do clã!");
-                break;
-        }
+        // REFATORADO: Usar método assíncrono com callback
+        clanManager.promotePlayerAsync(clan, targetName, (result) -> {
+            // HARDENING: Verificar se os jogadores ainda estão online
+            if (!player.isOnline()) return; // Jogador desconectou
+            
+            switch (result) {
+                case SUCCESS:
+                    player.sendMessage(ChatColor.GREEN + targetName + " foi promovido a oficial!");
+                    
+                    // Notificar o clã sobre a promoção
+                    clanManager.notifyClanMembers(clan, ChatColor.AQUA + targetName + " foi promovido a Oficial por " + player.getName() + ".");
+                    
+                    Player targetPlayer = Bukkit.getPlayer(targetName);
+                    if (targetPlayer != null && targetPlayer.isOnline()) {
+                        targetPlayer.sendMessage(ChatColor.GREEN + "Você foi promovido a oficial no clã " + clan.getTag() + "!");
+                    }
+                    break;
+                case PLAYER_NOT_FOUND:
+                    player.sendMessage(ChatColor.RED + targetName + " não foi encontrado ou não pertence ao seu clã!");
+                    break;
+                case NOT_IN_SAME_CLAN:
+                    player.sendMessage(ChatColor.RED + targetName + " não pertence ao seu clã!");
+                    break;
+                case ALREADY_LEADER:
+                    player.sendMessage(ChatColor.RED + targetName + " já é o líder do clã!");
+                    break;
+                case ALREADY_OFFICER:
+                    player.sendMessage(ChatColor.RED + targetName + " já é um oficial do clã!");
+                    break;
+            }
+        });
     }
 
     /**
@@ -433,33 +453,37 @@ public class ClanCommand implements CommandExecutor {
             return;
         }
 
-        // Rebaixar o jogador usando o novo método com enum
-        DemoteResult result = clanManager.demotePlayer(clan, targetName);
-        switch (result) {
-            case SUCCESS:
-                player.sendMessage(ChatColor.GREEN + targetName + " foi rebaixado a membro!");
-                
-                // Notificar o clã sobre o rebaixamento
-                clanManager.notifyClanMembers(clan, ChatColor.GRAY + targetName + " foi rebaixado a Membro por " + player.getName() + ".");
-                
-                Player targetPlayer = Bukkit.getPlayer(targetName);
-                if (targetPlayer != null) {
-                    targetPlayer.sendMessage(ChatColor.YELLOW + "Você foi rebaixado a membro no clã " + clan.getTag() + "!");
-                }
-                break;
-            case PLAYER_NOT_FOUND:
-                player.sendMessage(ChatColor.RED + targetName + " não foi encontrado ou não pertence ao seu clã!");
-                break;
-            case NOT_IN_SAME_CLAN:
-                player.sendMessage(ChatColor.RED + targetName + " não pertence ao seu clã!");
-                break;
-            case CANNOT_DEMOTE_LEADER:
-                player.sendMessage(ChatColor.RED + "Você não pode rebaixar o líder do clã!");
-                break;
-            case NOT_AN_OFFICER:
-                player.sendMessage(ChatColor.RED + targetName + " já é um membro, não pode ser rebaixado!");
-                break;
-        }
+        // REFATORADO: Usar método assíncrono com callback
+        clanManager.demotePlayerAsync(clan, targetName, (result) -> {
+            // HARDENING: Verificar se os jogadores ainda estão online
+            if (!player.isOnline()) return; // Jogador desconectou
+            
+            switch (result) {
+                case SUCCESS:
+                    player.sendMessage(ChatColor.GREEN + targetName + " foi rebaixado a membro!");
+                    
+                    // Notificar o clã sobre o rebaixamento
+                    clanManager.notifyClanMembers(clan, ChatColor.GRAY + targetName + " foi rebaixado a Membro por " + player.getName() + ".");
+                    
+                    Player targetPlayer = Bukkit.getPlayer(targetName);
+                    if (targetPlayer != null && targetPlayer.isOnline()) {
+                        targetPlayer.sendMessage(ChatColor.YELLOW + "Você foi rebaixado a membro no clã " + clan.getTag() + "!");
+                    }
+                    break;
+                case PLAYER_NOT_FOUND:
+                    player.sendMessage(ChatColor.RED + targetName + " não foi encontrado ou não pertence ao seu clã!");
+                    break;
+                case NOT_IN_SAME_CLAN:
+                    player.sendMessage(ChatColor.RED + targetName + " não pertence ao seu clã!");
+                    break;
+                case CANNOT_DEMOTE_LEADER:
+                    player.sendMessage(ChatColor.RED + "Você não pode rebaixar o líder do clã!");
+                    break;
+                case NOT_AN_OFFICER:
+                    player.sendMessage(ChatColor.RED + targetName + " já é um membro, não pode ser rebaixado!");
+                    break;
+            }
+        });
     }
 
     /**
@@ -516,33 +540,37 @@ public class ClanCommand implements CommandExecutor {
             return;
         }
 
-        // Transferir o fundador usando o novo método
-        SetFounderResult result = clanManager.setFounder(clan, targetName, player.getName());
-        switch (result) {
-            case SUCCESS:
-                player.sendMessage(ChatColor.GREEN + targetName + " é agora o novo fundador do clã!");
-                
-                // Notificar o clã sobre a transferência
-                clanManager.notifyClanMembers(clan, ChatColor.GOLD + "O trono foi passado! " + targetName + " é agora o novo fundador do clã!");
-                
-                Player targetPlayer = Bukkit.getPlayer(targetName);
-                if (targetPlayer != null) {
-                    targetPlayer.sendMessage(ChatColor.GOLD + "Você é agora o novo fundador do clã " + clan.getTag() + "!");
-                }
-                break;
-            case PLAYER_NOT_FOUND:
-                player.sendMessage(ChatColor.RED + targetName + " não foi encontrado ou não pertence ao seu clã!");
-                break;
-            case NOT_IN_SAME_CLAN:
-                player.sendMessage(ChatColor.RED + targetName + " não pertence ao seu clã!");
-                break;
-            case NOT_LEADER:
-                player.sendMessage(ChatColor.RED + targetName + " deve ser um líder para se tornar fundador!");
-                break;
-            case ALREADY_FOUNDER:
-                player.sendMessage(ChatColor.RED + targetName + " já é o fundador do clã!");
-                break;
-        }
+        // REFATORADO: Usar método assíncrono com callback
+        clanManager.setFounderAsync(clan, targetName, (result) -> {
+            // HARDENING: Verificar se os jogadores ainda estão online
+            if (!player.isOnline()) return; // Jogador desconectou
+            
+            switch (result) {
+                case SUCCESS:
+                    player.sendMessage(ChatColor.GREEN + targetName + " é agora o novo fundador do clã!");
+                    
+                    // Notificar o clã sobre a transferência
+                    clanManager.notifyClanMembers(clan, ChatColor.GOLD + "O trono foi passado! " + targetName + " é agora o novo fundador do clã!");
+                    
+                    Player targetPlayer = Bukkit.getPlayer(targetName);
+                    if (targetPlayer != null && targetPlayer.isOnline()) {
+                        targetPlayer.sendMessage(ChatColor.GOLD + "Você é agora o novo fundador do clã " + clan.getTag() + "!");
+                    }
+                    break;
+                case PLAYER_NOT_FOUND:
+                    player.sendMessage(ChatColor.RED + targetName + " não foi encontrado ou não pertence ao seu clã!");
+                    break;
+                case NOT_IN_SAME_CLAN:
+                    player.sendMessage(ChatColor.RED + targetName + " não pertence ao seu clã!");
+                    break;
+                case NOT_LEADER:
+                    player.sendMessage(ChatColor.RED + targetName + " deve ser um líder para se tornar fundador!");
+                    break;
+                case ALREADY_FOUNDER:
+                    player.sendMessage(ChatColor.RED + targetName + " já é o fundador do clã!");
+                    break;
+            }
+        });
     }
 
     /**
@@ -565,14 +593,19 @@ public class ClanCommand implements CommandExecutor {
             return;
         }
 
-        // Sair do clã
-        if (clanManager.removePlayerFromClan(clan, player.getName())) {
-            player.sendMessage(ChatColor.GREEN + "Você saiu do clã " + clan.getTag() + "!");
-            // Notificar o clã sobre a saída
-            clanManager.notifyClanMembers(clan, ChatColor.YELLOW + player.getName() + " saiu do clã.");
-        } else {
-            player.sendMessage(ChatColor.RED + "Erro ao sair do clã!");
-        }
+        // REFATORADO: Usar método assíncrono com callback
+        clanManager.removeMemberAsync(clan, player.getName(), (success) -> {
+            // HARDENING: Verificar se o jogador ainda está online
+            if (!player.isOnline()) return; // Jogador desconectou
+            
+            if (success) {
+                player.sendMessage(ChatColor.GREEN + "Você saiu do clã " + clan.getTag() + "!");
+                // Notificar o clã sobre a saída
+                clanManager.notifyClanMembers(clan, ChatColor.YELLOW + player.getName() + " saiu do clã.");
+            } else {
+                player.sendMessage(ChatColor.RED + "Erro ao sair do clã!");
+            }
+        });
     }
 
     /**
@@ -598,12 +631,17 @@ public class ClanCommand implements CommandExecutor {
             return;
         }
 
-        // Dissolver o clã
-        if (clanManager.disbandClan(clan)) {
-            player.sendMessage(ChatColor.GREEN + "Clã " + clan.getTag() + " foi dissolvido!");
-        } else {
-            player.sendMessage(ChatColor.RED + "Erro ao dissolver o clã!");
-        }
+        // REFATORADO: Usar método assíncrono com callback
+        clanManager.disbandClanAsync(clan, (success) -> {
+            // HARDENING: Verificar se o jogador ainda está online
+            if (!player.isOnline()) return; // Jogador desconectou
+            
+            if (success) {
+                player.sendMessage(ChatColor.GREEN + "Clã " + clan.getTag() + " foi dissolvido!");
+            } else {
+                player.sendMessage(ChatColor.RED + "Erro ao dissolver o clã!");
+            }
+        });
     }
 
     /**
@@ -659,6 +697,7 @@ public class ClanCommand implements CommandExecutor {
 
     /**
      * Manipula o comando /clan accept.
+     * REFATORADO: Usa o novo método assíncrono acceptInvitationAsync com hardening.
      */
     private void handleAccept(Player player) {
         // Verificar se o jogador já pertence a um clã
@@ -668,24 +707,35 @@ public class ClanCommand implements CommandExecutor {
             return;
         }
 
-        // Aceitar convite
-        if (clanManager.acceptInvitation(player)) {
-            player.sendMessage(ChatColor.GREEN + "Convite aceito! Bem-vindo ao clã!");
-        } else {
-            player.sendMessage(ChatColor.RED + "Você não tem convites pendentes ou o convite expirou!");
-        }
+        // REFATORADO: Usar método assíncrono com callback
+        clanManager.acceptInvitationAsync(player, (success) -> {
+            // HARDENING: Verificar se o jogador ainda está online
+            if (!player.isOnline()) return; // Jogador desconectou
+            
+            if (success) {
+                player.sendMessage(ChatColor.GREEN + "Convite aceito! Bem-vindo ao clã!");
+            } else {
+                player.sendMessage(ChatColor.RED + "Você não tem convites pendentes ou o convite expirou!");
+            }
+        });
     }
 
     /**
      * Manipula o comando /clan deny.
+     * REFATORADO: Usa o novo método assíncrono denyInvitationAsync com hardening.
      */
     private void handleDeny(Player player) {
-        // Recusar convite
-        if (clanManager.denyInvitation(player)) {
-            player.sendMessage(ChatColor.YELLOW + "Convite recusado.");
-        } else {
-            player.sendMessage(ChatColor.RED + "Você não tem convites pendentes ou o convite expirou!");
-        }
+        // REFATORADO: Usar método assíncrono com callback
+        clanManager.denyInvitationAsync(player, (success) -> {
+            // HARDENING: Verificar se o jogador ainda está online
+            if (!player.isOnline()) return; // Jogador desconectou
+            
+            if (success) {
+                player.sendMessage(ChatColor.YELLOW + "Convite recusado.");
+            } else {
+                player.sendMessage(ChatColor.RED + "Você não tem convites pendentes ou o convite expirou!");
+            }
+        });
     }
 
     /**

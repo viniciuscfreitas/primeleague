@@ -1,0 +1,22 @@
+{
+  "name": "primeleague-database-fix",
+  "version": "1.0.0",
+  "description": "Scripts para analisar e corrigir problemas de schema no banco de dados PrimeLeague",
+  "main": "analyze-database.js",
+  "scripts": {
+    "analyze": "node analyze-database.js",
+    "fix": "node fix-database-schema.js"
+  },
+  "dependencies": {
+    "mysql2": "^3.6.0"
+  },
+  "keywords": [
+    "mariadb",
+    "mysql",
+    "database",
+    "schema",
+    "fix"
+  ],
+  "author": "PrimeLeague Team",
+  "license": "MIT"
+}

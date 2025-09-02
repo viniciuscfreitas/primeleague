@@ -62,6 +62,14 @@ public interface ClanDAO {
     void saveOrUpdateClanPlayer(ClanPlayerDTO clanPlayerDTO);
     
     /**
+     * Salva ou atualiza um jogador de clã no banco de dados de forma ASSÍNCRONA.
+     * 
+     * @param clanPlayerDTO Dados do jogador a ser salvo
+     * @param callback Callback para receber o resultado da operação
+     */
+    void saveOrUpdateClanPlayerAsync(ClanPlayerDTO clanPlayerDTO, java.util.function.Consumer<Boolean> callback);
+    
+    /**
      * Atualiza as configurações de um clã no banco de dados.
      * 
      * @param clanDTO Dados do clã com configurações atualizadas
@@ -102,6 +110,18 @@ public interface ClanDAO {
     boolean setFounder(ClanDTO clanDTO, int newFounderPlayerId, String newFounderName, int oldFounderPlayerId);
     
     /**
+     * Transfere o cargo de fundador de um clã de forma ASSÍNCRONA.
+     * Executa uma transação atômica para atualizar tanto a tabela clans quanto clan_players.
+     * 
+     * @param clanDTO Clã onde a transferência ocorrerá
+     * @param newFounderPlayerId player_id do novo fundador
+     * @param newFounderName Nome do novo fundador
+     * @param oldFounderPlayerId player_id do fundador atual
+     * @param callback Callback para receber o resultado da operação
+     */
+    void setFounderAsync(ClanDTO clanDTO, int newFounderPlayerId, String newFounderName, int oldFounderPlayerId, java.util.function.Consumer<Boolean> callback);
+    
+    /**
      * Registra uma ação no log de auditoria do clã.
      * 
      * @param clanId ID do clã
@@ -114,6 +134,21 @@ public interface ClanDAO {
      */
     void logAction(int clanId, int actorPlayerId, String actorName, LogActionType action, 
                    int targetPlayerId, String targetName, String details);
+    
+    /**
+     * Registra uma ação no log de auditoria do clã de forma ASSÍNCRONA.
+     * 
+     * @param clanId ID do clã
+     * @param actorPlayerId player_id de quem executou a ação
+     * @param actorName Nome de quem executou a ação
+     * @param action Tipo da ação executada
+     * @param targetPlayerId player_id do alvo da ação (pode ser 0 se não aplicável)
+     * @param targetName Nome do alvo da ação (pode ser null)
+     * @param details Detalhes adicionais da ação (pode ser null)
+     * @param callback Callback para receber o resultado da operação
+     */
+    void logActionAsync(int clanId, int actorPlayerId, String actorName, LogActionType action, 
+                       int targetPlayerId, String targetName, String details, java.util.function.Consumer<Boolean> callback);
     
     /**
      * Carrega os logs de um clã com paginação.

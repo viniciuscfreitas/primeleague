@@ -147,6 +147,28 @@ public class MySqlClanDAO implements ClanDAO {
         }
     }
 
+    /**
+     * Converte uma string de role do banco para o enum ClanRole correspondente.
+     * CORREÇÃO CRÍTICA: O banco armazena strings, não IDs.
+     */
+    private ClanRole convertRoleStringToEnum(String roleString) {
+        if (roleString == null) {
+            return ClanRole.MEMBRO; // MEMBRO como default
+        }
+        
+        switch (roleString.toUpperCase()) {
+            case "FOUNDER":
+                return ClanRole.FUNDADOR;
+            case "LEADER":
+            case "CO_LEADER":
+            case "OFFICER":
+                return ClanRole.LIDER;
+            case "MEMBER":
+            default:
+                return ClanRole.MEMBRO;
+        }
+    }
+
     @Override
     public ClanDTO createClan(ClanDTO clanDTO) {
         Connection conn = null;
@@ -1088,7 +1110,7 @@ public class MySqlClanDAO implements ClanDAO {
                 while (rs.next()) {
                     String playerName = rs.getString("player_name");
                     int playerId = rs.getInt("player_id");
-                    int roleId = rs.getInt("role");
+                    String roleString = rs.getString("role"); // CORRIGIDO: ler como string
                     int kills = rs.getInt("kills");
                     int deaths = rs.getInt("deaths");
                     long joinDate = rs.getLong("join_date");
@@ -1100,8 +1122,8 @@ public class MySqlClanDAO implements ClanDAO {
                         lastSeen = lastSeenTimestamp.getTime();
                     }
                     
-                    // Converter roleId para enum
-                    ClanRole role = ClanRole.fromId(roleId);
+                    // CORREÇÃO CRÍTICA: Converter string do role para enum
+                    ClanRole role = convertRoleStringToEnum(roleString);
                     
                     // O DAO não deve verificar status online - isso é responsabilidade da camada de negócios
                     boolean isOnline = false; // Valor padrão, será sobrescrito pelo ClanManager

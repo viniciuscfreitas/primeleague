@@ -76,6 +76,21 @@ database:
   donor_table: "donors"
   transaction_log_table: "economy_transactions"
   
+  # ========================================
+  # VALIDAÇÃO DE SCHEMA (O GUARDIÃO)
+  # ========================================
+  validation:
+    fail-on-mismatch: true      # Parar servidor se houver inconsistências
+    log-level: "DETAILED"       # NONE, ERRORS, DETAILED
+    auto-fix: false             # Tentar corrigir automaticamente (PERIGOSO)
+    health-check-interval: 3600 # Verificação de saúde a cada 1 hora
+    
+    # Validações específicas
+    validate-table-structure: true    # Validar estrutura das tabelas
+    validate-constraints: true        # Validar foreign keys e constraints
+    validate-data-integrity: true     # Executar validações de dados
+    validate-indexes: false           # Validar índices (opcional)
+  
 # Configurações de segurança
 security:
   max_daily_transactions: 1000  # Limite diário de transações por jogador
