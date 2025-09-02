@@ -133,6 +133,10 @@ public class PrimeLeagueAdmin extends JavaPlugin {
         
         // Comando de whitelist
         getCommand("whitelist").setExecutor(new WhitelistCommand(this));
+        
+        // Comandos de grupos e permissões
+        getCommand("group").setExecutor(new GroupCommand(this));
+        getCommand("permission").setExecutor(new PermissionCommand(this));
     }
 
     /**
@@ -162,5 +166,12 @@ public class PrimeLeagueAdmin extends JavaPlugin {
      */
     public AdminManager getAdminManager() {
         return adminManager;
+    }
+    
+    /**
+     * Obtém o gerenciador de dados do Core.
+     */
+    public br.com.primeleague.core.managers.DataManager getDataManager() {
+        return PrimeLeagueAPI.getDataManager();
     }
 }

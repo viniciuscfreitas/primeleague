@@ -11,26 +11,26 @@
 # Forums: http://www.spigotmc.org/forum/
 
 config-version: 1
-commands:
-  tab-complete: true
-  spam-exclusions:
-  - /skill
-  log: true
+settings:
+  log-filters:
+  - ^(.*)(/login)(.*)$
+  netty-threads: 3
+  timeout-time: 60
+  restart-on-crash: true
+  restart-script: ./start.sh
+  bungeecord-addresses:
+  - 127.0.0.1
+  bungeecord: true
+  prevent-proxies: false
 listeners:
 - port: default
   host: default
   netty: true
-settings:
-  netty-threads: 3
-  log-filters:
-  - ^(.*)(/login)(.*)$
-  timeout-time: 60
-  restart-on-crash: true
-  restart-script: ./start.sh
-  prevent-proxies: false
-  bungeecord-addresses:
-  - 127.0.0.1
-  bungeecord: true
+commands:
+  tab-complete: true
+  log: true
+  spam-exclusions:
+  - /skill
 messages:
   whitelist: You are not whitelisted on this server!
   unknown-command: Unknown command. Type "help" for help.
@@ -39,14 +39,13 @@ world-settings:
   default:
     verbose: true
     merge-radius:
-      item: 2.5
       exp: 3.0
+      item: 2.5
     view-distance: 10
     chunks-per-tick: 650
-    entity-activation-range:
-      animals: 32
-      monsters: 32
-      misc: 16
+    ticks-per:
+      hopper-check: 8
+      hopper-transfer: 8
     anti-xray:
       enabled: true
       engine-mode: 1
@@ -67,10 +66,6 @@ world-settings:
       - 129
       - 130
     random-light-updates: false
-    mob-spawn-range: 4
-    ticks-per:
-      hopper-check: 8
-      hopper-transfer: 8
     growth:
       cactus-modifier: 100
       cane-modifier: 100
@@ -79,9 +74,14 @@ world-settings:
       pumpkin-modifier: 100
       sapling-modifier: 100
       wheat-modifier: 100
+    entity-activation-range:
+      animals: 32
+      monsters: 32
+      misc: 16
     entity-tracking-range:
       players: 48
       animals: 48
       monsters: 48
       misc: 32
       other: 64
+    mob-spawn-range: 4

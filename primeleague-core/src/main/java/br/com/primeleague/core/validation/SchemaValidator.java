@@ -18,6 +18,11 @@ import java.util.*;
  * 3. Validar constraints e foreign keys
  * 4. Executar validações de integridade de dados
  * 5. Prevenir inconsistências antes que causem erros
+ * 
+ * NOVA FUNCIONALIDADE: Modo de Auditoria Completa
+ * - Acumula todos os erros encontrados em uma lista
+ * - Modo duplo: fail-fast (produção) ou report-all (desenvolvimento)
+ * - Configurável via database.validation.fail-on-mismatch
  */
 public class SchemaValidator {
     
@@ -35,100 +40,120 @@ public class SchemaValidator {
     
     /**
      * Validação completa do schema no startup
-     * @return true se tudo estiver correto, false se houver problemas
+     * @return Lista de erros encontrados (vazia se tudo estiver correto)
      */
-    public boolean validateOnStartup() {
+    public List<String> validateOnStartup() {
         core.getLogger().info("🔍 [SchemaValidator] Iniciando validação do banco de dados...");
+        
+        List<String> allErrors = new ArrayList<>();
         
         try {
             // 1. Validar estrutura das tabelas
-            if (!validateTableStructures()) {
-                return false;
-            }
+            allErrors.addAll(validateTableStructures());
             
             // 2. Validar constraints e foreign keys
-            if (!validateConstraints()) {
-                return false;
-            }
+            allErrors.addAll(validateConstraints());
             
             // 3. Executar validações de integridade de dados
-            if (!validateDataIntegrity()) {
-                return false;
-            }
+            allErrors.addAll(validateDataIntegrity());
             
-            core.getLogger().info("✅ [SchemaValidator] Validação completa bem-sucedida!");
-            return true;
+            // 4. Processar resultados baseado no modo configurado
+            processValidationResults(allErrors);
             
         } catch (Exception e) {
-            core.getLogger().severe("❌ [SchemaValidator] Erro crítico durante validação: " + e.getMessage());
+            String errorMsg = "Erro crítico durante validação: " + e.getMessage();
+            core.getLogger().severe("❌ [SchemaValidator] " + errorMsg);
+            allErrors.add(errorMsg);
             e.printStackTrace();
-            return false;
+        }
+        
+        return allErrors;
+    }
+    
+    /**
+     * Processa os resultados da validação baseado no modo configurado
+     */
+    private void processValidationResults(List<String> errors) {
+        if (errors.isEmpty()) {
+            core.getLogger().info("✅ [SchemaValidator] Validação completa bem-sucedida!");
+        } else {
+            // Logar TODOS os erros encontrados
+            core.getLogger().severe("🚨 [SchemaValidator] " + errors.size() + " problemas encontrados durante validação:");
+            for (String error : errors) {
+                core.getLogger().severe("   ❌ " + error);
+            }
+            
+            // Verificar se deve parar o servidor
+            if (config.shouldFailOnMismatch()) {
+                core.getLogger().severe("🚨 [SchemaValidator] FALHA CRÍTICA: Servidor será parado devido a inconsistências no schema.");
+                core.getLogger().severe("🚨 [SchemaValidator] Para desenvolvimento, configure 'database.validation.fail-on-mismatch: false'");
+                core.getServer().shutdown();
+            } else {
+                core.getLogger().warning("⚠️ [SchemaValidator] Modo de desenvolvimento ativo: Servidor continuará com inconsistências no schema.");
+                core.getLogger().warning("⚠️ [SchemaValidator] Corrija os problemas acima antes de colocar em produção.");
+            }
         }
     }
     
     /**
      * Valida a estrutura de todas as tabelas definidas
+     * @return Lista de erros encontrados
      */
-    private boolean validateTableStructures() {
+    private List<String> validateTableStructures() {
         core.getLogger().info("📋 [SchemaValidator] Validando estrutura das tabelas...");
         
-        boolean allValid = true;
+        List<String> errors = new ArrayList<>();
         Map<String, Object> tables = schemaDefinition.getConfigurationSection("tables").getValues(false);
         
         for (String tableName : tables.keySet()) {
-            if (!validateTableStructure(tableName)) {
-                allValid = false;
-                
-                if (config.shouldFailOnMismatch()) {
-                    core.getLogger().severe("🚨 [SchemaValidator] FALHA CRÍTICA na tabela '" + tableName + "'. Servidor será parado.");
-                    break;
-                }
-            }
+            errors.addAll(validateTableStructure(tableName));
         }
         
-        return allValid;
+        return errors;
     }
     
     /**
      * Valida a estrutura de uma tabela específica
+     * @return Lista de erros encontrados para esta tabela
      */
-    private boolean validateTableStructure(String tableName) {
+    private List<String> validateTableStructure(String tableName) {
+        List<String> errors = new ArrayList<>();
+        
         try (Connection conn = dataManager.getConnection()) {
             DatabaseMetaData metaData = conn.getMetaData();
             
             // Verificar se a tabela existe
             try (ResultSet tables = metaData.getTables(null, null, tableName, null)) {
                 if (!tables.next()) {
-                    logValidationError(tableName, "Tabela não existe no banco de dados");
-                    return false;
+                    errors.add("Tabela '" + tableName + "': Tabela não existe no banco de dados");
+                    return errors;
                 }
             }
             
             // Validar colunas
-            if (!validateColumns(tableName, metaData)) {
-                return false;
-            }
+            errors.addAll(validateColumns(tableName, metaData));
             
             // Validar índices
-            if (!validateIndexes(tableName, metaData)) {
-                return false;
+            errors.addAll(validateIndexes(tableName, metaData));
+            
+            if (errors.isEmpty()) {
+                core.getLogger().info("✅ [SchemaValidator] Tabela '" + tableName + "' validada com sucesso");
             }
             
-            core.getLogger().info("✅ [SchemaValidator] Tabela '" + tableName + "' validada com sucesso");
-            return true;
-            
         } catch (SQLException e) {
-            core.getLogger().severe("❌ [SchemaValidator] Erro ao validar tabela '" + tableName + "': " + e.getMessage());
-            return false;
+            errors.add("Tabela '" + tableName + "': Erro ao validar: " + e.getMessage());
         }
+        
+        return errors;
     }
     
     /**
      * Valida as colunas de uma tabela
+     * @return Lista de erros encontrados
      */
-    private boolean validateColumns(String tableName, DatabaseMetaData metaData) throws SQLException {
+    private List<String> validateColumns(String tableName, DatabaseMetaData metaData) throws SQLException {
+        List<String> errors = new ArrayList<>();
         Map<String, Object> expectedColumns = schemaDefinition.getConfigurationSection("tables." + tableName + ".columns").getValues(false);
-        boolean allValid = true;
         
         try (ResultSet columns = metaData.getColumns(null, null, tableName, null)) {
             Map<String, ColumnInfo> actualColumns = new HashMap<>();
@@ -145,37 +170,52 @@ public class SchemaValidator {
             // Verificar se todas as colunas esperadas existem
             for (String expectedColumnName : expectedColumns.keySet()) {
                 if (!actualColumns.containsKey(expectedColumnName)) {
-                    logValidationError(tableName, "Coluna esperada '" + expectedColumnName + "' não encontrada");
-                    allValid = false;
+                    errors.add("Tabela '" + tableName + "': Coluna esperada '" + expectedColumnName + "' não encontrada");
                     continue;
                 }
                 
                 // Validar tipo da coluna
-                if (!validateColumnType(tableName, expectedColumnName, expectedColumns.get(expectedColumnName), actualColumns.get(expectedColumnName))) {
-                    allValid = false;
-                }
+                errors.addAll(validateColumnType(tableName, expectedColumnName, expectedColumns.get(expectedColumnName), actualColumns.get(expectedColumnName)));
             }
         }
         
-        return allValid;
+        return errors;
     }
     
     /**
      * Valida o tipo de uma coluna específica
+     * @return Lista de erros encontrados
      */
-    private boolean validateColumnType(String tableName, String columnName, Object expectedColumn, ColumnInfo actualColumn) {
-        Map<String, Object> expected = (Map<String, Object>) expectedColumn;
-        String expectedType = (String) expected.get("type");
+    private List<String> validateColumnType(String tableName, String columnName, Object expectedColumn, ColumnInfo actualColumn) {
+        List<String> errors = new ArrayList<>();
+        
+        // Compatibilidade com Bukkit 1.5.2 - MemorySection vs Map
+        String expectedType;
+        if (expectedColumn instanceof org.bukkit.configuration.ConfigurationSection) {
+            org.bukkit.configuration.ConfigurationSection section = (org.bukkit.configuration.ConfigurationSection) expectedColumn;
+            expectedType = section.getString("type");
+        } else if (expectedColumn instanceof Map) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> expected = (Map<String, Object>) expectedColumn;
+            expectedType = (String) expected.get("type");
+        } else {
+            core.getLogger().warning("⚠️ [SchemaValidator] Formato inesperado para coluna '" + columnName + "' na tabela '" + tableName + "'");
+            return errors; // Pular validação para evitar falha
+        }
+        
+        if (expectedType == null) {
+            core.getLogger().warning("⚠️ [SchemaValidator] Tipo não definido para coluna '" + columnName + "' na tabela '" + tableName + "'");
+            return errors; // Pular validação para evitar falha
+        }
         
         // Mapeamento de tipos SQL para validação
         if (!isTypeCompatible(expectedType, actualColumn.dataType)) {
-            String errorMsg = String.format("Tipo incompatível na coluna '%s': ESPERADO '%s', ENCONTRADO '%s'", 
-                columnName, expectedType, actualColumn.dataType);
-            logValidationError(tableName, errorMsg);
-            return false;
+            String errorMsg = String.format("Tabela '%s': Tipo incompatível na coluna '%s': ESPERADO '%s', ENCONTRADO '%s'", 
+                tableName, columnName, expectedType, actualColumn.dataType);
+            errors.add(errorMsg);
         }
         
-        return true;
+        return errors;
     }
     
     /**
@@ -186,7 +226,7 @@ public class SchemaValidator {
         Map<String, Set<String>> compatibleTypes = new HashMap<>();
         compatibleTypes.put("VARCHAR", new HashSet<>(Arrays.asList("VARCHAR", "CHAR", "TEXT")));
         compatibleTypes.put("INT", new HashSet<>(Arrays.asList("INT", "INTEGER", "BIGINT", "SMALLINT")));
-        compatibleTypes.put("BOOLEAN", new HashSet<>(Arrays.asList("BOOLEAN", "TINYINT")));
+        compatibleTypes.put("BOOLEAN", new HashSet<>(Arrays.asList("BOOLEAN", "TINYINT", "BIT")));
         compatibleTypes.put("TIMESTAMP", new HashSet<>(Arrays.asList("TIMESTAMP", "DATETIME")));
         compatibleTypes.put("DECIMAL", new HashSet<>(Arrays.asList("DECIMAL", "NUMERIC")));
         
@@ -207,54 +247,53 @@ public class SchemaValidator {
     
     /**
      * Valida os índices de uma tabela
+     * @return Lista de erros encontrados
      */
-    private boolean validateIndexes(String tableName, DatabaseMetaData metaData) throws SQLException {
+    private List<String> validateIndexes(String tableName, DatabaseMetaData metaData) throws SQLException {
         // Implementação básica - pode ser expandida conforme necessário
-        return true;
+        return new ArrayList<>();
     }
     
     /**
      * Valida as constraints e foreign keys
+     * @return Lista de erros encontrados
      */
-    private boolean validateConstraints() {
+    private List<String> validateConstraints() {
         core.getLogger().info("🔗 [SchemaValidator] Validando constraints e foreign keys...");
         // Implementação básica - pode ser expandida conforme necessário
-        return true;
+        return new ArrayList<>();
     }
     
     /**
      * Executa validações de integridade de dados
+     * @return Lista de erros encontrados
      */
-    private boolean validateDataIntegrity() {
+    private List<String> validateDataIntegrity() {
         core.getLogger().info("🔍 [SchemaValidator] Executando validações de integridade de dados...");
         
-        boolean allValid = true;
+        List<String> errors = new ArrayList<>();
         List<?> validationsList = schemaDefinition.getList("validations.data_integrity");
         if (validationsList == null) {
             core.getLogger().info("📋 [SchemaValidator] Nenhuma validação de integridade configurada");
-            return true;
+            return errors;
         }
         
         for (Object validationObj : validationsList) {
             @SuppressWarnings("unchecked")
             Map<String, Object> validation = (Map<String, Object>) validationObj;
-            if (!executeDataValidation(validation)) {
-                allValid = false;
-                
-                if (config.shouldFailOnMismatch()) {
-                    core.getLogger().severe("🚨 [SchemaValidator] FALHA CRÍTICA na validação de dados. Servidor será parado.");
-                    break;
-                }
-            }
+            errors.addAll(executeDataValidation(validation));
         }
         
-        return allValid;
+        return errors;
     }
     
     /**
      * Executa uma validação específica de dados
+     * @return Lista de erros encontrados
      */
-    private boolean executeDataValidation(Map<String, Object> validation) {
+    private List<String> executeDataValidation(Map<String, Object> validation) {
+        List<String> errors = new ArrayList<>();
+        
         try (Connection conn = dataManager.getConnection()) {
             String query = (String) validation.get("query");
             String severity = (String) validation.get("severity");
@@ -275,23 +314,27 @@ public class SchemaValidator {
                 }
                 
                 if (!violations.isEmpty()) {
-                    logDataIntegrityViolation(validation, violations, severity, message);
-                    return severity.equals("WARNING"); // WARNING não falha a validação
+                    String errorMsg = logDataIntegrityViolation(validation, violations, severity, message);
+                    if (severity.equals("ERROR")) {
+                        errors.add(errorMsg);
+                    }
                 }
             }
             
         } catch (SQLException e) {
-            core.getLogger().severe("❌ [SchemaValidator] Erro ao executar validação '" + validation.get("name") + "': " + e.getMessage());
-            return false;
+            String errorMsg = "Erro ao executar validação '" + validation.get("name") + "': " + e.getMessage();
+            core.getLogger().severe("❌ [SchemaValidator] " + errorMsg);
+            errors.add(errorMsg);
         }
         
-        return true;
+        return errors;
     }
     
     /**
      * Loga violações de integridade de dados
+     * @return Mensagem de erro formatada
      */
-    private void logDataIntegrityViolation(Map<String, Object> validation, List<Map<String, Object>> violations, String severity, String message) {
+    private String logDataIntegrityViolation(Map<String, Object> validation, List<Map<String, Object>> violations, String severity, String message) {
         String validationName = (String) validation.get("name");
         String description = (String) validation.get("description");
         
@@ -311,6 +354,8 @@ public class SchemaValidator {
                 core.getLogger().warning("   ⚠️ " + formattedMessage);
             }
         }
+        
+        return "Validação '" + validationName + "': " + violations.size() + " violações encontradas";
     }
     
     /**
@@ -325,36 +370,30 @@ public class SchemaValidator {
     }
     
     /**
-     * Loga erros de validação
-     */
-    private void logValidationError(String tableName, String error) {
-        core.getLogger().severe("❌ [SchemaValidator] Tabela '" + tableName + "': " + error);
-    }
-    
-    /**
      * Carrega a definição do schema do arquivo YAML
      */
     private YamlConfiguration loadSchemaDefinition() {
         try (InputStream input = getClass().getClassLoader().getResourceAsStream("schema-definition.yml")) {
             if (input == null) {
-                core.getLogger().severe("❌ [SchemaValidator] Arquivo schema-definition.yml não encontrado!");
-                return new YamlConfiguration();
+                // Lança uma exceção clara se o arquivo não for encontrado no build.
+                throw new IllegalStateException("Arquivo de recurso 'schema-definition.yml' não foi encontrado no JAR. Verifique o processo de build.");
             }
-            
+
+            // Código para ler o InputStream compatível com Java 7 e Bukkit 1.5.2
             YamlConfiguration config = new YamlConfiguration();
-            // Compatibilidade com Java 7
             StringBuilder content = new StringBuilder();
             byte[] buffer = new byte[1024];
             int bytesRead;
             while ((bytesRead = input.read(buffer)) != -1) {
-                content.append(new String(buffer, 0, bytesRead));
+                content.append(new String(buffer, 0, bytesRead, "UTF-8"));
             }
             config.loadFromString(content.toString());
             return config;
-            
+
         } catch (Exception e) {
-            core.getLogger().severe("❌ [SchemaValidator] Erro ao carregar schema-definition.yml: " + e.getMessage());
-            return new YamlConfiguration();
+            // Envolve a exceção original para dar um contexto claro.
+            // Se for um erro de parsing, a causa original será preservada.
+            throw new RuntimeException("Erro crítico ao carregar ou processar 'schema-definition.yml'. Verifique a sintaxe e o encoding (deve ser UTF-8).", e);
         }
     }
     
@@ -381,7 +420,9 @@ public class SchemaValidator {
         private final String logLevel;
         
         ValidationConfig(YamlConfiguration config) {
-            this.failOnMismatch = config.getBoolean("validation_config.fail_on_mismatch", true);
+            // Busca na configuração do banco de dados primeiro, depois no schema
+            this.failOnMismatch = config.getBoolean("database.validation.fail-on-mismatch", 
+                config.getBoolean("validation_config.fail_on_mismatch", true));
             this.logLevel = config.getString("validation_config.log_level", "DETAILED");
         }
         

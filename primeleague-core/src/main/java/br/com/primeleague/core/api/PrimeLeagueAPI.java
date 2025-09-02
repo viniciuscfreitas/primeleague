@@ -8,12 +8,15 @@ import br.com.primeleague.core.managers.MessageManager;
 import br.com.primeleague.core.managers.WhitelistManager;
 import br.com.primeleague.core.managers.EconomyManager;
 import br.com.primeleague.core.managers.DonorManager;
+import br.com.primeleague.core.managers.PermissionManager;
 import br.com.primeleague.core.services.TagManager;
 import br.com.primeleague.core.models.PlayerProfile;
+import br.com.primeleague.core.models.PlayerGroup;
 import br.com.primeleague.core.util.UUIDUtils;
 import org.bukkit.entity.Player;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 public final class PrimeLeagueAPI {
@@ -28,6 +31,7 @@ public final class PrimeLeagueAPI {
     private static EconomyManager economyManager;
     private static DonorManager donorManager;
     private static ProfileProvider provider;
+    private static PermissionManager permissionManager;
 
     private PrimeLeagueAPI() {}
 
@@ -43,6 +47,7 @@ public final class PrimeLeagueAPI {
         tagManager = core.getTagManager();
         economyManager = core.getEconomyManager();
         donorManager = core.getDonorManager();
+        permissionManager = core.getPermissionManager();
         initialized = true;
     }
 
@@ -87,6 +92,11 @@ public final class PrimeLeagueAPI {
     public static DonorManager getDonorManager() {
         ensureInit();
         return donorManager;
+    }
+    
+    public static PermissionManager getPermissionManager() {
+        ensureInit();
+        return permissionManager;
     }
 
     public static PlayerProfile getPlayerProfile(Player player) {
@@ -249,6 +259,57 @@ public final class PrimeLeagueAPI {
     public static void reloadWhitelistCache() {
         ensureInit();
         whitelistManager.reloadCache();
+    }
+    
+    // ============================================================================
+    // SISTEMA DE PERMISSÕES - API PÚBLICA
+    // ============================================================================
+    
+    /**
+     * Verifica se um jogador tem uma permissão específica.
+     * Este é o método principal para verificação de permissões no sistema.
+     * 
+     * @param player Jogador a verificar
+     * @param permissionNode Nó da permissão (ex: primeleague.admin.kick)
+     * @return true se o jogador tem a permissão, false caso contrário
+     */
+    public static boolean hasPermission(Player player, String permissionNode) {
+        ensureInit();
+        return permissionManager.hasPermission(player, permissionNode);
+    }
+    
+    /**
+     * Verifica se um jogador tem uma permissão específica pelo UUID.
+     * 
+     * @param playerUuid UUID do jogador
+     * @param permissionNode Nó da permissão
+     * @return true se o jogador tem a permissão, false caso contrário
+     */
+    public static boolean hasPermission(UUID playerUuid, String permissionNode) {
+        ensureInit();
+        return permissionManager.hasPermission(playerUuid, permissionNode);
+    }
+    
+    /**
+     * Obtém todas as permissões de um jogador.
+     * 
+     * @param playerUuid UUID do jogador
+     * @return Set de permissões do jogador
+     */
+    public static Set<String> getPlayerPermissions(UUID playerUuid) {
+        ensureInit();
+        return permissionManager.getPlayerPermissions(playerUuid);
+    }
+    
+    /**
+     * Obtém os grupos de um jogador.
+     * 
+     * @param playerUuid UUID do jogador
+     * @return Lista de grupos do jogador
+     */
+    public static List<PlayerGroup> getPlayerGroups(UUID playerUuid) {
+        ensureInit();
+        return permissionManager.getPlayerGroups(playerUuid);
     }
     
     // ============================================================================

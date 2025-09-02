@@ -1,36 +1,122 @@
 # ========================================
 # SCHEMA DEFINITION - PRIME LEAGUE
 # ========================================
-# Este arquivo é a FONTE DA VERDADE sobre como o banco DEVERIA ser
-# O SchemaValidator usa este arquivo para validar a integridade do banco
+# FONTE DA VERDADE: Baseado 100% no codigo em producao
+# AUDITORIA COMPLETA: Todos os modulos mapeados
 
 database:
   name: "primeleague"
-  version: "1.0.0"
-  description: "Schema definition for Prime League database"
+  version: "2.0.0"
+  description: "Schema definition for Prime League database - COMPLETE AUDIT COMPLETED"
 
 tables:
   # ========================================
-  # SISTEMA DE CLÃS
+  # SISTEMA DE JOGADORES (P2P) - CORE
+  # ========================================
+  player_data:
+    description: "Dados principais dos jogadores - UTILIZADA POR TODOS OS MODULOS"
+    primary_key: "player_id"
+    columns:
+      player_id:
+        type: "INT"
+        nullable: false
+        auto_increment: true
+        description: "ID unico do jogador"
+      uuid:
+        type: "VARCHAR(36)"
+        nullable: false
+        unique: true
+        description: "UUID do jogador"
+      name:
+        type: "VARCHAR(16)"
+        nullable: false
+        unique: true
+        description: "Nome do jogador"
+      elo:
+        type: "INT"
+        nullable: false
+        default: "1000"
+        description: "ELO do jogador"
+      money:
+        type: "DECIMAL(15,2)"
+        nullable: false
+        default: "0.00"
+        description: "Saldo do jogador"
+      total_playtime:
+        type: "BIGINT"
+        nullable: false
+        default: "0"
+        description: "Tempo total de jogo em milissegundos"
+      last_seen:
+        type: "TIMESTAMP"
+        nullable: false
+        default: "CURRENT_TIMESTAMP"
+        description: "Ultima vez que o jogador foi visto"
+      total_logins:
+        type: "INT"
+        nullable: false
+        default: "0"
+        description: "Total de logins do jogador"
+      status:
+        type: "ENUM('ACTIVE', 'INACTIVE', 'BANNED')"
+        nullable: false
+        default: "ACTIVE"
+        description: "Status do jogador"
+      created_at:
+        type: "TIMESTAMP"
+        nullable: false
+        default: "CURRENT_TIMESTAMP"
+        description: "Data de criacao do jogador"
+      updated_at:
+        type: "TIMESTAMP"
+        nullable: false
+        default: "CURRENT_TIMESTAMP"
+        on_update: "CURRENT_TIMESTAMP"
+        description: "Data de ultima atualizacao"
+      verification_status:
+        type: "ENUM('PENDING', 'VERIFIED', 'REJECTED')"
+        nullable: false
+        default: "PENDING"
+        description: "Status de verificacao do jogador"
+      donor_tier:
+        type: "INT"
+        nullable: false
+        default: "0"
+        description: "Nivel de doador do jogador"
+    indexes:
+      - name: "idx_player_data_uuid"
+        columns: ["uuid"]
+        unique: true
+      - name: "idx_player_data_name"
+        columns: ["name"]
+      - name: "idx_player_data_elo"
+        columns: ["elo"]
+      - name: "idx_player_data_status"
+        columns: ["status"]
+      - name: "idx_player_data_last_seen"
+        columns: ["last_seen"]
+
+  # ========================================
+  # SISTEMA DE CLAS (VALIDADO NO CODIGO)
   # ========================================
   clans:
-    description: "Tabela principal de clãs"
+    description: "Tabela principal de clas - UTILIZADA PELO CODIGO"
     primary_key: "id"
     columns:
       id:
         type: "INT"
         nullable: false
         auto_increment: true
-        description: "ID único do clã"
+        description: "ID unico do cla"
       tag:
         type: "VARCHAR(5)"
         nullable: false
         unique: true
-        description: "Tag única do clã (ex: ABC)"
+        description: "Tag unica do cla (ex: ABC)"
       name:
         type: "VARCHAR(32)"
         nullable: false
-        description: "Nome completo do clã"
+        description: "Nome completo do cla"
       founder_player_id:
         type: "INT"
         nullable: false
@@ -39,22 +125,31 @@ tables:
         type: "BOOLEAN"
         nullable: false
         default: "false"
-        description: "Se o friendly fire está habilitado"
+        description: "Se o friendly fire esta habilitado"
       penalty_points:
         type: "INT"
         nullable: false
         default: "0"
-        description: "Pontos de penalidade do clã"
+        description: "Pontos de penalidade do cla"
       ranking_points:
         type: "INT"
         nullable: false
-        default: "0"
-        description: "Pontos de ranking do clã"
+        default: "1000"
+        description: "Pontos de ranking do cla"
       creation_date:
         type: "TIMESTAMP"
         nullable: false
         default: "CURRENT_TIMESTAMP"
-        description: "Data de criação do clã"
+        description: "Data de criacao do cla"
+      active_sanction_tier:
+        type: "INT"
+        nullable: false
+        default: "0"
+        description: "Nivel de sancao ativo (UTILIZADO PELO CODIGO)"
+      sanction_expires_at:
+        type: "TIMESTAMP"
+        nullable: true
+        description: "Data de expiracao da sancao (UTILIZADO PELO CODIGO)"
     indexes:
       - name: "idx_clans_tag"
         columns: ["tag"]
@@ -65,8 +160,8 @@ tables:
         columns: ["ranking_points"]
 
   clan_players:
-    description: "Relacionamento entre jogadores e clãs"
-    primary_key: ["player_id", "clan_id"]
+    description: "Relacionamento entre jogadores e clas - UTILIZADA PELO CODIGO"
+    primary_key: "player_id"
     columns:
       player_id:
         type: "INT"
@@ -75,27 +170,27 @@ tables:
       clan_id:
         type: "INT"
         nullable: false
-        description: "ID do clã"
+        description: "ID do cla"
       role:
-        type: "ENUM('FOUNDER', 'LEADER', 'MEMBER')"
+        type: "ENUM('LEADER', 'CO_LEADER', 'OFFICER', 'MEMBER')"
         nullable: false
         default: "MEMBER"
-        description: "Role do jogador no clã (FONTE DA VERDADE)"
+        description: "Role do jogador no cla"
       join_date:
         type: "TIMESTAMP"
         nullable: false
         default: "CURRENT_TIMESTAMP"
-        description: "Data de entrada no clã"
+        description: "Data de entrada no cla"
       kills:
         type: "INT"
         nullable: false
         default: "0"
-        description: "Número de kills do jogador"
+        description: "Numero de kills do jogador"
       deaths:
         type: "INT"
         nullable: false
         default: "0"
-        description: "Número de mortes do jogador"
+        description: "Numero de mortes do jogador"
     foreign_keys:
       - column: "player_id"
         references: "player_data(player_id)"
@@ -106,106 +201,100 @@ tables:
     indexes:
       - name: "idx_clan_players_clan_id"
         columns: ["clan_id"]
-      - name: "idx_clan_players_player_id"
-        columns: ["player_id"]
       - name: "idx_clan_players_role"
         columns: ["role"]
 
-  clan_invitations:
-    description: "Convites pendentes para clãs"
+  clan_alliances:
+    description: "Aliancas entre clas - UTILIZADA PELO CODIGO"
     primary_key: "id"
     columns:
       id:
         type: "INT"
         nullable: false
         auto_increment: true
-        description: "ID único do convite"
-      clan_id:
+        description: "ID unico da alianca"
+      clan1_id:
         type: "INT"
         nullable: false
-        description: "ID do clã que está convidando"
-      inviter_player_id:
+        description: "ID do primeiro cla"
+      clan2_id:
         type: "INT"
         nullable: false
-        description: "ID do jogador que está convidando"
-      target_player_id:
-        type: "INT"
-        nullable: false
-        description: "ID do jogador convidado"
+        description: "ID do segundo cla"
       status:
-        type: "ENUM('PENDING', 'ACCEPTED', 'DENIED', 'EXPIRED')"
+        type: "ENUM('ACTIVE', 'PENDING', 'CANCELLED')"
         nullable: false
         default: "PENDING"
-        description: "Status do convite"
+        description: "Status da alianca"
       created_at:
         type: "TIMESTAMP"
         nullable: false
         default: "CURRENT_TIMESTAMP"
-        description: "Data de criação do convite"
-      expires_at:
-        type: "TIMESTAMP"
+        description: "Data de criacao da alianca"
+      created_by_player_id:
+        type: "INT"
         nullable: false
-        description: "Data de expiração do convite"
+        description: "ID do jogador que criou a alianca"
     foreign_keys:
-      - column: "clan_id"
+      - column: "clan1_id"
         references: "clans(id)"
         on_delete: "CASCADE"
-      - column: "inviter_player_id"
-        references: "player_data(player_id)"
+      - column: "clan2_id"
+        references: "clans(id)"
         on_delete: "CASCADE"
-      - column: "target_player_id"
+      - column: "created_by_player_id"
         references: "player_data(player_id)"
         on_delete: "CASCADE"
     indexes:
-      - name: "idx_clan_invitations_clan_id"
-        columns: ["clan_id"]
-      - name: "idx_clan_invitations_target"
-        columns: ["target_player_id"]
-      - name: "idx_clan_invitations_status"
+      - name: "idx_clan_alliances_clan1"
+        columns: ["clan1_id"]
+      - name: "idx_clan_alliances_clan2"
+        columns: ["clan2_id"]
+      - name: "idx_clan_alliances_status"
         columns: ["status"]
 
   clan_logs:
-    description: "Log de ações realizadas nos clãs"
+    description: "Log de acoes realizadas nos clas - UTILIZADA PELO CODIGO"
     primary_key: "id"
     columns:
       id:
         type: "INT"
         nullable: false
         auto_increment: true
-        description: "ID único do log"
+        description: "ID unico do log"
       clan_id:
         type: "INT"
         nullable: false
-        description: "ID do clã"
+        description: "ID do cla"
       actor_player_id:
         type: "INT"
         nullable: false
-        description: "ID do jogador que executou a ação"
+        description: "ID do jogador que executou a acao"
       actor_name:
         type: "VARCHAR(16)"
         nullable: false
-        description: "Nome do jogador que executou a ação"
+        description: "Nome do jogador que executou a acao"
       action_type:
         type: "INT"
         nullable: false
-        description: "Tipo da ação (ID do enum LogActionType)"
+        description: "Tipo da acao (ID do enum LogActionType)"
       target_player_id:
         type: "INT"
         nullable: true
-        description: "ID do jogador alvo da ação (se aplicável)"
+        description: "ID do jogador alvo da acao (se aplicavel)"
       target_name:
         type: "VARCHAR(16)"
         nullable: true
-        description: "Nome do jogador alvo da ação"
+        description: "Nome do jogador alvo da acao"
       details:
         type: "TEXT"
         nullable: true
-        description: "Detalhes adicionais da ação
+        description: "Detalhes adicionais da acao"
       timestamp:
         type: "TIMESTAMP"
         nullable: false
         default: "CURRENT_TIMESTAMP"
-        description: "Data/hora da ação"
+        description: "Data/hora da acao"
     foreign_keys:
       - column: "clan_id"
         references: "clans(id)"
@@ -224,122 +313,1092 @@ tables:
       - name: "idx_clan_logs_timestamp"
         columns: ["timestamp"]
 
-  # ========================================
-  # SISTEMA DE JOGADORES (P2P)
-  # ========================================
-  player_data:
-    description: "Dados principais dos jogadores"
-    primary_key: "player_id"
+  clan_event_wins:
+    description: "Vitorias de clas em eventos - UTILIZADA PELO CODIGO"
+    primary_key: "id"
     columns:
-      player_id:
+      id:
         type: "INT"
         nullable: false
         auto_increment: true
-        description: "ID único do jogador"
-      uuid:
-        type: "VARCHAR(36)"
+        description: "ID unico da vitoria"
+      clan_id:
+        type: "INT"
         nullable: false
-        unique: true
-        description: "UUID do jogador"
-      name:
-        type: "VARCHAR(16)"
+        description: "ID do cla"
+      event_name:
+        type: "VARCHAR(64)"
         nullable: false
-        description: "Nome do jogador"
-      last_seen:
+        description: "Nome do evento"
+      win_date:
         type: "TIMESTAMP"
         nullable: false
         default: "CURRENT_TIMESTAMP"
-        description: "Última vez que o jogador foi visto"
-      verification_status:
-        type: "ENUM('PENDING', 'VERIFIED', 'REJECTED')"
-        nullable: false
-        default: "PENDING"
-        description: "Status de verificação do jogador"
-      donor_tier:
-        type: "INT"
-        nullable: false
-        default: "0"
-        description: "Nível de doador do jogador"
+        description: "Data da vitoria"
+    foreign_keys:
+      - column: "clan_id"
+        references: "clans(id)"
+        on_delete: "CASCADE"
     indexes:
-      - name: "idx_player_data_uuid"
-        columns: ["uuid"]
-        unique: true
-      - name: "idx_player_data_name"
-        columns: ["name"]
-      - name: "idx_player_data_verification"
-        columns: ["verification_status"]
+      - name: "idx_clan_event_wins_clan_id"
+        columns: ["clan_id"]
+      - name: "idx_clan_event_wins_event_name"
+        columns: ["event_name"]
 
   # ========================================
-  # SISTEMA ECONÔMICO (ADMIN SHOP)
+  # SISTEMA ECONOMICO (CORE)
   # ========================================
-  player_balances:
-    description: "Saldos dos jogadores"
+  donors:
+    description: "Niveis de doador dos jogadores - UTILIZADA PELO CODIGO"
     primary_key: "player_id"
     columns:
       player_id:
         type: "INT"
         nullable: false
         description: "ID do jogador"
-      balance:
+      donor_level:
+        type: "VARCHAR(20)"
+        nullable: false
+        description: "Nivel do doador"
+      total_donation:
         type: "DECIMAL(10,2)"
         nullable: false
-        default: "100.00"
-        description: "Saldo atual do jogador"
-      last_updated:
+        default: "0.00"
+        description: "Total de doacoes"
+      last_donation_date:
+        type: "TIMESTAMP"
+        nullable: true
+        description: "Data da ultima doacao"
+      created_at:
         type: "TIMESTAMP"
         nullable: false
         default: "CURRENT_TIMESTAMP"
-        description: "Última atualização do saldo"
+        description: "Data de criacao"
+      updated_at:
+        type: "TIMESTAMP"
+        nullable: false
+        default: "CURRENT_TIMESTAMP"
+        on_update: "CURRENT_TIMESTAMP"
+        description: "Data de ultima atualizacao"
     foreign_keys:
       - column: "player_id"
         references: "player_data(player_id)"
         on_delete: "CASCADE"
     indexes:
-      - name: "idx_player_balances_player_id"
+      - name: "idx_donors_player_id"
         columns: ["player_id"]
         unique: true
 
+  economy_logs:
+    description: "Log de transacoes economicas - UTILIZADA PELO CODIGO"
+    primary_key: "id"
+    columns:
+      id:
+        type: "BIGINT"
+        nullable: false
+        auto_increment: true
+        description: "ID unico do log"
+      player_id:
+        type: "INT"
+        nullable: false
+        description: "ID do jogador"
+      change_type:
+        type: "ENUM('CREDIT', 'DEBIT', 'ADMIN_GIVE', 'ADMIN_TAKE', 'ADMIN_SET', 'PLAYER_SHOP_SALE', 'PLAYER_SHOP_PURCHASE', 'ADMIN_SHOP_PURCHASE', 'PLAYER_TRANSFER', 'CLAN_BANK_DEPOSIT', 'CLAN_BANK_WITHDRAW', 'CLAN_TAX_COLLECTION', 'SYSTEM_REWARD', 'SYSTEM_PENALTY', 'BOUNTY_REWARD', 'BOUNTY_PAYMENT', 'EVENT_REWARD', 'TOURNAMENT_PRIZE', 'OTHER')"
+        nullable: false
+        description: "Tipo da transacao"
+      amount:
+        type: "DECIMAL(15,2)"
+        nullable: false
+        description: "Valor da transacao"
+      balance_before:
+        type: "DECIMAL(15,2)"
+        nullable: false
+        description: "Saldo antes da transacao"
+      new_balance:
+        type: "DECIMAL(15,2)"
+        nullable: false
+        description: "Saldo apos a transacao"
+      reason:
+        type: "VARCHAR(100)"
+        nullable: false
+        description: "Motivo da transacao"
+      context_info:
+        type: "TEXT"
+        nullable: true
+        description: "Informacoes adicionais"
+      related_player_id:
+        type: "INT"
+        nullable: true
+        description: "ID do jogador relacionado"
+      created_at:
+        type: "TIMESTAMP"
+        nullable: false
+        default: "CURRENT_TIMESTAMP"
+        description: "Data da transacao"
+    foreign_keys:
+      - column: "player_id"
+        references: "player_data(player_id)"
+        on_delete: "CASCADE"
+      - column: "related_player_id"
+        references: "player_data(player_id)"
+        on_delete: "SET NULL"
+    indexes:
+      - name: "idx_economy_logs_player_id"
+        columns: ["player_id"]
+      - name: "idx_economy_logs_change_type"
+        columns: ["change_type"]
+      - name: "idx_economy_logs_timestamp"
+        columns: ["timestamp"]
+
+  # ========================================
+  # SISTEMA DE DISCORD (P2P)
+  # ========================================
+  discord_links:
+    description: "Vinculacoes entre Discord e Minecraft - UTILIZADA PELO CODIGO"
+    primary_key: "link_id"
+    columns:
+      link_id:
+        type: "INT"
+        nullable: false
+        auto_increment: true
+        description: "ID unico do link"
+      discord_id:
+        type: "VARCHAR(20)"
+        nullable: false
+        description: "ID do Discord"
+      player_id:
+        type: "INT"
+        nullable: false
+        unique: true
+        description: "ID do jogador"
+      is_primary:
+        type: "BOOLEAN"
+        nullable: false
+        default: "true"
+        description: "Se e o link principal"
+      verified:
+        type: "BOOLEAN"
+        nullable: false
+        default: "false"
+        description: "Se foi verificado"
+      verification_code:
+        type: "VARCHAR(8)"
+        nullable: true
+        description: "Codigo de verificacao"
+      code_expires_at:
+        type: "TIMESTAMP"
+        nullable: true
+        description: "Expiracao do codigo"
+      verified_at:
+        type: "TIMESTAMP"
+        nullable: true
+        description: "Data de verificacao"
+      created_at:
+        type: "TIMESTAMP"
+        nullable: false
+        default: "CURRENT_TIMESTAMP"
+        description: "Data de criacao"
+    foreign_keys:
+      - column: "player_id"
+        references: "player_data(player_id)"
+        on_delete: "CASCADE"
+    indexes:
+      - name: "idx_discord_links_discord_id"
+        columns: ["discord_id"]
+      - name: "idx_discord_links_player_id"
+        columns: ["player_id"]
+        unique: true
+      - name: "idx_discord_links_verified"
+        columns: ["verified"]
+      - name: "idx_discord_links_verification_code"
+        columns: ["verification_code"]
+
+  discord_users:
+    description: "Usuarios do Discord com beneficios - UTILIZADA PELO CODIGO"
+    primary_key: "discord_id"
+    columns:
+      discord_id:
+        type: "VARCHAR(20)"
+        nullable: false
+        description: "ID do Discord"
+      donor_tier:
+        type: "INT"
+        nullable: false
+        default: "0"
+        description: "Nivel de doador"
+      donor_tier_expires_at:
+        type: "TIMESTAMP"
+        nullable: true
+        description: "Expiracao do nivel de doador"
+      subscription_expires_at:
+        type: "TIMESTAMP"
+        nullable: true
+        description: "Expiracao da assinatura"
+      subscription_type:
+        type: "ENUM('BASIC', 'PREMIUM', 'VIP')"
+        nullable: true
+        description: "Tipo de assinatura"
+      created_at:
+        type: "TIMESTAMP"
+        nullable: true
+        description: "Data de criacao"
+      updated_at:
+        type: "TIMESTAMP"
+        nullable: true
+        description: "Data de ultima atualizacao"
+    indexes:
+      - name: "idx_discord_users_discord_id"
+        columns: ["discord_id"]
+        unique: true
+      - name: "idx_discord_users_donor_tier"
+        columns: ["donor_tier"]
+      - name: "idx_discord_users_subscription"
+        columns: ["subscription_expires_at"]
+
+  discord_link_history:
+    description: "Historico de mudancas de Discord - UTILIZADA PELO CODIGO"
+    primary_key: "id"
+    columns:
+      id:
+        type: "INT"
+        nullable: false
+        auto_increment: true
+        description: "ID unico do historico"
+      action:
+        type: "VARCHAR(50)"
+        nullable: false
+        description: "Acao realizada"
+      player_id:
+        type: "INT"
+        nullable: false
+        description: "ID do jogador"
+      discord_id_old:
+        type: "VARCHAR(20)"
+        nullable: true
+        description: "ID do Discord antigo"
+      discord_id_new:
+        type: "VARCHAR(20)"
+        nullable: true
+        description: "ID do Discord novo"
+      details:
+        type: "TEXT"
+        nullable: true
+        description: "Detalhes da acao"
+      ip_address:
+        type: "VARCHAR(45)"
+        nullable: true
+        description: "IP de origem"
+      created_at:
+        type: "TIMESTAMP"
+        nullable: false
+        default: "CURRENT_TIMESTAMP"
+        description: "Data da acao"
+    foreign_keys:
+      - column: "player_id"
+        references: "player_data(player_id)"
+        on_delete: "CASCADE"
+    indexes:
+      - name: "idx_discord_link_history_player_id"
+        columns: ["player_id"]
+      - name: "idx_discord_link_history_action"
+        columns: ["action"]
+      - name: "idx_discord_link_history_created_at"
+        columns: ["created_at"]
+
+  # ========================================
+  # SISTEMA DE AUTENTICACAO (P2P)
+  # ========================================
+  player_authorized_ips:
+    description: "IPs autorizados dos jogadores - UTILIZADA PELO CODIGO"
+    primary_key: "id"
+    columns:
+      id:
+        type: "INT"
+        nullable: false
+        auto_increment: true
+        description: "ID unico da autorizacao"
+      player_id:
+        type: "INT"
+        nullable: false
+        description: "ID do jogador"
+      ip_address:
+        type: "VARCHAR(45)"
+        nullable: false
+        description: "Endereco IP"
+      description:
+        type: "VARCHAR(255)"
+        nullable: true
+        description: "Descricao da autorizacao"
+      authorized_at:
+        type: "TIMESTAMP"
+        nullable: false
+        default: "CURRENT_TIMESTAMP"
+        description: "Data de autorizacao"
+    foreign_keys:
+      - column: "player_id"
+        references: "player_data(player_id)"
+        on_delete: "CASCADE"
+    indexes:
+      - name: "idx_player_authorized_ips_player_id"
+        columns: ["player_id"]
+      - name: "idx_player_authorized_ips_ip_address"
+        columns: ["ip_address"]
+      - name: "idx_player_authorized_ips_authorized_at"
+        columns: ["authorized_at"]
+
+  recovery_codes:
+    description: "Codigos de recuperacao de conta - UTILIZADA PELO CODIGO"
+    primary_key: "id"
+    columns:
+      id:
+        type: "BIGINT"
+        nullable: false
+        auto_increment: true
+        description: "ID unico do codigo"
+      player_id:
+        type: "INT"
+        nullable: false
+        description: "ID do jogador"
+      code_hash:
+        type: "VARCHAR(255)"
+        nullable: false
+        description: "Hash do codigo"
+      code_type:
+        type: "ENUM('BACKUP', 'RECOVERY')"
+        nullable: false
+        description: "Tipo do codigo"
+      ip_address:
+        type: "VARCHAR(45)"
+        nullable: true
+        description: "IP de origem"
+      discord_id:
+        type: "VARCHAR(20)"
+        nullable: true
+        description: "ID do Discord"
+      attempts:
+        type: "INT"
+        nullable: false
+        default: "0"
+        description: "Numero de tentativas"
+      status:
+        type: "ENUM('ACTIVE', 'USED', 'EXPIRED', 'BLOCKED')"
+        nullable: false
+        default: "ACTIVE"
+        description: "Status do codigo"
+      expires_at:
+        type: "TIMESTAMP"
+        nullable: true
+        description: "Data de expiracao"
+      used_at:
+        type: "TIMESTAMP"
+        nullable: true
+        description: "Data de uso"
+      created_at:
+        type: "TIMESTAMP"
+        nullable: false
+        default: "CURRENT_TIMESTAMP"
+        description: "Data de criacao"
+    foreign_keys:
+      - column: "player_id"
+        references: "player_data(player_id)"
+        on_delete: "CASCADE"
+    indexes:
+      - name: "idx_recovery_codes_player_id"
+        columns: ["player_id"]
+      - name: "idx_recovery_codes_status"
+        columns: ["status"]
+      - name: "idx_recovery_codes_code_type"
+        columns: ["code_type"]
+      - name: "idx_recovery_codes_expires_at"
+        columns: ["expires_at"]
+
+  # ========================================
+  # SISTEMA DE WHITELIST (CORE)
+  # ========================================
+  whitelist_players:
+    description: "Jogadores na whitelist - UTILIZADA PELO CODIGO"
+    primary_key: "id"
+    columns:
+      id:
+        type: "INT"
+        nullable: false
+        auto_increment: true
+        description: "ID unico da entrada"
+      player_id:
+        type: "INT"
+        nullable: false
+        description: "ID do jogador"
+      player_name:
+        type: "VARCHAR(16)"
+        nullable: false
+        description: "Nome do jogador"
+      added_by_player_id:
+        type: "INT"
+        nullable: false
+        description: "ID do jogador que adicionou"
+      added_by_name:
+        type: "VARCHAR(16)"
+        nullable: false
+        description: "Nome do jogador que adicionou"
+      reason:
+        type: "VARCHAR(255)"
+        nullable: true
+        description: "Motivo da adicao"
+      is_active:
+        type: "BOOLEAN"
+        nullable: false
+        default: "true"
+        description: "Se esta ativo"
+      added_at:
+        type: "TIMESTAMP"
+        nullable: false
+        default: "CURRENT_TIMESTAMP"
+        description: "Data de adicao"
+      removed_by_player_id:
+        type: "INT"
+        nullable: true
+        description: "ID do jogador que removeu"
+      removed_by_name:
+        type: "VARCHAR(16)"
+        nullable: true
+        description: "Nome do jogador que removeu"
+      removed_at:
+        type: "TIMESTAMP"
+        nullable: true
+        description: "Data de remocao"
+      removal_reason:
+        type: "VARCHAR(255)"
+        nullable: true
+        description: "Motivo da remocao"
+    foreign_keys:
+      - column: "player_id"
+        references: "player_data(player_id)"
+        on_delete: "CASCADE"
+      - column: "added_by_player_id"
+        references: "player_data(player_id)"
+        on_delete: "CASCADE"
+      - column: "removed_by_player_id"
+        references: "player_data(player_id)"
+        on_delete: "SET NULL"
+    indexes:
+      - name: "idx_whitelist_players_player_id"
+        columns: ["player_id"]
+      - name: "idx_whitelist_players_is_active"
+        columns: ["is_active"]
+      - name: "idx_whitelist_players_added_at"
+        columns: ["added_at"]
+
+  # ========================================
+  # SISTEMA DE ADMINISTRACAO (ADMIN)
+  # ========================================
+  punishments:
+    description: "Punicoes aplicadas aos jogadores - UTILIZADA PELO CODIGO"
+    primary_key: "id"
+    columns:
+      id:
+        type: "INT"
+        nullable: false
+        auto_increment: true
+        description: "ID unico da punicao"
+      type:
+        type: "ENUM('WARN', 'MUTE', 'KICK', 'BAN', 'TEMP_MUTE', 'TEMP_BAN')"
+        nullable: false
+        description: "Tipo da punicao"
+      target_player_id:
+        type: "INT"
+        nullable: false
+        description: "ID do jogador punido"
+      target_name:
+        type: "VARCHAR(16)"
+        nullable: false
+        description: "Nome do jogador punido"
+      author_player_id:
+        type: "INT"
+        nullable: false
+        description: "ID do jogador que aplicou"
+      author_name:
+        type: "VARCHAR(16)"
+        nullable: false
+        description: "Nome do jogador que aplicou"
+      reason:
+        type: "TEXT"
+        nullable: false
+        description: "Motivo da punicao"
+      created_at:
+        type: "TIMESTAMP"
+        nullable: false
+        default: "CURRENT_TIMESTAMP"
+        description: "Data de aplicacao"
+      expires_at:
+        type: "TIMESTAMP"
+        nullable: true
+        description: "Data de expiracao"
+      is_active:
+        type: "BOOLEAN"
+        nullable: false
+        default: "true"
+        description: "Se esta ativa"
+      pardoned_by_player_id:
+        type: "INT"
+        nullable: true
+        description: "ID do jogador que perdoou"
+      pardoned_by_name:
+        type: "VARCHAR(16)"
+        nullable: true
+        description: "Nome do jogador que perdoou"
+      pardoned_at:
+        type: "TIMESTAMP"
+        nullable: true
+        description: "Data do perdao"
+    foreign_keys:
+      - column: "target_player_id"
+        references: "player_data(player_id)"
+        on_delete: "CASCADE"
+      - column: "author_player_id"
+        references: "player_data(player_id)"
+        on_delete: "CASCADE"
+      - column: "pardoned_by_player_id"
+        references: "player_data(player_id)"
+        on_delete: "SET NULL"
+    indexes:
+      - name: "idx_punishments_target_player_id"
+        columns: ["target_player_id"]
+      - name: "idx_punishments_type"
+        columns: ["type"]
+      - name: "idx_punishments_is_active"
+        columns: ["is_active"]
+      - name: "idx_punishments_created_at"
+        columns: ["created_at"]
+
+  tickets:
+    description: "Tickets de denuncia - UTILIZADA PELO CODIGO"
+    primary_key: "id"
+    columns:
+      id:
+        type: "INT"
+        nullable: false
+        auto_increment: true
+        description: "ID unico do ticket"
+      status:
+        type: "ENUM('OPEN', 'CLAIMED', 'CLOSED')"
+        nullable: false
+        default: "OPEN"
+        description: "Status do ticket"
+      reporter_player_id:
+        type: "INT"
+        nullable: false
+        description: "ID do jogador que reportou"
+      reporter_name:
+        type: "VARCHAR(16)"
+        nullable: false
+        description: "Nome do jogador que reportou"
+      target_player_id:
+        type: "INT"
+        nullable: false
+        description: "ID do jogador reportado"
+      target_name:
+        type: "VARCHAR(16)"
+        nullable: false
+        description: "Nome do jogador reportado"
+      reason:
+        type: "TEXT"
+        nullable: false
+        description: "Motivo do report"
+      created_at:
+        type: "TIMESTAMP"
+        nullable: false
+        default: "CURRENT_TIMESTAMP"
+        description: "Data de criacao"
+      claimed_by_player_id:
+        type: "INT"
+        nullable: true
+        description: "ID do staff que reivindicou"
+      claimed_by_name:
+        type: "VARCHAR(16)"
+        nullable: true
+        description: "Nome do staff que reivindicou"
+      claimed_at:
+        type: "TIMESTAMP"
+        nullable: true
+        description: "Data de reivindicacao"
+      closed_at:
+        type: "TIMESTAMP"
+        nullable: true
+        description: "Data de fechamento"
+      resolution:
+        type: "TEXT"
+        nullable: true
+        description: "Resolucao do ticket"
+    foreign_keys:
+      - column: "reporter_player_id"
+        references: "player_data(player_id)"
+        on_delete: "CASCADE"
+      - column: "target_player_id"
+        references: "player_data(player_id)"
+        on_delete: "CASCADE"
+      - column: "claimed_by_player_id"
+        references: "player_data(player_id)"
+        on_delete: "SET NULL"
+    indexes:
+      - name: "idx_tickets_status"
+        columns: ["status"]
+      - name: "idx_tickets_reporter"
+        columns: ["reporter_player_id"]
+      - name: "idx_tickets_target"
+        columns: ["target_player_id"]
+      - name: "idx_tickets_created_at"
+        columns: ["created_at"]
+
+  staff_vanish:
+    description: "Modo vanish dos staffs - UTILIZADA PELO CODIGO"
+    primary_key: "player_id"
+    columns:
+      player_id:
+        type: "INT"
+        nullable: false
+        description: "ID do jogador"
+      enabled:
+        type: "BOOLEAN"
+        nullable: false
+        default: "false"
+        description: "Se o vanish esta ativo"
+      enabled_at:
+        type: "TIMESTAMP"
+        nullable: false
+        default: "CURRENT_TIMESTAMP"
+        description: "Data de ativacao"
+      enabled_by_player_id:
+        type: "INT"
+        nullable: false
+        description: "ID do jogador que ativou"
+    foreign_keys:
+      - column: "player_id"
+        references: "player_data(player_id)"
+        on_delete: "CASCADE"
+      - column: "enabled_by_player_id"
+        references: "player_data(player_id)"
+        on_delete: "CASCADE"
+    indexes:
+      - name: "idx_staff_vanish_player_id"
+        columns: ["player_id"]
+        unique: true
+      - name: "idx_staff_vanish_enabled"
+        columns: ["enabled"]
+
+  # ========================================
+  # SISTEMA DE CHAT (CHAT)
+  # ========================================
+  chat_logs:
+    description: "Log de mensagens do chat - UTILIZADA PELO CODIGO"
+    primary_key: "id"
+    columns:
+      id:
+        type: "INT"
+        nullable: false
+        auto_increment: true
+        description: "ID unico do log"
+      channel_type:
+        type: "ENUM('GLOBAL','LOCAL','CLAN','ALLY','PRIVATE','STAFF')"
+        nullable: false
+        description: "Tipo do canal"
+      sender_player_id:
+        type: "INT"
+        nullable: false
+        description: "ID do jogador que enviou"
+      sender_name:
+        type: "VARCHAR(16)"
+        nullable: false
+        description: "Nome do jogador que enviou"
+      receiver_player_id:
+        type: "INT"
+        nullable: true
+        description: "ID do jogador que recebeu (DM)"
+      receiver_name:
+        type: "VARCHAR(16)"
+        nullable: true
+        description: "Nome do jogador que recebeu (DM)"
+      clan_id:
+        type: "INT"
+        nullable: true
+        description: "ID do cla (chat de cla)"
+      message_content:
+        type: "TEXT"
+        nullable: false
+        description: "Conteudo da mensagem"
+      timestamp:
+        type: "TIMESTAMP"
+        nullable: false
+        default: "CURRENT_TIMESTAMP"
+        description: "Data/hora da mensagem"
+    foreign_keys:
+      - column: "sender_player_id"
+        references: "player_data(player_id)"
+        on_delete: "CASCADE"
+      - column: "receiver_player_id"
+        references: "player_data(player_id)"
+        on_delete: "SET NULL"
+      - column: "clan_id"
+        references: "clans(id)"
+        on_delete: "SET NULL"
+    indexes:
+      - name: "idx_chat_logs_channel_type"
+        columns: ["channel_type"]
+      - name: "idx_chat_logs_sender"
+        columns: ["sender_player_id"]
+      - name: "idx_chat_logs_timestamp"
+        columns: ["timestamp"]
+      - name: "idx_chat_logs_clan_id"
+        columns: ["clan_id"]
+
+  # ========================================
+  # SISTEMA DE NOTIFICACOES (P2P)
+  # ========================================
+  server_notifications:
+    description: "Notificacoes do servidor - UTILIZADA PELO CODIGO"
+    primary_key: "id"
+    columns:
+      id:
+        type: "INT"
+        nullable: false
+        auto_increment: true
+        description: "ID unico da notificacao"
+      action_type:
+        type: "VARCHAR(100)"
+        nullable: false
+        description: "Tipo da acao"
+      payload:
+        type: "TEXT"
+        nullable: false
+        description: "Dados da notificacao"
+      created_at:
+        type: "TIMESTAMP"
+        nullable: false
+        default: "CURRENT_TIMESTAMP"
+        description: "Data de criacao"
+    indexes:
+      - name: "idx_server_notifications_action_type"
+        columns: ["action_type"]
+      - name: "idx_server_notifications_created_at"
+        columns: ["created_at"]
+
+  # ========================================
+  # SISTEMA DE GRUPOS E PERMISSÃ•ES (CORE)
+  # ========================================
+  permission_groups:
+    description: "Grupos de permissÃµes do sistema - NOVO SISTEMA"
+    primary_key: "group_id"
+    columns:
+      group_id:
+        type: "INT"
+        nullable: false
+        auto_increment: true
+        description: "ID Ãºnico do grupo"
+      group_name:
+        type: "VARCHAR(32)"
+        nullable: false
+        unique: true
+        description: "Nome Ãºnico do grupo (ex: admin, mod, helper)"
+      display_name:
+        type: "VARCHAR(64)"
+        nullable: false
+        description: "Nome de exibiÃ§Ã£o do grupo"
+      description:
+        type: "TEXT"
+        nullable: true
+        description: "DescriÃ§Ã£o do grupo"
+      priority:
+        type: "INT"
+        nullable: false
+        default: "0"
+        description: "Prioridade do grupo (maior = mais importante)"
+      is_default:
+        type: "BOOLEAN"
+        nullable: false
+        default: "false"
+        description: "Se Ã© o grupo padrÃ£o para novos jogadores"
+      is_active:
+        type: "BOOLEAN"
+        nullable: false
+        default: "true"
+        description: "Se o grupo estÃ¡ ativo"
+      created_at:
+        type: "TIMESTAMP"
+        nullable: false
+        default: "CURRENT_TIMESTAMP"
+        description: "Data de criaÃ§Ã£o"
+      updated_at:
+        type: "TIMESTAMP"
+        nullable: false
+        default: "CURRENT_TIMESTAMP"
+        on_update: "CURRENT_TIMESTAMP"
+        description: "Data de Ãºltima atualizaÃ§Ã£o"
+    indexes:
+      - name: "idx_permission_groups_name"
+        columns: ["group_name"]
+        unique: true
+      - name: "idx_permission_groups_priority"
+        columns: ["priority"]
+      - name: "idx_permission_groups_is_default"
+        columns: ["is_default"]
+      - name: "idx_permission_groups_is_active"
+        columns: ["is_active"]
+
+  group_permissions:
+    description: "PermissÃµes associadas aos grupos - NOVO SISTEMA"
+    primary_key: "id"
+    columns:
+      id:
+        type: "INT"
+        nullable: false
+        auto_increment: true
+        description: "ID Ãºnico da permissÃ£o"
+      group_id:
+        type: "INT"
+        nullable: false
+        description: "ID do grupo"
+      permission_node:
+        type: "VARCHAR(128)"
+        nullable: false
+        description: "NÃ³ da permissÃ£o (ex: primeleague.admin.kick)"
+      is_granted:
+        type: "BOOLEAN"
+        nullable: false
+        default: "true"
+        description: "Se a permissÃ£o Ã© concedida (true) ou negada (false)"
+      created_at:
+        type: "TIMESTAMP"
+        nullable: false
+        default: "CURRENT_TIMESTAMP"
+        description: "Data de criaÃ§Ã£o"
+      created_by_player_id:
+        type: "INT"
+        nullable: true
+        description: "ID do jogador que criou a permissÃ£o"
+    foreign_keys:
+      - column: "group_id"
+        references: "permission_groups(group_id)"
+        on_delete: "CASCADE"
+      - column: "created_by_player_id"
+        references: "player_data(player_id)"
+        on_delete: "SET NULL"
+    indexes:
+      - name: "idx_group_permissions_group_id"
+        columns: ["group_id"]
+      - name: "idx_group_permissions_node"
+        columns: ["permission_node"]
+      - name: "idx_group_permissions_group_node"
+        columns: ["group_id", "permission_node"]
+        unique: true
+
+  player_groups:
+    description: "AssociaÃ§Ã£o entre jogadores e grupos - NOVO SISTEMA"
+    primary_key: "id"
+    columns:
+      id:
+        type: "INT"
+        nullable: false
+        auto_increment: true
+        description: "ID Ãºnico da associaÃ§Ã£o"
+      player_id:
+        type: "INT"
+        nullable: false
+        description: "ID do jogador"
+      group_id:
+        type: "INT"
+        nullable: false
+        description: "ID do grupo"
+      is_primary:
+        type: "BOOLEAN"
+        nullable: false
+        default: "false"
+        description: "Se Ã© o grupo primÃ¡rio do jogador"
+      expires_at:
+        type: "TIMESTAMP"
+        nullable: true
+        default: "NULL"
+        description: "Data de expiraÃ§Ã£o da associaÃ§Ã£o (NULL = permanente)"
+      added_at:
+        type: "TIMESTAMP"
+        nullable: false
+        default: "CURRENT_TIMESTAMP"
+        description: "Data de adiÃ§Ã£o ao grupo"
+      added_by_player_id:
+        type: "INT"
+        nullable: true
+        description: "ID do jogador que adicionou"
+      reason:
+        type: "VARCHAR(255)"
+        nullable: true
+        description: "Motivo da adiÃ§Ã£o ao grupo"
+    foreign_keys:
+      - column: "player_id"
+        references: "player_data(player_id)"
+        on_delete: "CASCADE"
+      - column: "group_id"
+        references: "permission_groups(group_id)"
+        on_delete: "CASCADE"
+      - column: "added_by_player_id"
+        references: "player_data(player_id)"
+        on_delete: "SET NULL"
+    indexes:
+      - name: "idx_player_groups_player_id"
+        columns: ["player_id"]
+      - name: "idx_player_groups_group_id"
+        columns: ["group_id"]
+      - name: "idx_player_groups_player_group"
+        columns: ["player_id", "group_id"]
+        unique: true
+      - name: "idx_player_groups_is_primary"
+        columns: ["is_primary"]
+      - name: "idx_player_groups_expires_at"
+        columns: ["expires_at"]
+
+  permission_logs:
+    description: "Log de mudanÃ§as nas permissÃµes - NOVO SISTEMA"
+    primary_key: "id"
+    columns:
+      id:
+        type: "INT"
+        nullable: false
+        auto_increment: true
+        description: "ID Ãºnico do log"
+      action_type:
+        type: "ENUM('GROUP_CREATED', 'GROUP_UPDATED', 'GROUP_DELETED', 'PERMISSION_ADDED', 'PERMISSION_REMOVED', 'PLAYER_ADDED_TO_GROUP', 'PLAYER_REMOVED_FROM_GROUP', 'PLAYER_GROUP_UPDATED')"
+        nullable: false
+        description: "Tipo da aÃ§Ã£o realizada"
+      actor_player_id:
+        type: "INT"
+        nullable: false
+        description: "ID do jogador que executou a aÃ§Ã£o"
+      actor_name:
+        type: "VARCHAR(16)"
+        nullable: false
+        description: "Nome do jogador que executou a aÃ§Ã£o"
+      target_group_id:
+        type: "INT"
+        nullable: true
+        description: "ID do grupo afetado"
+      target_player_id:
+        type: "INT"
+        nullable: true
+        description: "ID do jogador afetado"
+      permission_node:
+        type: "VARCHAR(128)"
+        nullable: true
+        description: "NÃ³ da permissÃ£o afetada"
+      old_value:
+        type: "TEXT"
+        nullable: true
+        description: "Valor anterior"
+      new_value:
+        type: "TEXT"
+        nullable: true
+        description: "Novo valor"
+      reason:
+        type: "VARCHAR(255)"
+        nullable: true
+        description: "Motivo da mudanÃ§a"
+      ip_address:
+        type: "VARCHAR(45)"
+        nullable: true
+        description: "IP de origem"
+      created_at:
+        type: "TIMESTAMP"
+        nullable: false
+        default: "CURRENT_TIMESTAMP"
+        description: "Data/hora da aÃ§Ã£o"
+    foreign_keys:
+      - column: "actor_player_id"
+        references: "player_data(player_id)"
+        on_delete: "CASCADE"
+      - column: "target_group_id"
+        references: "permission_groups(group_id)"
+        on_delete: "SET NULL"
+      - column: "target_player_id"
+        references: "player_data(player_id)"
+        on_delete: "SET NULL"
+    indexes:
+      - name: "idx_permission_logs_action_type"
+        columns: ["action_type"]
+      - name: "idx_permission_logs_actor"
+        columns: ["actor_player_id"]
+      - name: "idx_permission_logs_target_group"
+        columns: ["target_group_id"]
+      - name: "idx_permission_logs_target_player"
+        columns: ["target_player_id"]
+      - name: "idx_permission_logs_created_at"
+        columns: ["created_at"]
+
 # ========================================
-# VALIDAÇÕES ESPECÍFICAS
+# VALIDACOES ESPECIFICAS
 # ========================================
 validations:
-  # Validações de integridade de dados
   data_integrity:
     - name: "clan_founder_must_be_member"
-      description: "Todo clã deve ter seu fundador como membro"
+      description: "Todo cla deve ter seu fundador como membro"
       query: |
         SELECT c.id, c.tag, c.founder_player_id
         FROM clans c
         LEFT JOIN clan_players cp ON c.id = cp.clan_id AND cp.player_id = c.founder_player_id
         WHERE cp.player_id IS NULL
       severity: "ERROR"
-      message: "Clã {tag} (ID: {id}) não tem seu fundador como membro"
+      message: "Cla {tag} (ID: {id}) nao tem seu fundador como membro"
 
     - name: "no_orphaned_clan_players"
-      description: "Não deve haver jogadores em clãs inexistentes"
+      description: "Nao deve haver jogadores em clas inexistentes"
       query: |
         SELECT cp.player_id, cp.clan_id
         FROM clan_players cp
-        LEFT JOIN clan_players c ON cp.clan_id = c.id
+        LEFT JOIN clans c ON cp.clan_id = c.id
         WHERE c.id IS NULL
       severity: "ERROR"
-      message: "Jogador {player_id} está em clã inexistente {clan_id}"
+      message: "Jogador {player_id} esta em cla inexistente {clan_id}"
 
     - name: "no_orphaned_player_references"
-      description: "Não deve haver referências a jogadores inexistentes"
+      description: "Nao deve haver referencias a jogadores inexistentes"
       query: |
         SELECT cp.player_id, cp.clan_id
         FROM clan_players cp
         LEFT JOIN player_data pd ON cp.player_id = pd.player_id
         WHERE pd.player_id IS NULL
-      severity: "Jogador {player_id} referenciado em clã {clan_id} não existe"
+      severity: "ERROR"
+      message: "Jogador {player_id} referenciado em cla {clan_id} nao existe"
+
+    - name: "discord_links_player_exists"
+      description: "Todos os links do Discord devem referenciar jogadores existentes"
+      query: |
+        SELECT dl.link_id, dl.player_id
+        FROM discord_links dl
+        LEFT JOIN player_data pd ON dl.player_id = pd.player_id
+        WHERE pd.player_id IS NULL
+      severity: "ERROR"
+      message: "Link Discord {link_id} referencia jogador inexistente {player_id}"
+
+    - name: "donors_player_exists"
+      description: "Todos os doadores devem referenciar jogadores existentes"
+      query: |
+        SELECT d.player_id
+        FROM donors d
+        LEFT JOIN player_data pd ON d.player_id = pd.player_id
+        WHERE pd.player_id IS NULL
+      severity: "ERROR"
+      message: "Doador {player_id} nao existe na tabela player_data"
+
+    - name: "punishments_target_exists"
+      description: "Todas as punicoes devem referenciar jogadores existentes"
+      query: |
+        SELECT p.id, p.target_player_id
+        FROM punishments p
+        LEFT JOIN player_data pd ON p.target_player_id = pd.player_id
+        WHERE pd.player_id IS NULL
+      severity: "ERROR"
+      message: "Punicao {id} referencia jogador inexistente {target_player_id}"
 
 # ========================================
-# CONFIGURAÇÕES DE VALIDAÇÃO
+# CONFIGURACOES DE VALIDACAO
 # ========================================
 validation_config:
-  fail_on_mismatch: true  # Parar servidor se houver inconsistências
+  fail_on_mismatch: true  # Parar servidor se houver inconsistencias
   log_level: "DETAILED"   # NONE, ERRORS, DETAILED
   auto_fix: false         # Tentar corrigir automaticamente (perigoso)
-  health_check_interval: 3600  # Verificação de saúde a cada 1 hora
-
+  health_check_interval: 3600  # Verificacao de saude a cada 1 hora

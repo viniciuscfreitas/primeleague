@@ -28,6 +28,7 @@ import br.com.primeleague.core.validation.SchemaValidator;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.UUID;
+import java.util.List;
 import java.util.logging.Logger;
 
 public final class PrimeLeagueCore extends JavaPlugin {
@@ -82,15 +83,13 @@ public final class PrimeLeagueCore extends JavaPlugin {
         // O GUARDIÃO DO SCHEMA - Valida integridade antes de continuar
         this.schemaValidator = new SchemaValidator(this, this.dataManager);
         
-        if (!this.schemaValidator.validateOnStartup()) {
-            if (getConfig().getBoolean("database.validation.fail-on-mismatch", true)) {
-                logger.severe("🚨 [SchemaValidator] FALHA CRÍTICA na validação do banco de dados!");
-                logger.severe("🚨 [SchemaValidator] O servidor será parado para prevenir corrupção de dados.");
-                getServer().shutdown();
-                return;
-            } else {
-                logger.warning("⚠️ [SchemaValidator] Problemas detectados no banco de dados, mas o servidor continuará.");
-            }
+        // O SchemaValidator agora retorna uma lista de erros e gerencia internamente o comportamento
+        List<String> validationErrors = this.schemaValidator.validateOnStartup();
+        
+        // Log adicional para desenvolvimento
+        if (!validationErrors.isEmpty()) {
+            logger.warning("⚠️ [PrimeLeagueCore] SchemaValidator encontrou " + validationErrors.size() + " problemas.");
+            logger.warning("⚠️ [PrimeLeagueCore] Verifique os logs do SchemaValidator para detalhes.");
         }
         
         // Inicializa API HTTP (para integração com bot Discord)

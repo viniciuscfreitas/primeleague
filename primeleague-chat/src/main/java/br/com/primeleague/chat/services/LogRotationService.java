@@ -238,7 +238,7 @@ public class LogRotationService {
         line.append("[").append(rs.getTimestamp("timestamp")).append("] ");
         line.append("Player: ").append(rs.getString("player_name")).append(" ");
         line.append("Channel: ").append(rs.getString("channel")).append(" ");
-        line.append("Message: ").append(rs.getString("message"));
+        line.append("Message: ").append(rs.getString("message_content"));
         return line.toString();
     }
     

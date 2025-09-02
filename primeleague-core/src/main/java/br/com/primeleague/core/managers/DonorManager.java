@@ -11,6 +11,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.math.BigDecimal;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
@@ -278,11 +279,11 @@ public final class DonorManager {
                 String uuidStr = rs.getString("uuid");
                 String name = rs.getString("name");
                 String levelKey = rs.getString("donor_level");
-                double totalDonation = rs.getDouble("total_donation");
+                BigDecimal totalDonation = rs.getBigDecimal("total_donation");
                 
                 DonorLevel level = donorLevels.get(levelKey);
                 if (level != null) {
-                    donors.add(new DonorInfo(UUID.fromString(uuidStr), name, level, totalDonation));
+                    donors.add(new DonorInfo(UUID.fromString(uuidStr), name, level, totalDonation.doubleValue()));
                 }
             }
             

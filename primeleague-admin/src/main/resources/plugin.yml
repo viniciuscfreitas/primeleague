@@ -68,6 +68,14 @@ commands:
     description: Gerencia a whitelist centralizada V2
     usage: /whitelist <add|remove|list|stats|reload> [jogador] [motivo]
     permission: primeleague.admin.whitelist
+  group:
+    description: Gerencia grupos de permissões
+    usage: /group <create|addperm|removeperm|addplayer|removeplayer|list|info|players|delete> [parâmetros]
+    permission: primeleague.admin.groups
+  permission:
+    description: Gerencia permissões individuais de jogadores
+    usage: /permission <check|list|groups|reload|reloadall> [jogador] [permissão]
+    permission: primeleague.admin.permissions
 
 permissions:
   primeleague.report:
@@ -111,4 +119,10 @@ permissions:
     default: op
   primeleague.admin.whitelist:
     description: Permite gerenciar a whitelist centralizada
+    default: op
+  primeleague.admin.groups:
+    description: Permite gerenciar grupos de permissões
+    default: op
+  primeleague.admin.permissions:
+    description: Permite gerenciar permissões individuais
     default: op
