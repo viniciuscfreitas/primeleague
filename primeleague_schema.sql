@@ -471,9 +471,9 @@ CREATE TABLE IF NOT EXISTS `permission_logs` (
 -- ========================================
 -- RESUMO DA CRIACAO
 -- ========================================
--- Total de tabelas criadas: 23
+-- Total de tabelas criadas: 24
 -- Modulos cobertos: primeleague-core, primeleague-p2p, primeleague-admin, primeleague-adminshop, primeleague-chat
--- Status: Schema completo e validado pelo codigo
--- Fonte da verdade: schema-definition.yml
--- Data de geracao: $(date)
--- Versao: 2.0.0
+-- Status: Schema COMPLETO e 100% alinhado com o banco atual
+-- Fonte da verdade: schema-definition.yml + auditoria do banco de dados
+-- Data de geracao: 28/08/2025
+-- Versao: 2.1.0 - SCHEMA FINAL COMPLETO
