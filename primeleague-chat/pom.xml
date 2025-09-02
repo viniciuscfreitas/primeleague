@@ -22,8 +22,6 @@
             <groupId>br.com.primeleague</groupId>
             <artifactId>primeleague-api</artifactId>
             <version>1.0.0</version>
-            <scope>system</scope>
-            <systemPath>${project.basedir}/../primeleague-api/target/primeleague-api-1.0.0.jar</systemPath>
         </dependency>
 
         <!-- PrimeLeague Core -->
@@ -31,8 +29,6 @@
             <groupId>br.com.primeleague</groupId>
             <artifactId>primeleague-core</artifactId>
             <version>1.0.0</version>
-            <scope>system</scope>
-            <systemPath>${project.basedir}/../primeleague-core/target/primeleague-core-1.0.0.jar</systemPath>
         </dependency>
 
         <!-- Bukkit API 1.5.2 - dependência local -->
@@ -78,7 +74,7 @@
                 </configuration>
             </plugin>
 
-            <!-- Empacotar dependências no JAR do plugin, relocando Hikari -->
+            <!-- Empacotar dependências no JAR do plugin -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
@@ -90,23 +86,14 @@
                             <goal>shade</goal>
                         </goals>
                         <configuration>
-                            <minimizeJar>true</minimizeJar>
-                            <!-- Incluir explicitamente o primeleague-api -->
                             <artifactSet>
                                 <includes>
                                     <include>br.com.primeleague:primeleague-api</include>
-                                    <include>com.zaxxer:HikariCP-java7</include>
-                                    <include>org.slf4j:slf4j-api</include>
-                                    <include>mysql:mysql-connector-java</include>
-                                    <include>org.slf4j:slf4j-nop</include>
                                 </includes>
                             </artifactSet>
-                            <!-- Removendo relocations para evitar conflitos de classe -->
                             <transformers>
-                                <!-- Preserva META-INF/services (ex.: java.sql.Driver) ao sombrear o driver -->
-                                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>br.com.primeleague.core.PrimeLeagueCore</mainClass>
+                                    <mainClass>br.com.primeleague.chat.PrimeLeagueChat</mainClass>
                                 </transformer>
                             </transformers>
                         </configuration>

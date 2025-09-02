@@ -1,6 +1,7 @@
 package br.com.primeleague.chat.services;
 
 import br.com.primeleague.chat.PrimeLeagueChat;
+import br.com.primeleague.core.api.PrimeLeagueAPI;
 import org.bukkit.entity.Player;
 import java.util.*;
 import java.util.regex.Pattern;
@@ -86,7 +87,7 @@ public class AdvancedFilterService {
      */
     public FilterResult checkMessage(Player player, String message) {
         // Verificar se o jogador tem bypass de filtros
-        if (player.hasPermission("primeleague.chat.bypass_filters")) {
+        if (PrimeLeagueAPI.hasPermission(player, "primeleague.chat.bypass_filters")) {
             return new FilterResult(true, "Bypass permitido", null);
         }
         

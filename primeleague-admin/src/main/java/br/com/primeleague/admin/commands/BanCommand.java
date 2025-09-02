@@ -44,7 +44,7 @@ public class BanCommand implements CommandExecutor {
     @Override
     public boolean onCommand(final CommandSender sender, Command command, String label, String[] args) {
         // Verificar permissao
-        if (!sender.hasPermission("primeleague.admin.ban")) {
+        if (!PrimeLeagueAPI.hasPermission((Player) sender, "primeleague.admin.ban")) {
             PrimeLeagueAPI.sendNoPermission((Player) sender);
             return true;
         }
@@ -233,7 +233,7 @@ public class BanCommand implements CommandExecutor {
      */
     private void broadcastToStaff(String message) {
         for (Player player : Bukkit.getOnlinePlayers()) {
-            if (player.hasPermission("primeleague.admin.notify")) {
+            if (PrimeLeagueAPI.hasPermission(player, "primeleague.admin.notify")) {
                 player.sendMessage(message);
             }
         }

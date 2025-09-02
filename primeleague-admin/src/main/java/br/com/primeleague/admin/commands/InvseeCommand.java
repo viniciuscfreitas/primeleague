@@ -1,6 +1,7 @@
 package br.com.primeleague.admin.commands;
 
 import br.com.primeleague.admin.managers.AdminManager;
+import br.com.primeleague.core.api.PrimeLeagueAPI;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
@@ -27,7 +28,7 @@ public class InvseeCommand implements CommandExecutor {
             return true;
         }
 
-        if (!sender.hasPermission("primeleague.admin.invsee")) {
+        if (!PrimeLeagueAPI.hasPermission((Player) sender, "primeleague.admin.invsee")) {
             sender.sendMessage(ChatColor.RED + "Você não tem permissão para usar este comando!");
             return true;
         }
@@ -133,13 +134,13 @@ public class InvseeCommand implements CommandExecutor {
 
         // Slot 51: Permissões
         String permissions = "";
-        if (target.hasPermission("primeleague.admin")) {
+        if (PrimeLeagueAPI.hasPermission(target, "primeleague.admin")) {
             permissions += ChatColor.RED + "Admin\n";
         }
-        if (target.hasPermission("primeleague.mod")) {
+        if (PrimeLeagueAPI.hasPermission(target, "primeleague.mod")) {
             permissions += ChatColor.YELLOW + "Moderador\n";
         }
-        if (target.hasPermission("primeleague.helper")) {
+        if (PrimeLeagueAPI.hasPermission(target, "primeleague.helper")) {
             permissions += ChatColor.BLUE + "Helper\n";
         }
 
@@ -176,7 +177,7 @@ public class InvseeCommand implements CommandExecutor {
             author.getName() + " usou " + action + " em " + target.getName();
 
         for (Player player : Bukkit.getOnlinePlayers()) {
-            if (player.hasPermission("primeleague.admin.notifications") &&
+            if (PrimeLeagueAPI.hasPermission(player, "primeleague.admin.notifications") &&
                 !player.equals(author) && !player.equals(target)) {
                 player.sendMessage(notification);
             }

@@ -37,7 +37,7 @@ public class P2PAdminCommand implements CommandExecutor {
         Player player = (Player) sender;
         
         // Verificar permissão
-        if (!player.hasPermission("primeleague.p2p.admin")) {
+        if (!PrimeLeagueAPI.hasPermission(player, "primeleague.p2p.admin")) {
             PrimeLeagueAPI.sendNoPermission(player);
             return true;
         }
@@ -362,7 +362,7 @@ public class P2PAdminCommand implements CommandExecutor {
      */
     private void broadcastToStaff(String message) {
         for (Player player : Bukkit.getOnlinePlayers()) {
-            if (player.hasPermission("primeleague.p2p.admin")) {
+            if (PrimeLeagueAPI.hasPermission(player, "primeleague.p2p.admin")) {
                 player.sendMessage(message);
             }
         }

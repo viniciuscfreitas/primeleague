@@ -28,7 +28,7 @@ public class InspectCommand implements CommandExecutor {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (!sender.hasPermission("primeleague.admin.inspect")) {
+        if (!PrimeLeagueAPI.hasPermission((Player) sender, "primeleague.admin.inspect")) {
             sender.sendMessage(ChatColor.RED + "Você não tem permissão para usar este comando!");
             return true;
         }
@@ -261,16 +261,16 @@ public class InspectCommand implements CommandExecutor {
         sender.sendMessage(ChatColor.YELLOW + "=== PERMISSÕES ===");
 
         String permissions = "";
-        if (target.hasPermission("primeleague.admin")) {
+        if (PrimeLeagueAPI.hasPermission(target, "primeleague.admin")) {
             permissions += ChatColor.RED + "Admin\n";
         }
-        if (target.hasPermission("primeleague.mod")) {
+        if (PrimeLeagueAPI.hasPermission(target, "primeleague.mod")) {
             permissions += ChatColor.YELLOW + "Moderador\n";
         }
-        if (target.hasPermission("primeleague.helper")) {
+        if (PrimeLeagueAPI.hasPermission(target, "primeleague.helper")) {
             permissions += ChatColor.BLUE + "Helper\n";
         }
-        if (target.hasPermission("primeleague.vip")) {
+        if (PrimeLeagueAPI.hasPermission(target, "primeleague.vip")) {
             permissions += ChatColor.GOLD + "VIP\n";
         }
 
@@ -304,7 +304,7 @@ public class InspectCommand implements CommandExecutor {
             author.getName() + " usou " + action + " em " + targetName;
 
         for (Player player : Bukkit.getOnlinePlayers()) {
-            if (player.hasPermission("primeleague.admin.notifications") &&
+            if (PrimeLeagueAPI.hasPermission(player, "primeleague.admin.notifications") &&
                 !player.equals(author)) {
                 player.sendMessage(notification);
             }

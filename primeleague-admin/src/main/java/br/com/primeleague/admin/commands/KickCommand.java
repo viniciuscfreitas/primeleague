@@ -30,7 +30,7 @@ public class KickCommand extends BasePunishmentCommand implements CommandExecuto
     @Override
     public boolean onCommand(final CommandSender sender, Command command, String label, String[] args) {
         // Verificar permissão
-        if (!sender.hasPermission("primeleague.admin.kick")) {
+        if (!PrimeLeagueAPI.hasPermission((Player) sender, "primeleague.admin.kick")) {
             PrimeLeagueAPI.sendNoPermission((Player) sender);
             return true;
         }

@@ -3,6 +3,7 @@ package br.com.primeleague.chat.commands;
 import br.com.primeleague.chat.PrimeLeagueChat;
 import br.com.primeleague.chat.services.ChannelManager;
 import br.com.primeleague.chat.services.ChannelManager.ChatChannel;
+import br.com.primeleague.core.api.PrimeLeagueAPI;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -33,7 +34,7 @@ public class ClanChatCommand implements CommandExecutor {
         
         Player player = (Player) sender;
         
-        if (!player.hasPermission("primeleague.chat.clan")) {
+        if (!PrimeLeagueAPI.hasPermission(player, "primeleague.chat.clan")) {
             player.sendMessage("§cVocê não tem permissão para usar o chat de clã.");
             return true;
         }

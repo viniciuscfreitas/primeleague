@@ -168,7 +168,7 @@ public class ClanCommand implements CommandExecutor {
      * Manipula o comando /clan create.
      */
     private void handleCreate(Player player, String[] args) {
-        if (!player.hasPermission("primeleague.clans.create")) {
+        if (!PrimeLeagueAPI.hasPermission(player, "primeleague.clans.create")) {
             player.sendMessage(ChatColor.RED + "Você não tem permissão para criar clãs!");
             return;
         }
@@ -214,7 +214,7 @@ public class ClanCommand implements CommandExecutor {
      * REFATORADO: Usa o novo método assíncrono sendInvitationAsync com hardening.
      */
     private void handleInvite(Player player, String[] args) {
-        if (!player.hasPermission("primeleague.clans.invite")) {
+        if (!PrimeLeagueAPI.hasPermission(player, "primeleague.clans.invite")) {
             player.sendMessage(ChatColor.RED + "Você não tem permissão para convidar jogadores!");
             return;
         }
@@ -265,7 +265,7 @@ public class ClanCommand implements CommandExecutor {
      * Manipula o comando /clan kick.
      */
     private void handleKick(Player player, String[] args) {
-        if (!player.hasPermission("primeleague.clans.kick")) {
+        if (!PrimeLeagueAPI.hasPermission(player, "primeleague.clans.kick")) {
             player.sendMessage(ChatColor.RED + "Você não tem permissão para expulsar membros!");
             return;
         }
@@ -340,7 +340,7 @@ public class ClanCommand implements CommandExecutor {
      * Manipula o comando /clan promote.
      */
     private void handlePromote(Player player, String[] args) {
-        if (!player.hasPermission("primeleague.clans.promote")) {
+        if (!PrimeLeagueAPI.hasPermission(player, "primeleague.clans.promote")) {
             player.sendMessage(ChatColor.RED + "Você não tem permissão para promover membros!");
             return;
         }
@@ -415,7 +415,7 @@ public class ClanCommand implements CommandExecutor {
      * Manipula o comando /clan demote.
      */
     private void handleDemote(Player player, String[] args) {
-        if (!player.hasPermission("primeleague.clans.demote")) {
+        if (!PrimeLeagueAPI.hasPermission(player, "primeleague.clans.demote")) {
             player.sendMessage(ChatColor.RED + "Você não tem permissão para rebaixar membros!");
             return;
         }
@@ -490,7 +490,7 @@ public class ClanCommand implements CommandExecutor {
      * Manipula o comando /clan setfounder.
      */
     private void handleSetFounder(Player player, String[] args) {
-        if (!player.hasPermission("primeleague.clans.setfounder")) {
+        if (!PrimeLeagueAPI.hasPermission(player, "primeleague.clans.setfounder")) {
             player.sendMessage(ChatColor.RED + "Você não tem permissão para transferir o fundador!");
             return;
         }
@@ -612,7 +612,7 @@ public class ClanCommand implements CommandExecutor {
      * Manipula o comando /clan disband.
      */
     private void handleDisband(Player player) {
-        if (!player.hasPermission("primeleague.clans.disband")) {
+        if (!PrimeLeagueAPI.hasPermission(player, "primeleague.clans.disband")) {
             player.sendMessage(ChatColor.RED + "Você não tem permissão para dissolver clãs!");
             return;
         }
@@ -1134,7 +1134,7 @@ public class ClanCommand implements CommandExecutor {
      */
     private void handleSanction(Player player, String[] args) {
         // Verificar permissão administrativa
-        if (!player.hasPermission("primeleague.clans.sanction")) {
+        if (!PrimeLeagueAPI.hasPermission(player, "primeleague.clans.sanction")) {
             player.sendMessage(ChatColor.RED + "Você não tem permissão para gerenciar sanções de clã!");
             return;
         }
@@ -1308,7 +1308,7 @@ public class ClanCommand implements CommandExecutor {
      */
     private void handleMembers(Player player, String[] args) {
         // Verificar permissão
-        if (!player.hasPermission("primeleague.clans.members") && !player.hasPermission("primeleague.clans.use")) {
+        if (!PrimeLeagueAPI.hasPermission(player, "primeleague.clans.members") && !PrimeLeagueAPI.hasPermission(player, "primeleague.clans.use")) {
             player.sendMessage(ChatColor.RED + "Você não tem permissão para usar este comando!");
             return;
         }
@@ -1444,7 +1444,7 @@ public class ClanCommand implements CommandExecutor {
      * Manipula o comando /clan list (ranking de clãs).
      */
     private void handleList(Player player, String[] args) {
-        if (!player.hasPermission("primeleague.clans.list")) {
+        if (!PrimeLeagueAPI.hasPermission(player, "primeleague.clans.list")) {
             player.sendMessage(ChatColor.RED + "Você não tem permissão para ver o ranking de clãs!");
             return;
         }

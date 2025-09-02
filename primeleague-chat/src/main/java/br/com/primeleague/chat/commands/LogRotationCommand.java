@@ -2,11 +2,13 @@ package br.com.primeleague.chat.commands;
 
 import br.com.primeleague.chat.PrimeLeagueChat;
 import br.com.primeleague.chat.services.LogRotationService;
+import br.com.primeleague.core.api.PrimeLeagueAPI;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
+import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -30,7 +32,7 @@ public class LogRotationCommand implements CommandExecutor, TabCompleter {
     
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (!sender.hasPermission("primeleague.chat.admin")) {
+        if (!PrimeLeagueAPI.hasPermission((Player) sender, "primeleague.chat.admin")) {
             sender.sendMessage(ChatColor.RED + "Você não tem permissão para usar este comando.");
             return true;
         }
@@ -185,7 +187,7 @@ public class LogRotationCommand implements CommandExecutor, TabCompleter {
     
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
-        if (!sender.hasPermission("primeleague.chat.admin")) {
+        if (!PrimeLeagueAPI.hasPermission((Player) sender, "primeleague.chat.admin")) {
             return new ArrayList<>();
         }
         

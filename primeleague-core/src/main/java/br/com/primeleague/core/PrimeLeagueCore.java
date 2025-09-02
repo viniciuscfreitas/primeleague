@@ -19,6 +19,7 @@ import br.com.primeleague.core.managers.PrivateMessageManager;
 import br.com.primeleague.core.managers.MessageManager;
 import br.com.primeleague.core.managers.EconomyManager;
 import br.com.primeleague.core.managers.RecoveryCodeManager;
+import br.com.primeleague.core.managers.PermissionManager;
 import br.com.primeleague.core.commands.PrivateMessageCommand;
 import br.com.primeleague.core.commands.ReplyCommand;
 import br.com.primeleague.core.commands.MoneyCommand;
@@ -44,6 +45,7 @@ public final class PrimeLeagueCore extends JavaPlugin {
     private EconomyManager economyManager;
     private HttpApiManager httpApiManager;
     private RecoveryCodeManager recoveryCodeManager;
+    private PermissionManager permissionManager;
     private SchemaValidator schemaValidator;
 
     @Override
@@ -76,6 +78,9 @@ public final class PrimeLeagueCore extends JavaPlugin {
         
         // Inicializa o RecoveryCodeManager (sistema de recuperação de conta P2P)
         this.recoveryCodeManager = new RecoveryCodeManager(this, this.dataManager.getDataSource());
+        
+        // Inicializa o PermissionManager (sistema de cargos e permissões)
+        this.permissionManager = new PermissionManager(this);
         
         // ========================================
         // VALIDAÇÃO DO SCHEMA DO BANCO DE DADOS
@@ -197,6 +202,10 @@ public final class PrimeLeagueCore extends JavaPlugin {
     
     public RecoveryCodeManager getRecoveryCodeManager() {
         return recoveryCodeManager;
+    }
+    
+    public PermissionManager getPermissionManager() {
+        return permissionManager;
     }
     
     public SchemaValidator getSchemaValidator() {

@@ -2,6 +2,7 @@ package br.com.primeleague.admin.commands;
 
 import br.com.primeleague.admin.managers.AdminManager;
 import br.com.primeleague.admin.models.Ticket;
+import br.com.primeleague.core.api.PrimeLeagueAPI;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
@@ -26,7 +27,7 @@ public class TicketsCommand implements CommandExecutor {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (!sender.hasPermission("primeleague.admin.tickets")) {
+        if (!PrimeLeagueAPI.hasPermission((Player) sender, "primeleague.admin.tickets")) {
             sender.sendMessage(ChatColor.RED + "Você não tem permissão para usar este comando!");
             return true;
         }

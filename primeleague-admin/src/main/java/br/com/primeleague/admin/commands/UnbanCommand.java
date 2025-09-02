@@ -38,7 +38,7 @@ public class UnbanCommand extends BasePunishmentCommand implements CommandExecut
     @Override
     public boolean onCommand(final CommandSender sender, Command command, String label, String[] args) {
         // Verificar permissão
-        if (!sender.hasPermission("primeleague.admin.ban")) {
+        if (!PrimeLeagueAPI.hasPermission((Player) sender, "primeleague.admin.ban")) {
             PrimeLeagueAPI.sendNoPermission((Player) sender);
             return true;
         }
@@ -59,7 +59,7 @@ public class UnbanCommand extends BasePunishmentCommand implements CommandExecut
         
         if (reason.startsWith("!")) {
             // Verificar permissão para correção
-            if (!sender.hasPermission("primeleague.admin.correction")) {
+            if (!PrimeLeagueAPI.hasPermission((Player) sender, "primeleague.admin.correction")) {
                 PrimeLeagueAPI.sendError((Player) sender, 
                     "Você não tem permissão para reverter sanções de clã. A reversão será processada como perdão.");
             } else {

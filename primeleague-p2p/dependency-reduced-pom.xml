@@ -64,25 +64,17 @@
   </repositories>
   <dependencies>
     <dependency>
+      <groupId>br.com.primeleague</groupId>
+      <artifactId>primeleague-core</artifactId>
+      <version>1.0.0</version>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
       <groupId>org.bukkit</groupId>
       <artifactId>bukkit</artifactId>
       <version>1.5.2-R1.0</version>
       <scope>system</scope>
       <systemPath>${project.basedir}/../lib/craftbukkit-1.5.2-R1.0.jar</systemPath>
-    </dependency>
-    <dependency>
-      <groupId>br.com.primeleague</groupId>
-      <artifactId>primeleague-core</artifactId>
-      <version>1.0.0</version>
-      <scope>system</scope>
-      <systemPath>${project.basedir}/../primeleague-core/target/primeleague-core-1.0.0.jar</systemPath>
-    </dependency>
-    <dependency>
-      <groupId>br.com.primeleague</groupId>
-      <artifactId>primeleague-api</artifactId>
-      <version>1.0.0</version>
-      <scope>system</scope>
-      <systemPath>${project.basedir}/../primeleague-api/target/primeleague-api-1.0.0.jar</systemPath>
     </dependency>
   </dependencies>
   <properties>

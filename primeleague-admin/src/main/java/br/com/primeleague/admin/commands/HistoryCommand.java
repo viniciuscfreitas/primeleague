@@ -35,7 +35,7 @@ public class HistoryCommand extends BasePunishmentCommand implements CommandExec
     @Override
     public boolean onCommand(final CommandSender sender, Command command, String label, String[] args) {
         // Verificar permissão
-        if (!sender.hasPermission("primeleague.admin.history")) {
+        if (!PrimeLeagueAPI.hasPermission((Player) sender, "primeleague.admin.history")) {
             PrimeLeagueAPI.sendNoPermission((Player) sender);
             return true;
         }

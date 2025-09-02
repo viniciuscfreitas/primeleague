@@ -29,7 +29,7 @@ public class VanishCommand implements CommandExecutor {
         
         Player player = (Player) sender;
         
-        if (!player.hasPermission("primeleague.admin.vanish")) {
+        if (!PrimeLeagueAPI.hasPermission(player, "primeleague.admin.vanish")) {
             player.sendMessage(ChatColor.RED + "Você não tem permissão para usar este comando!");
             return true;
         }
@@ -62,7 +62,7 @@ public class VanishCommand implements CommandExecutor {
     private void enableVanish(Player player) {
         // Remover da tab list para todos os jogadores
         for (Player onlinePlayer : Bukkit.getOnlinePlayers()) {
-            if (!onlinePlayer.hasPermission("primeleague.admin.vanish")) {
+            if (!PrimeLeagueAPI.hasPermission(onlinePlayer, "primeleague.admin.vanish")) {
                 onlinePlayer.hidePlayer(player);
             }
         }

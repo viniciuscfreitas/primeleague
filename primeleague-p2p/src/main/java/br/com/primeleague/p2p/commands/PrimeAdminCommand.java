@@ -6,6 +6,7 @@ import br.com.primeleague.p2p.PrimeLeagueP2P;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
 
 import java.sql.Timestamp;
 import java.util.Date;
@@ -31,7 +32,7 @@ public final class PrimeAdminCommand implements CommandExecutor {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         // Verificar permissão
-        if (!sender.hasPermission("primeleague.admin")) {
+        if (!PrimeLeagueAPI.hasPermission((Player) sender, "primeleague.admin")) {
             sender.sendMessage("§cVocê não tem permissão para usar este comando.");
             return true;
         }

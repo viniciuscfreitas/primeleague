@@ -33,7 +33,7 @@ public class ReportCommand implements CommandExecutor {
 
         Player reporter = (Player) sender;
 
-        if (!reporter.hasPermission("primeleague.report")) {
+        if (!PrimeLeagueAPI.hasPermission(reporter, "primeleague.report")) {
             reporter.sendMessage(ChatColor.RED + "Você não tem permissão para usar este comando!");
             return true;
         }
@@ -62,7 +62,7 @@ public class ReportCommand implements CommandExecutor {
         }
 
         // Verificar se o alvo tem permissão de bypass
-        if (target.hasPermission("primeleague.admin.report.bypass")) {
+        if (PrimeLeagueAPI.hasPermission(target, "primeleague.admin.report.bypass")) {
             reporter.sendMessage(ChatColor.RED + "Você não pode reportar membros da equipe!");
             return true;
         }
@@ -106,7 +106,7 @@ public class ReportCommand implements CommandExecutor {
             getPlayerName(ticket.getTargetUuid()) + ": " + ticket.getReason();
 
         for (Player player : Bukkit.getOnlinePlayers()) {
-            if (player.hasPermission("primeleague.admin.tickets")) {
+            if (PrimeLeagueAPI.hasPermission(player, "primeleague.admin.tickets")) {
                 player.sendMessage(notification);
             }
         }

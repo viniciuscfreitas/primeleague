@@ -1,6 +1,7 @@
 package br.com.primeleague.adminshop.commands;
 
 import br.com.primeleague.adminshop.AdminShopPlugin;
+import br.com.primeleague.core.api.PrimeLeagueAPI;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -36,7 +37,7 @@ public class ShopCommand implements CommandExecutor {
         Player player = (Player) sender;
         
         // Verificar permissão
-        if (!player.hasPermission("primeleague.shop.use")) {
+        if (!PrimeLeagueAPI.hasPermission(player, "primeleague.shop.use")) {
             player.sendMessage("§c❌ Você não tem permissão para usar a loja!");
             return true;
         }

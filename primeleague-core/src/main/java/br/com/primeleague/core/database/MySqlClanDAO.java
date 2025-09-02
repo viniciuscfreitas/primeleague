@@ -1124,7 +1124,7 @@ public class MySqlClanDAO implements ClanDAO {
                     
                     // CORREÇÃO CRÍTICA: Converter string do role para enum
                     ClanRole role = convertRoleStringToEnum(roleString);
-                    
+
                     // O DAO não deve verificar status online - isso é responsabilidade da camada de negócios
                     boolean isOnline = false; // Valor padrão, será sobrescrito pelo ClanManager
                     

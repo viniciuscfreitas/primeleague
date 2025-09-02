@@ -229,7 +229,7 @@ public abstract class BasePunishmentCommand {
      */
     protected void broadcastToStaff(String message) {
         for (Player player : Bukkit.getOnlinePlayers()) {
-            if (player.hasPermission("primeleague.admin.staff")) {
+            if (PrimeLeagueAPI.hasPermission(player, "primeleague.admin.staff")) {
                 player.sendMessage(message);
             }
         }

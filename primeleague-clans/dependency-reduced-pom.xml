@@ -62,17 +62,9 @@
   <dependencies>
     <dependency>
       <groupId>br.com.primeleague</groupId>
-      <artifactId>primeleague-api</artifactId>
-      <version>1.0.0</version>
-      <scope>system</scope>
-      <systemPath>${project.basedir}/../primeleague-api/target/primeleague-api-1.0.0.jar</systemPath>
-    </dependency>
-    <dependency>
-      <groupId>br.com.primeleague</groupId>
       <artifactId>primeleague-core</artifactId>
       <version>1.0.0</version>
-      <scope>system</scope>
-      <systemPath>${project.basedir}/../primeleague-core/target/primeleague-core-1.0.0.jar</systemPath>
+      <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>org.bukkit</groupId>
@@ -83,8 +75,8 @@
     </dependency>
   </dependencies>
   <properties>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <maven.compiler.source>1.8</maven.compiler.source>
     <maven.compiler.target>1.8</maven.compiler.target>
+    <maven.compiler.source>1.8</maven.compiler.source>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
 </project>

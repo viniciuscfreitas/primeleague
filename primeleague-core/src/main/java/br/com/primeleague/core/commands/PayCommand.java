@@ -44,7 +44,7 @@ public class PayCommand implements CommandExecutor {
         Player player = (Player) sender;
 
         // Verificar permissão
-        if (!player.hasPermission("primeleague.pay")) {
+        if (!PrimeLeagueAPI.hasPermission(player, "primeleague.pay")) {
             player.sendMessage(ChatColor.RED + "Você não tem permissão para usar este comando.");
             return true;
         }

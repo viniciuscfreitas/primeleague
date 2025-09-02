@@ -37,7 +37,7 @@ public class MoneyCommand implements CommandExecutor {
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         
         // Verificar permissão
-        if (!sender.hasPermission("primeleague.money")) {
+        if (!PrimeLeagueAPI.hasPermission((Player) sender, "primeleague.money")) {
             sender.sendMessage(ChatColor.RED + "Você não tem permissão para usar este comando.");
             return true;
         }

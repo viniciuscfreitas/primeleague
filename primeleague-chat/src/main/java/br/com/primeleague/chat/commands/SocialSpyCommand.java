@@ -2,6 +2,7 @@ package br.com.primeleague.chat.commands;
 
 import br.com.primeleague.chat.PrimeLeagueChat;
 import br.com.primeleague.chat.services.PrivateMessageService;
+import br.com.primeleague.core.api.PrimeLeagueAPI;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -34,7 +35,7 @@ public class SocialSpyCommand implements CommandExecutor {
         Player player = (Player) sender;
         
         // Verificar permissão
-        if (!player.hasPermission("primeleague.chat.socialspy")) {
+        if (!PrimeLeagueAPI.hasPermission(player, "primeleague.chat.socialspy")) {
             player.sendMessage("§cVocê não tem permissão para usar este comando.");
             return true;
         }

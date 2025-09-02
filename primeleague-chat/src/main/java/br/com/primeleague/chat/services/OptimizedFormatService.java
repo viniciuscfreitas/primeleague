@@ -1,6 +1,7 @@
 package br.com.primeleague.chat.services;
 
 import br.com.primeleague.chat.PrimeLeagueChat;
+import br.com.primeleague.core.api.PrimeLeagueAPI;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 import java.util.concurrent.ConcurrentHashMap;
@@ -292,8 +293,8 @@ public class OptimizedFormatService {
      * @return Mensagem com formatação aplicada ou códigos removidos
      */
     private String applyGranularFormatting(Player player, String message) {
-        boolean hasColorPermission = player.hasPermission("primeleague.chat.color");
-        boolean hasFormatPermission = player.hasPermission("primeleague.chat.format");
+        boolean hasColorPermission = PrimeLeagueAPI.hasPermission(player, "primeleague.chat.color");
+        boolean hasFormatPermission = PrimeLeagueAPI.hasPermission(player, "primeleague.chat.format");
         
         // Se o jogador tem permissões, aplicar TODOS os códigos de cor
         if (hasColorPermission || hasFormatPermission) {

@@ -1,6 +1,7 @@
 package br.com.primeleague.chat.services;
 
 import br.com.primeleague.chat.PrimeLeagueChat;
+import br.com.primeleague.core.api.PrimeLeagueAPI;
 import org.bukkit.entity.Player;
 import java.util.HashMap;
 import java.util.Map;
@@ -56,7 +57,7 @@ public class RateLimitService {
         plugin.getLogger().info("   ⏰ Timestamp atual: " + currentTime);
         
         // Verificar se o jogador tem permissão para bypassar rate limiting
-        if (player.hasPermission("primeleague.chat.bypass_rate_limit")) {
+        if (PrimeLeagueAPI.hasPermission(player, "primeleague.chat.bypass_rate_limit")) {
             plugin.getLogger().info("🔍 [RATE-LIMIT-DEBUG] Bypass permitido para " + player.getName());
             return new RateLimitResult(true, "Bypass permitido", 0);
         }

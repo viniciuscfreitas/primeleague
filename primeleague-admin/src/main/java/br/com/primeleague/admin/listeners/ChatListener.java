@@ -2,6 +2,7 @@ package br.com.primeleague.admin.listeners;
 
 import br.com.primeleague.admin.managers.AdminManager;
 import br.com.primeleague.admin.models.Punishment;
+import br.com.primeleague.core.api.PrimeLeagueAPI;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -25,7 +26,7 @@ public class ChatListener implements Listener {
         Player player = event.getPlayer();
         
         // Verificar se o jogador tem permissão de bypass
-        if (player.hasPermission("primeleague.admin.mute.bypass")) {
+        if (PrimeLeagueAPI.hasPermission(player, "primeleague.admin.mute.bypass")) {
             return;
         }
         

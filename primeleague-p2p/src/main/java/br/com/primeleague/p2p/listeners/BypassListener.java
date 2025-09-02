@@ -40,7 +40,7 @@ public final class BypassListener implements Listener {
         Player player = event.getPlayer();
 
         // Verificamos a permissão SOMENTE quando o objeto Player está disponível
-        if (player.hasPermission("primeleague.p2p.bypass")) {
+        if (PrimeLeagueAPI.hasPermission(player, "primeleague.p2p.bypass")) {
             PlayerProfile profile = PrimeLeagueAPI.getPlayerProfile(player);
             if (profile != null) {
                 // Atualizamos a data de expiração em memória para um futuro distante

@@ -31,7 +31,7 @@ public class MuteCommand extends BasePunishmentCommand implements CommandExecuto
     @Override
     public boolean onCommand(final CommandSender sender, Command command, String label, String[] args) {
         // Verificar permissão
-        if (!sender.hasPermission("primeleague.admin.mute")) {
+        if (!PrimeLeagueAPI.hasPermission((Player) sender, "primeleague.admin.mute")) {
             PrimeLeagueAPI.sendNoPermission((Player) sender);
             return true;
         }

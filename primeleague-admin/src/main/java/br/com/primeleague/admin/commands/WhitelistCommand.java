@@ -39,7 +39,7 @@ public class WhitelistCommand implements CommandExecutor {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (!sender.hasPermission("primeleague.admin.whitelist")) {
+        if (!PrimeLeagueAPI.hasPermission((Player) sender, "primeleague.admin.whitelist")) {
             sender.sendMessage(ChatColor.RED + "Você não tem permissão para usar este comando.");
             return true;
         }

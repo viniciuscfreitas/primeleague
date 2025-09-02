@@ -80,7 +80,7 @@ database:
   # VALIDAÇÃO DE SCHEMA (O GUARDIÃO)
   # ========================================
   validation:
-    fail-on-mismatch: true      # Parar servidor se houver inconsistências
+    fail-on-mismatch: true     # Parar servidor se houver inconsistências
     log-level: "DETAILED"       # NONE, ERRORS, DETAILED
     auto-fix: false             # Tentar corrigir automaticamente (PERIGOSO)
     health-check-interval: 3600 # Verificação de saúde a cada 1 hora

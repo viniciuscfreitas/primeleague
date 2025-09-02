@@ -39,7 +39,7 @@ public class PermissionCommand implements CommandExecutor {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (!sender.hasPermission("primeleague.admin.permissions")) {
+        if (!PrimeLeagueAPI.hasPermission((Player) sender, "primeleague.admin.permissions")) {
             PrimeLeagueAPI.sendNoPermission((Player) sender);
             return true;
         }

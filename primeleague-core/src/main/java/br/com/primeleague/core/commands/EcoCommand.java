@@ -39,7 +39,7 @@ public class EcoCommand implements CommandExecutor {
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         
         // Verificar permissão
-        if (!sender.hasPermission("primeleague.admin.eco")) {
+        if (!PrimeLeagueAPI.hasPermission((Player) sender, "primeleague.admin.eco")) {
             sender.sendMessage(ChatColor.RED + "Você não tem permissão para usar este comando.");
             return true;
         }

@@ -3,6 +3,7 @@ package br.com.primeleague.core.managers;
 import br.com.primeleague.core.PrimeLeagueCore;
 import org.bukkit.Bukkit;
 import org.bukkit.scheduler.BukkitScheduler;
+import at.favre.lib.crypto.bcrypt.BCrypt;
 
 import javax.sql.DataSource;
 import java.sql.*;
@@ -200,14 +201,15 @@ public class RecoveryCodeManager {
      * Aplica hash BCrypt ao código.
      */
     private String hashCode(String code) {
-        return org.mindrot.jbcrypt.BCrypt.hashpw(code, org.mindrot.jbcrypt.BCrypt.gensalt());
+        return BCrypt.withDefaults().hashToString(12, code.toCharArray());
     }
-    
+
     /**
      * Verifica se o código corresponde ao hash.
      */
     private boolean verifyHash(String code, String hash) {
-        return org.mindrot.jbcrypt.BCrypt.checkpw(code, hash);
+        BCrypt.Result result = BCrypt.verifyer().verify(code.toCharArray(), hash);
+        return result.verified;
     }
     
     /**

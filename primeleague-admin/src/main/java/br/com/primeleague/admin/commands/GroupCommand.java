@@ -47,8 +47,16 @@ public class GroupCommand implements CommandExecutor {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (!sender.hasPermission("primeleague.admin.groups")) {
-            PrimeLeagueAPI.sendNoPermission((Player) sender);
+        // Verificar se é um jogador ou console
+        if (sender instanceof Player) {
+            Player player = (Player) sender;
+            if (!PrimeLeagueAPI.hasPermission(player, "primeleague.admin.groups")) {
+                PrimeLeagueAPI.sendNoPermission(player);
+                return true;
+            }
+        } else if (!sender.hasPermission("primeleague.admin.groups")) {
+            // Para console, verificar permissão direta
+            sender.sendMessage(ChatColor.RED + "Você não tem permissão para usar este comando.");
             return true;
         }
 
@@ -190,12 +198,8 @@ public class GroupCommand implements CommandExecutor {
     }
 
     private void createGroup(CommandSender sender, String groupName, String displayName, String description, int priority) {
-        if (!(sender instanceof Player)) {
-            sender.sendMessage(ChatColor.RED + "Este comando só pode ser usado por jogadores.");
-            return;
-        }
-
-        Player player = (Player) sender;
+        // Permitir tanto jogadores quanto console
+        Player player = sender instanceof Player ? (Player) sender : null;
         
         CompletableFuture.runAsync(() -> {
             try (Connection conn = plugin.getDataManager().getConnection()) {
@@ -255,12 +259,8 @@ public class GroupCommand implements CommandExecutor {
     }
 
     private void addPermission(CommandSender sender, String groupName, String permissionNode, boolean isGranted) {
-        if (!(sender instanceof Player)) {
-            sender.sendMessage(ChatColor.RED + "Este comando só pode ser usado por jogadores.");
-            return;
-        }
-
-        Player player = (Player) sender;
+        // Permitir tanto jogadores quanto console
+        Player player = sender instanceof Player ? (Player) sender : null;
         
         CompletableFuture.runAsync(() -> {
             try (Connection conn = plugin.getDataManager().getConnection()) {
@@ -451,18 +451,25 @@ public class GroupCommand implements CommandExecutor {
                     stmt.executeUpdate();
                 }
 
+                final int finalGroupId = groupId;
+                final String finalGroupName = groupName;
+                final int finalPlayerId = playerId;
+                final String finalPlayerName = playerName;
+                final boolean finalIsPrimary = isPrimary;
+                final java.sql.Timestamp finalExpiresAt = expiresAt;
+                
                 // Log da ação
-                logAction(conn, "PLAYER_ADDED_TO_GROUP", admin, groupId, playerId, null, 
-                    groupName + (isPrimary ? " (primário)" : ""), "Jogador adicionado ao grupo");
+                logAction(conn, "PLAYER_ADDED_TO_GROUP", admin, finalGroupId, finalPlayerId, null, 
+                    finalGroupName + (finalIsPrimary ? " (primário)" : ""), "Jogador adicionado ao grupo");
                 
                 // Disparar evento para atualização em tempo real
                 Bukkit.getScheduler().runTask(plugin, () -> {
                     Bukkit.getPluginManager().callEvent(
-                        new GroupPermissionsChangedEvent(groupId, groupName, "PLAYER_ADDED_TO_GROUP"));
+                        new GroupPermissionsChangedEvent(finalGroupId, finalGroupName, "PLAYER_ADDED_TO_GROUP"));
                     
-                    sender.sendMessage(ChatColor.GREEN + "✅ Jogador '" + playerName + "' adicionado ao grupo '" + groupName + "'!");
-                    if (isPrimary) sender.sendMessage(ChatColor.GRAY + "Grupo definido como primário.");
-                    if (expiresAt != null) sender.sendMessage(ChatColor.GRAY + "Expira em: " + DATE_FORMAT.format(expiresAt));
+                    sender.sendMessage(ChatColor.GREEN + "✅ Jogador '" + finalPlayerName + "' adicionado ao grupo '" + finalGroupName + "'!");
+                    if (finalIsPrimary) sender.sendMessage(ChatColor.GRAY + "Grupo definido como primário.");
+                    if (finalExpiresAt != null) sender.sendMessage(ChatColor.GRAY + "Expira em: " + DATE_FORMAT.format(finalExpiresAt));
                 });
                 
             } catch (SQLException e) {
@@ -509,20 +516,27 @@ public class GroupCommand implements CommandExecutor {
                     int affected = stmt.executeUpdate();
                     
                     if (affected > 0) {
+                        final int finalGroupId = groupId;
+                        final String finalGroupName = groupName;
+                        final int finalPlayerId = playerId;
+                        final String finalPlayerName = playerName;
+                        
                         // Log da ação
-                        logAction(conn, "PLAYER_REMOVED_FROM_GROUP", admin, groupId, playerId, null, 
+                        logAction(conn, "PLAYER_REMOVED_FROM_GROUP", admin, finalGroupId, finalPlayerId, null, 
                             null, "Jogador removido do grupo");
                         
                         // Disparar evento para atualização em tempo real
                         Bukkit.getScheduler().runTask(plugin, () -> {
                             Bukkit.getPluginManager().callEvent(
-                                new GroupPermissionsChangedEvent(groupId, groupName, "PLAYER_REMOVED_FROM_GROUP"));
+                                new GroupPermissionsChangedEvent(finalGroupId, finalGroupName, "PLAYER_REMOVED_FROM_GROUP"));
                             
-                            sender.sendMessage(ChatColor.GREEN + "✅ Jogador '" + playerName + "' removido do grupo '" + groupName + "'!");
+                            sender.sendMessage(ChatColor.GREEN + "✅ Jogador '" + finalPlayerName + "' removido do grupo '" + finalGroupName + "'!");
                         });
                     } else {
+                        final String finalPlayerName2 = playerName;
+                        final String finalGroupName2 = groupName;
                         Bukkit.getScheduler().runTask(plugin, () -> 
-                            sender.sendMessage(ChatColor.YELLOW + "⚠️ Jogador '" + playerName + "' não está no grupo '" + groupName + "'!"));
+                            sender.sendMessage(ChatColor.YELLOW + "⚠️ Jogador '" + finalPlayerName2 + "' não está no grupo '" + finalGroupName2 + "'!"));
                     }
                 }
                 
@@ -553,8 +567,8 @@ public class GroupCommand implements CommandExecutor {
                     return;
                 }
 
-                int totalPages = (int) Math.ceil((double) totalGroups / ITEMS_PER_PAGE);
-                if (page > totalPages) page = totalPages;
+                final int finalTotalPages = (int) Math.ceil((double) totalGroups / ITEMS_PER_PAGE);
+                final int finalPage = page > finalTotalPages ? finalTotalPages : page;
 
                 // Buscar grupos
                 try (PreparedStatement stmt = conn.prepareStatement(
@@ -562,34 +576,42 @@ public class GroupCommand implements CommandExecutor {
                     "WHERE is_active = TRUE ORDER BY priority DESC, group_name ASC LIMIT ? OFFSET ?")) {
                     
                     stmt.setInt(1, ITEMS_PER_PAGE);
-                    stmt.setInt(2, (page - 1) * ITEMS_PER_PAGE);
+                    stmt.setInt(2, (finalPage - 1) * ITEMS_PER_PAGE);
                     
                     ResultSet rs = stmt.executeQuery();
                     
+                    // Coletar dados antes de fechar o ResultSet
+                    List<GroupInfo> groups = new ArrayList<>();
+                    while (rs.next()) {
+                        groups.add(new GroupInfo(
+                            rs.getInt("group_id"),
+                            rs.getString("group_name"),
+                            rs.getString("display_name"),
+                            rs.getString("description"),
+                            rs.getInt("priority"),
+                            rs.getBoolean("is_default"),
+                            rs.getTimestamp("created_at")
+                        ));
+                    }
+                    
+                    // Agora enviar para a thread principal
+                    final List<GroupInfo> finalGroups = groups;
                     Bukkit.getScheduler().runTask(plugin, () -> {
-                        sender.sendMessage(ChatColor.GOLD + "=== Grupos de Permissões (Página " + page + "/" + totalPages + ") ===");
+                        sender.sendMessage(ChatColor.GOLD + "=== Grupos de Permissões (Página " + finalPage + "/" + finalTotalPages + ") ===");
                         
-                        while (rs.next()) {
-                            int groupId = rs.getInt("group_id");
-                            String groupName = rs.getString("group_name");
-                            String displayName = rs.getString("display_name");
-                            String description = rs.getString("description");
-                            int priority = rs.getInt("priority");
-                            boolean isDefault = rs.getBoolean("is_default");
-                            Date createdAt = rs.getTimestamp("created_at");
-                            
-                            sender.sendMessage(ChatColor.YELLOW + "• " + groupName + 
-                                (isDefault ? ChatColor.GREEN + " [PADRÃO]" : "") +
-                                ChatColor.GRAY + " (ID: " + groupId + ", Prioridade: " + priority + ")");
-                            sender.sendMessage(ChatColor.WHITE + "  " + displayName);
-                            if (description != null && !description.isEmpty()) {
-                                sender.sendMessage(ChatColor.GRAY + "  " + description);
+                        for (GroupInfo group : finalGroups) {
+                            sender.sendMessage(ChatColor.YELLOW + "• " + group.groupName + 
+                                (group.isDefault ? ChatColor.GREEN + " [PADRÃO]" : "") +
+                                ChatColor.GRAY + " (ID: " + group.groupId + ", Prioridade: " + group.priority + ")");
+                            sender.sendMessage(ChatColor.WHITE + "  " + group.displayName);
+                            if (group.description != null && !group.description.isEmpty()) {
+                                sender.sendMessage(ChatColor.GRAY + "  " + group.description);
                             }
                             sender.sendMessage("");
                         }
                         
-                        if (page < totalPages) {
-                            sender.sendMessage(ChatColor.GRAY + "Use /group list " + (page + 1) + " para próxima página");
+                        if (finalPage < finalTotalPages) {
+                            sender.sendMessage(ChatColor.GRAY + "Use /group list " + (finalPage + 1) + " para próxima página");
                         }
                     });
                 }
@@ -619,8 +641,8 @@ public class GroupCommand implements CommandExecutor {
                         int priority = rs.getInt("priority");
                         boolean isDefault = rs.getBoolean("is_default");
                         boolean isActive = rs.getBoolean("is_active");
-                        Date createdAt = rs.getTimestamp("created_at");
-                        Date updatedAt = rs.getTimestamp("updated_at");
+                        java.sql.Timestamp createdAt = rs.getTimestamp("created_at");
+                        java.sql.Timestamp updatedAt = rs.getTimestamp("updated_at");
                         
                         // Contar permissões
                         int permissionCount = 0;
@@ -644,25 +666,38 @@ public class GroupCommand implements CommandExecutor {
                             }
                         }
                         
+                        final String finalGroupName = groupName;
+                        final int finalGroupId = groupId;
+                        final String finalDisplayName = displayName;
+                        final String finalDescription = description;
+                        final int finalPriority = priority;
+                        final boolean finalIsDefault = isDefault;
+                        final boolean finalIsActive = isActive;
+                        final int finalPermissionCount = permissionCount;
+                        final int finalPlayerCount = playerCount;
+                        final java.sql.Timestamp finalCreatedAt = createdAt;
+                        final java.sql.Timestamp finalUpdatedAt = updatedAt;
+                        
                         Bukkit.getScheduler().runTask(plugin, () -> {
-                            sender.sendMessage(ChatColor.GOLD + "=== Informações do Grupo: " + groupName + " ===");
-                            sender.sendMessage(ChatColor.YELLOW + "ID: " + ChatColor.WHITE + groupId);
-                            sender.sendMessage(ChatColor.YELLOW + "Nome de Exibição: " + ChatColor.WHITE + displayName);
-                            if (description != null && !description.isEmpty()) {
-                                sender.sendMessage(ChatColor.YELLOW + "Descrição: " + ChatColor.WHITE + description);
+                            sender.sendMessage(ChatColor.GOLD + "=== Informações do Grupo: " + finalGroupName + " ===");
+                            sender.sendMessage(ChatColor.YELLOW + "ID: " + ChatColor.WHITE + finalGroupId);
+                            sender.sendMessage(ChatColor.YELLOW + "Nome de Exibição: " + ChatColor.WHITE + finalDisplayName);
+                            if (finalDescription != null && !finalDescription.isEmpty()) {
+                                sender.sendMessage(ChatColor.YELLOW + "Descrição: " + ChatColor.WHITE + finalDescription);
                             }
-                            sender.sendMessage(ChatColor.YELLOW + "Prioridade: " + ChatColor.WHITE + priority);
-                            sender.sendMessage(ChatColor.YELLOW + "Padrão: " + ChatColor.WHITE + (isDefault ? "Sim" : "Não"));
-                            sender.sendMessage(ChatColor.YELLOW + "Ativo: " + ChatColor.WHITE + (isActive ? "Sim" : "Não"));
-                            sender.sendMessage(ChatColor.YELLOW + "Permissões: " + ChatColor.WHITE + permissionCount);
-                            sender.sendMessage(ChatColor.YELLOW + "Jogadores: " + ChatColor.WHITE + playerCount);
-                            sender.sendMessage(ChatColor.YELLOW + "Criado em: " + ChatColor.WHITE + DATE_FORMAT.format(createdAt));
-                            sender.sendMessage(ChatColor.YELLOW + "Atualizado em: " + ChatColor.WHITE + DATE_FORMAT.format(updatedAt));
+                            sender.sendMessage(ChatColor.YELLOW + "Prioridade: " + ChatColor.WHITE + finalPriority);
+                            sender.sendMessage(ChatColor.YELLOW + "Padrão: " + ChatColor.WHITE + (finalIsDefault ? "Sim" : "Não"));
+                            sender.sendMessage(ChatColor.YELLOW + "Ativo: " + ChatColor.WHITE + (finalIsActive ? "Sim" : "Não"));
+                            sender.sendMessage(ChatColor.YELLOW + "Permissões: " + ChatColor.WHITE + finalPermissionCount);
+                            sender.sendMessage(ChatColor.YELLOW + "Jogadores: " + ChatColor.WHITE + finalPlayerCount);
+                            sender.sendMessage(ChatColor.YELLOW + "Criado em: " + ChatColor.WHITE + DATE_FORMAT.format(finalCreatedAt));
+                            sender.sendMessage(ChatColor.YELLOW + "Atualizado em: " + ChatColor.WHITE + DATE_FORMAT.format(finalUpdatedAt));
                         });
                         
                     } else {
+                        final String finalGroupName = groupName;
                         Bukkit.getScheduler().runTask(plugin, () -> 
-                            sender.sendMessage(ChatColor.RED + "❌ Grupo '" + groupName + "' não encontrado!"));
+                            sender.sendMessage(ChatColor.RED + "❌ Grupo '" + finalGroupName + "' não encontrado!"));
                     }
                 }
                 
@@ -680,8 +715,9 @@ public class GroupCommand implements CommandExecutor {
                 // Buscar ID do grupo
                 Integer groupId = getGroupId(conn, groupName);
                 if (groupId == null) {
+                    final String finalGroupName = groupName;
                     Bukkit.getScheduler().runTask(plugin, () -> 
-                        sender.sendMessage(ChatColor.RED + "❌ Grupo '" + groupName + "' não encontrado!"));
+                        sender.sendMessage(ChatColor.RED + "❌ Grupo '" + finalGroupName + "' não encontrado!"));
                     return;
                 }
 
@@ -700,13 +736,14 @@ public class GroupCommand implements CommandExecutor {
                 }
 
                 if (totalPlayers == 0) {
+                    final String finalGroupName2 = groupName;
                     Bukkit.getScheduler().runTask(plugin, () -> 
-                        sender.sendMessage(ChatColor.YELLOW + "⚠️ Nenhum jogador encontrado no grupo '" + groupName + "'!"));
+                        sender.sendMessage(ChatColor.YELLOW + "⚠️ Nenhum jogador encontrado no grupo '" + finalGroupName2 + "'!"));
                     return;
                 }
 
-                int totalPages = (int) Math.ceil((double) totalPlayers / ITEMS_PER_PAGE);
-                if (page > totalPages) page = totalPages;
+                final int finalTotalPages = (int) Math.ceil((double) totalPlayers / ITEMS_PER_PAGE);
+                final int finalPage = page > finalTotalPages ? finalTotalPages : page;
 
                 // Buscar jogadores
                 try (PreparedStatement stmt = conn.prepareStatement(
@@ -717,34 +754,39 @@ public class GroupCommand implements CommandExecutor {
                     
                     stmt.setInt(1, groupId);
                     stmt.setInt(2, ITEMS_PER_PAGE);
-                    stmt.setInt(3, (page - 1) * ITEMS_PER_PAGE);
+                    stmt.setInt(3, (finalPage - 1) * ITEMS_PER_PAGE);
                     
-                    ResultSet rs = stmt.executeQuery();
+                    final ResultSet finalRs = stmt.executeQuery();
                     
+                    final String finalGroupName3 = groupName;
                     Bukkit.getScheduler().runTask(plugin, () -> {
-                        sender.sendMessage(ChatColor.GOLD + "=== Jogadores do Grupo: " + groupName + " (Página " + page + "/" + totalPages + ") ===");
+                        sender.sendMessage(ChatColor.GOLD + "=== Jogadores do Grupo: " + finalGroupName3 + " (Página " + finalPage + "/" + finalTotalPages + ") ===");
                         
-                        while (rs.next()) {
-                            String playerName = rs.getString("name");
-                            boolean isPrimary = rs.getBoolean("is_primary");
-                            Timestamp expiresAt = rs.getTimestamp("expires_at");
-                            Date addedAt = rs.getTimestamp("added_at");
-                            String reason = rs.getString("reason");
+                        try {
+                            while (finalRs.next()) {
+                                String playerName = finalRs.getString("name");
+                                boolean isPrimary = finalRs.getBoolean("is_primary");
+                                Timestamp expiresAt = finalRs.getTimestamp("expires_at");
+                                java.sql.Timestamp addedAt = finalRs.getTimestamp("added_at");
+                                String reason = finalRs.getString("reason");
+                                
+                                sender.sendMessage(ChatColor.YELLOW + "• " + playerName + 
+                                    (isPrimary ? ChatColor.GREEN + " [PRIMÁRIO]" : ""));
+                                sender.sendMessage(ChatColor.GRAY + "  Adicionado em: " + DATE_FORMAT.format(addedAt));
+                                if (expiresAt != null) {
+                                    sender.sendMessage(ChatColor.GRAY + "  Expira em: " + DATE_FORMAT.format(expiresAt));
+                                }
+                                if (reason != null && !reason.isEmpty()) {
+                                    sender.sendMessage(ChatColor.GRAY + "  Motivo: " + reason);
+                                }
+                                sender.sendMessage("");
+                            }
                             
-                            sender.sendMessage(ChatColor.YELLOW + "• " + playerName + 
-                                (isPrimary ? ChatColor.GREEN + " [PRIMÁRIO]" : ""));
-                            sender.sendMessage(ChatColor.GRAY + "  Adicionado em: " + DATE_FORMAT.format(addedAt));
-                            if (expiresAt != null) {
-                                sender.sendMessage(ChatColor.GRAY + "  Expira em: " + DATE_FORMAT.format(expiresAt));
+                            if (finalPage < finalTotalPages) {
+                                sender.sendMessage(ChatColor.GRAY + "Use /group players " + finalGroupName3 + " " + (finalPage + 1) + " para próxima página");
                             }
-                            if (reason != null && !reason.isEmpty()) {
-                                sender.sendMessage(ChatColor.GRAY + "  Motivo: " + reason);
-                            }
-                            sender.sendMessage("");
-                        }
-                        
-                        if (page < totalPages) {
-                            sender.sendMessage(ChatColor.GRAY + "Use /group players " + groupName + " " + (page + 1) + " para próxima página");
+                        } catch (SQLException e) {
+                            sender.sendMessage(ChatColor.RED + "❌ Erro ao processar resultados: " + e.getMessage());
                         }
                     });
                 }
@@ -897,16 +939,51 @@ public class GroupCommand implements CommandExecutor {
             "permission_node, new_value, reason, ip_address) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")) {
             
             stmt.setString(1, actionType);
-            stmt.setInt(2, getPlayerId(conn, actor.getUniqueId()));
-            stmt.setString(3, actor.getName());
+            
+            if (actor != null) {
+                // Jogador executando o comando
+                stmt.setInt(2, getPlayerId(conn, actor.getUniqueId()));
+                stmt.setString(3, actor.getName());
+                stmt.setString(9, actor.getAddress().getAddress().getHostAddress());
+            } else {
+                // Console executando o comando
+                stmt.setNull(2, Types.INTEGER);
+                stmt.setString(3, "Console");
+                stmt.setString(9, "127.0.0.1");
+            }
+            
             stmt.setObject(4, targetGroupId);
             stmt.setObject(5, targetPlayerId);
             stmt.setObject(6, permissionNode);
             stmt.setObject(7, newValue);
             stmt.setString(8, reason);
-            stmt.setString(9, actor.getAddress().getAddress().getHostAddress());
             
             stmt.executeUpdate();
+        }
+    }
+    
+    // ============================================================================
+    // CLASSE AUXILIAR PARA ARMAZENAR INFORMAÇÕES DOS GRUPOS
+    // ============================================================================
+    
+    private static class GroupInfo {
+        final int groupId;
+        final String groupName;
+        final String displayName;
+        final String description;
+        final int priority;
+        final boolean isDefault;
+        final java.sql.Timestamp createdAt;
+        
+        GroupInfo(int groupId, String groupName, String displayName, String description, 
+                 int priority, boolean isDefault, java.sql.Timestamp createdAt) {
+            this.groupId = groupId;
+            this.groupName = groupName;
+            this.displayName = displayName;
+            this.description = description;
+            this.priority = priority;
+            this.isDefault = isDefault;
+            this.createdAt = createdAt;
         }
     }
 }

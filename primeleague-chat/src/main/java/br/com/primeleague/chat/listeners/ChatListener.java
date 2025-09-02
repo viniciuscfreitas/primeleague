@@ -147,7 +147,7 @@ public class ChatListener implements Listener {
     }
     
     private void handleClanChat(Player player, String message) {
-        if (!player.hasPermission("primeleague.chat.clan")) {
+        if (!PrimeLeagueAPI.hasPermission(player, "primeleague.chat.clan")) {
             player.sendMessage("§cVocê não tem permissão para usar o chat de clã.");
             return;
         }
@@ -181,7 +181,7 @@ public class ChatListener implements Listener {
     }
     
     private void handleAllyChat(Player player, String message) {
-        if (!player.hasPermission("primeleague.chat.ally")) {
+        if (!PrimeLeagueAPI.hasPermission(player, "primeleague.chat.ally")) {
             player.sendMessage("§cVocê não tem permissão para usar o chat de aliança.");
             return;
         }
