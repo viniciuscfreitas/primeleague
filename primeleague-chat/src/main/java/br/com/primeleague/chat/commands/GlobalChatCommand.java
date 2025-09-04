@@ -62,9 +62,6 @@ public class GlobalChatCommand implements CommandExecutor {
             onlinePlayer.sendMessage(formattedMessage);
         }
         
-        // Feedback contextual para o remetente (sem duplicar a mensagem)
-        player.sendMessage("§7[Você -> Global]");
-        
         // Log da mensagem
         plugin.getLoggingService().logMessage("GLOBAL", player, null, message);
         

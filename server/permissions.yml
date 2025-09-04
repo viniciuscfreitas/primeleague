@@ -1,0 +1,76 @@
+# Configuração de Permissões do PrimeLeague
+# Este arquivo define as permissões padrão para todos os jogadores
+
+# Permissões padrão para todos os jogadores
+default:
+  permissions:
+    - primeleague.chat.color
+    - primeleague.chat.format
+    - primeleague.chat.clan
+    - primeleague.chat.ally
+    - primeleague.chat.bypass_rate_limit
+    - primeleague.chat.bypass_filters
+
+# Permissões para VIPs
+vip:
+  permissions:
+    - primeleague.chat.color
+    - primeleague.chat.format
+    - primeleague.chat.clan
+    - primeleague.chat.ally
+    - primeleague.chat.bypass_rate_limit
+    - primeleague.chat.bypass_filters
+  inheritance:
+    - default
+
+# Permissões para Staff
+staff:
+  permissions:
+    - primeleague.chat.color
+    - primeleague.chat.format
+    - primeleague.chat.clan
+    - primeleague.chat.ally
+    - primeleague.chat.bypass_rate_limit
+    - primeleague.chat.bypass_filters
+    - primeleague.chat.admin
+    - primeleague.chat.socialspy
+  inheritance:
+    - vip
+
+# Permissões para Administradores
+admin:
+  permissions:
+    - primeleague.chat.color
+    - primeleague.chat.format
+    - primeleague.chat.clan
+    - primeleague.chat.ally
+    - primeleague.chat.bypass_rate_limit
+    - primeleague.chat.bypass_filters
+    - primeleague.chat.admin
+    - primeleague.chat.socialspy
+    - primeleague.admin.*
+  inheritance:
+    - staff
+
+# Permissões para jogadores específicos (opcional)
+players:
+  vini:
+    permissions:
+      - primeleague.chat.color
+      - primeleague.chat.format
+      - primeleague.chat.clan
+      - primeleague.chat.ally
+      - primeleague.chat.bypass_rate_limit
+      - primeleague.chat.bypass_filters
+    inheritance:
+      - vip
+  vinicius:
+    permissions:
+      - primeleague.chat.color
+      - primeleague.chat.format
+      - primeleague.chat.clan
+      - primeleague.chat.ally
+      - primeleague.chat.bypass_rate_limit
+      - primeleague.chat.bypass_filters
+    inheritance:
+      - vip

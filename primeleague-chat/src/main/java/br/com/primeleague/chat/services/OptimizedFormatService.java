@@ -293,16 +293,20 @@ public class OptimizedFormatService {
      * @return Mensagem com formatação aplicada ou códigos removidos
      */
     private String applyGranularFormatting(Player player, String message) {
+        // SEMPRE aplicar cores para mensagens do sistema (formatação dos canais)
+        // As permissões só afetam a mensagem do jogador, não a formatação do sistema
+        String formattedMessage = ChatColor.translateAlternateColorCodes('&', message);
+        
+        // Verificar permissões apenas para a mensagem do jogador
         boolean hasColorPermission = PrimeLeagueAPI.hasPermission(player, "primeleague.chat.color");
         boolean hasFormatPermission = PrimeLeagueAPI.hasPermission(player, "primeleague.chat.format");
         
-        // Se o jogador tem permissões, aplicar TODOS os códigos de cor
-        if (hasColorPermission || hasFormatPermission) {
-            return ChatColor.translateAlternateColorCodes('&', message);
+        // Se o jogador não tem permissões, remover códigos apenas da sua mensagem
+        if (!hasColorPermission && !hasFormatPermission) {
+            return stripPlayerMessageCodes(formattedMessage);
         }
         
-        // Se não tem permissões, remover códigos da mensagem do jogador
-        return stripPlayerMessageCodes(message);
+        return formattedMessage;
     }
     
     /**
