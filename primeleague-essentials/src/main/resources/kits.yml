@@ -1,0 +1,205 @@
+# ========================================
+# CONFIGURAÇÃO - SISTEMA DE KITS
+# ========================================
+# Sistema de kits para qualidade de vida dos jogadores
+# Foco inicial: Kit Starter para novos jogadores
+
+# Configurações globais do sistema
+global:
+  # Permitir uso de kits durante combate
+  allow-during-combat: false
+  
+  # Cooldown global entre kits (em segundos)
+  global-cooldown: 30
+  
+  # Limite máximo de itens por kit
+  max-items-per-kit: 36
+  
+  # Permitir kits com custo econômico (futuro)
+  enable-economy-cost: false
+
+# Definição dos kits disponíveis
+kits:
+  # Kit Starter - Para novos jogadores
+  starter:
+    # Informações básicas
+    name: "Kit Inicial"
+    description: "Kit básico para começar sua jornada no Prime League"
+    permission: "primeleague.kits.starter"
+    
+    # Configurações de uso
+    cooldown: 3600  # 1 hora em segundos
+    max-uses: -1    # -1 = ilimitado, >0 = limite específico
+    
+    # Restrições
+    require-empty-inventory: true  # Inventário deve estar vazio
+    allow-during-combat: false     # Não pode usar em combate
+    
+    # Itens do kit
+    items:
+      # Ferramentas básicas
+      - item: "WOODEN_SWORD"
+        amount: 1
+        name: "§6Espada de Madeira"
+        lore:
+          - "§7Uma espada básica para"
+          - "§7começar sua jornada"
+        enchantments:
+          - "DAMAGE_ALL:1"
+      
+      - item: "WOODEN_PICKAXE"
+        amount: 1
+        name: "§6Picareta de Madeira"
+        lore:
+          - "§7Ferramenta essencial"
+          - "§7para mineração"
+        enchantments:
+          - "DIG_SPEED:1"
+      
+      - item: "WOODEN_AXE"
+        amount: 1
+        name: "§6Machado de Madeira"
+        lore:
+          - "§7Para coletar madeira"
+          - "§7e construir"
+        enchantments:
+          - "DIG_SPEED:1"
+      
+      # Comida e suprimentos
+      - item: "BREAD"
+        amount: 16
+        name: "§6Pão"
+        lore:
+          - "§7Alimento básico para"
+          - "§7manter sua fome"
+      
+      - item: "COOKED_BEEF"
+        amount: 8
+        name: "§6Carne Assada"
+        lore:
+          - "§7Alimento nutritivo"
+          - "§7para aventuras longas"
+      
+      # Materiais básicos
+      - item: "COBBLESTONE"
+        amount: 64
+        name: "§6Pedra"
+        lore:
+          - "§7Material básico para"
+          - "§7construção"
+      
+      - item: "WOOD"
+        amount: 32
+        name: "§6Madeira"
+        lore:
+          - "§7Recurso essencial"
+          - "§7para crafting"
+      
+      # Armadura básica
+      - item: "LEATHER_HELMET"
+        amount: 1
+        name: "§6Capacete de Couro"
+        lore:
+          - "§7Proteção básica"
+          - "§7para a cabeça"
+        enchantments:
+          - "PROTECTION_ENVIRONMENTAL:1"
+      
+      - item: "LEATHER_CHESTPLATE"
+        amount: 1
+        name: "§6Peitoral de Couro"
+        lore:
+          - "§7Proteção básica"
+          - "§7para o torso"
+        enchantments:
+          - "PROTECTION_ENVIRONMENTAL:1"
+      
+      - item: "LEATHER_LEGGINGS"
+        amount: 1
+        name: "§6Calças de Couro"
+        lore:
+          - "§7Proteção básica"
+          - "§7para as pernas"
+        enchantments:
+          - "PROTECTION_ENVIRONMENTAL:1"
+      
+      - item: "LEATHER_BOOTS"
+        amount: 1
+        name: "§6Botas de Couro"
+        lore:
+          - "§7Proteção básica"
+          - "§7para os pés"
+        enchantments:
+          - "PROTECTION_ENVIRONMENTAL:1"
+      
+      # Utilitários
+      - item: "TORCH"
+        amount: 16
+        name: "§6Tocha"
+        lore:
+          - "§7Iluminação básica"
+          - "§7para exploração"
+      
+      - item: "BOWL"
+        amount: 4
+        name: "§6Tigela"
+        lore:
+          - "§7Para preparar"
+          - "§7sopas e ensopados"
+
+  # Kit VIP - Para jogadores VIP (exemplo futuro)
+  vip:
+    name: "Kit VIP"
+    description: "Kit especial para membros VIP"
+    permission: "primeleague.kits.vip"
+    cooldown: 1800  # 30 minutos
+    max-uses: 3     # Máximo 3 usos por dia
+    require-empty-inventory: false
+    allow-during-combat: false
+    
+    items:
+      - item: "IRON_SWORD"
+        amount: 1
+        name: "§bEspada de Ferro"
+        lore:
+          - "§7Espada de qualidade"
+          - "§7para membros VIP"
+        enchantments:
+          - "DAMAGE_ALL:2"
+          - "FIRE_ASPECT:1"
+      
+      - item: "GOLDEN_APPLE"
+        amount: 2
+        name: "§6Maçã Dourada"
+        lore:
+          - "§7Alimento especial"
+          - "§7com propriedades mágicas"
+
+# Mensagens personalizadas
+messages:
+  prefix: "§6[Kits] "
+  
+  # Mensagens de sucesso
+  kit-received: "§aVocê recebeu o kit §e{kit_name}§a!"
+  kit-list-header: "§6=== §eKits Disponíveis §6==="
+  kit-list-item: "§e{kit_name} §7- {description}"
+  kit-list-footer: "§6================================"
+  
+  # Mensagens de erro
+  kit-not-found: "§cKit §e{kit_name} §cnão encontrado!"
+  kit-no-permission: "§cVocê não tem permissão para usar o kit §e{kit_name}§c!"
+  kit-cooldown: "§cAguarde §e{time} §cantes de usar este kit novamente!"
+  kit-in-combat: "§cNão é possível usar kits durante o combate!"
+  kit-inventory-full: "§cSeu inventário está cheio! Limpe espaço antes de usar o kit."
+  kit-requires-empty: "§cVocê deve ter o inventário vazio para usar este kit!"
+  kit-max-uses: "§cVocê atingiu o limite máximo de usos deste kit!"
+  
+  # Mensagens de informação
+  kit-cooldown-remaining: "§eTempo restante: §7{time}"
+  kit-uses-remaining: "§eUsos restantes: §7{uses}"
+
+# Configurações de debug
+debug:
+  enabled: false
+  log-kit-usage: true
+  log-cooldown-checks: false

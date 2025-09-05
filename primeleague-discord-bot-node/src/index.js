@@ -183,7 +183,7 @@ process.on('SIGINT', () => {
 });
 
 // Token do bot (deve ser configurado via variável de ambiente)
-const TOKEN = process.env.DISCORD_BOT_TOKEN || 'SEU_TOKEN_AQUI';
+const TOKEN = process.env.DISCORD_BOT_TOKEN || 'MTQwNTcxMjcyNzM3MjIwMjA5Ng.Gv8ugG.a5YUjRObPomZ8YUZerDdXnVnzETjTn7CkMBTCY';
 const GUILD_ID = process.env.DISCORD_GUILD_ID || '1344225249826443266';
 
 // Configurar variáveis de ambiente para workers

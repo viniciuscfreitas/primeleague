@@ -10,6 +10,7 @@ import br.com.primeleague.core.managers.EconomyManager;
 import br.com.primeleague.core.managers.DonorManager;
 import br.com.primeleague.core.managers.PermissionManager;
 import br.com.primeleague.core.services.TagManager;
+import br.com.primeleague.core.services.DAOServiceRegistry;
 import br.com.primeleague.core.models.PlayerProfile;
 import br.com.primeleague.core.models.PlayerGroup;
 import br.com.primeleague.core.util.UUIDUtils;
@@ -32,6 +33,7 @@ public final class PrimeLeagueAPI {
     private static DonorManager donorManager;
     private static ProfileProvider provider;
     private static PermissionManager permissionManager;
+    private static DAOServiceRegistry daoServiceRegistry;
 
     private PrimeLeagueAPI() {}
 
@@ -48,6 +50,7 @@ public final class PrimeLeagueAPI {
         economyManager = core.getEconomyManager();
         donorManager = core.getDonorManager();
         permissionManager = core.getPermissionManager();
+        daoServiceRegistry = core.getDAOServiceRegistry();
         initialized = true;
     }
 
@@ -333,6 +336,11 @@ public final class PrimeLeagueAPI {
     public static PlayerProfile getProfile(String name) {
         if (provider == null) return null;
         return provider.getProfile(name);
+    }
+    
+    public static DAOServiceRegistry getDAOServiceRegistry() {
+        ensureInit();
+        return daoServiceRegistry;
     }
 }
 

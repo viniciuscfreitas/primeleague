@@ -5,6 +5,8 @@ import br.com.primeleague.core.managers.DataManager;
 import br.com.primeleague.core.models.PlayerProfile;
 import br.com.primeleague.core.util.UUIDUtils;
 import br.com.primeleague.core.PrimeLeagueCore;
+import br.com.primeleague.core.events.PlayerIdentityLoadedEvent;
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -117,6 +119,12 @@ public final class ProfileListener implements Listener {
             
             // Criar mapeamento no DataManager para o tradutor de identidade
             dataManager.addUuidMapping(bukkitUuid, canonicalUuid);
+            
+            // 🔥 DISPARAR EVENTO DE IDENTIDADE CARREGADA
+            // Este evento garante que outros módulos só tentem acessar a identidade após o carregamento completo
+            PlayerIdentityLoadedEvent identityEvent = new PlayerIdentityLoadedEvent(player, playerId, canonicalUuid.toString());
+            Bukkit.getPluginManager().callEvent(identityEvent);
+            plugin.getLogger().info("[PROFILE-LISTENER] Evento PlayerIdentityLoadedEvent disparado para " + name + " (player_id: " + playerId + ")");
             
             // 🔥 CACHE WARMING - ECONOMIA
             // Carregar saldo do jogador no cache para operações instantâneas

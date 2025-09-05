@@ -1,7 +1,7 @@
 package br.com.primeleague.admin.api;
 
 import br.com.primeleague.admin.managers.AdminManager;
-import br.com.primeleague.admin.models.Punishment;
+import br.com.primeleague.api.models.Punishment;
 
 import java.util.UUID;
 

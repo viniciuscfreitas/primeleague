@@ -9,7 +9,7 @@
     <plugins>
       <plugin>
         <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.1</version>
+        <version>3.11.0</version>
         <configuration>
           <source>1.8</source>
           <target>1.8</target>
@@ -17,7 +17,7 @@
       </plugin>
       <plugin>
         <artifactId>maven-shade-plugin</artifactId>
-        <version>2.3</version>
+        <version>3.5.1</version>
         <executions>
           <execution>
             <phase>package</phase>
@@ -50,17 +50,40 @@
   </build>
   <dependencies>
     <dependency>
+      <groupId>com.zaxxer</groupId>
+      <artifactId>HikariCP</artifactId>
+      <version>5.1.0</version>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>mysql</groupId>
+      <artifactId>mysql-connector-java</artifactId>
+      <version>8.0.33</version>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>at.favre.lib</groupId>
+      <artifactId>bcrypt</artifactId>
+      <version>0.10.2</version>
+      <scope>compile</scope>
+      <exclusions>
+        <exclusion>
+          <artifactId>slf4j-api</artifactId>
+          <groupId>org.slf4j</groupId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
       <groupId>org.bukkit</groupId>
       <artifactId>bukkit</artifactId>
       <version>1.5.2-R1.0</version>
       <scope>system</scope>
-      <systemPath>C:\Users\Dell - INSP\primeleague\primeleague\primeleague-core/../lib/craftbukkit-1.5.2-R1.0.jar</systemPath>
+      <systemPath>${project.basedir}/../lib/craftbukkit-1.5.2-R1.0.jar</systemPath>
     </dependency>
   </dependencies>
   <properties>
-    <maven.compiler.target>1.7</maven.compiler.target>
-    <maven.compiler.source>1.7</maven.compiler.source>
+    <maven.compiler.target>1.8</maven.compiler.target>
+    <maven.compiler.source>1.8</maven.compiler.source>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
 </project>
-

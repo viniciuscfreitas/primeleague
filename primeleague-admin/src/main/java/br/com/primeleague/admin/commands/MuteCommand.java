@@ -2,7 +2,7 @@ package br.com.primeleague.admin.commands;
 
 import br.com.primeleague.core.api.PrimeLeagueAPI;
 import br.com.primeleague.admin.PrimeLeagueAdmin;
-import br.com.primeleague.admin.models.Punishment;
+import br.com.primeleague.api.models.Punishment;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;

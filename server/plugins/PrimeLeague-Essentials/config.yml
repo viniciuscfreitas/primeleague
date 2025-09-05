@@ -1,0 +1,142 @@
+# ========================================
+# CONFIGURAÇÃO - PRIME LEAGUE ESSENTIALS
+# ========================================
+# Sistema de comandos essenciais para qualidade de vida dos jogadores
+
+# Configurações de Homes
+homes:
+  # Limite padrão de homes por jogador
+  default-limit: 3
+  
+  # Nomes de homes reservados (não podem ser usados)
+  reserved-names:
+    - "spawn"
+    - "admin"
+    - "staff"
+    - "mod"
+    - "helper"
+    - "vip"
+    - "premium"
+    - "donator"
+    - "donor"
+    - "test"
+    - "teste"
+    - "debug"
+    - "temp"
+    - "temporary"
+  
+  # Configurações de validação
+  validation:
+    # Permitir nomes com espaços
+    allow-spaces: false
+    
+    # Permitir caracteres especiais
+    allow-special-chars: false
+    
+    # Tamanho mínimo do nome
+    min-name-length: 2
+    
+    # Tamanho máximo do nome
+    max-name-length: 32
+
+# Configurações de Teletransporte
+teleport:
+  # Cooldown em segundos entre teletransportes
+  cooldown: 5
+  
+  # Permitir teletransporte entre mundos
+  cross-world: true
+  
+  # Tempo de delay antes do teletransporte (em ticks)
+  delay: 0
+  
+  # Cancelar teletransporte se jogador se mover
+  cancel-on-move: true
+  
+  # Raio de movimento para cancelar (em blocos)
+  cancel-radius: 2
+  
+  # Configurações de segurança
+  safety:
+    # Verificar se a localização é segura (não há lava, void, etc.)
+    check-safe-location: true
+    
+    # Teleportar para localização segura próxima se necessário
+    find-safe-location: true
+    
+    # Raio de busca para localização segura
+    safe-search-radius: 10
+
+# Configurações de Spawn
+spawn:
+  # Cooldown específico para spawn (em segundos)
+  cooldown: 10
+  
+  # Permitir spawn em qualquer mundo
+  allow-any-world: true
+  
+  # Mundo padrão para spawn (se não especificado)
+  default-world: "world"
+
+# Configurações de Performance
+performance:
+  # Tamanho máximo do cache de homes por jogador
+  max-cache-size: 100
+  
+  # Tempo de vida do cache em minutos
+  cache-lifetime: 30
+  
+  # Limpar cache automaticamente
+  auto-cleanup: true
+  
+  # Intervalo de limpeza em minutos
+  cleanup-interval: 15
+
+# Configurações de Mensagens
+messages:
+  # Prefixo das mensagens
+  prefix: "§6[Essentials] "
+  
+  # Mensagens personalizadas
+  home-created: "§aHome '{home}' criada com sucesso!"
+  home-not-found: "§cHome '{home}' não encontrada!"
+  home-removed: "§aHome '{home}' removida com sucesso!"
+  teleport-success: "§aTeleportado para '{location}'!"
+  teleport-cooldown: "§cAguarde {time} segundos para usar o teletransporte novamente!"
+  no-permission: "§cVocê não tem permissão para usar este comando!"
+  invalid-home-name: "§cNome da home inválido!"
+  home-limit-reached: "§cVocê atingiu o limite máximo de homes ({limit})!"
+  world-not-found: "§cMundo '{world}' não está disponível!"
+  cross-world-disabled: "§cTeletransporte entre mundos está desabilitado!"
+  location-not-safe: "§cLocalização não é segura para teletransporte!"
+
+# Configurações de Logs
+logging:
+  # Habilitar logs detalhados
+  verbose: true
+  
+  # Log de criação de homes
+  log-home-creation: true
+  
+  # Log de teletransportes
+  log-teleports: true
+  
+  # Log de remoção de homes
+  log-home-removal: true
+  
+  # Log de erros
+  log-errors: true
+
+# Configurações de Debug
+debug:
+  # Modo debug
+  enabled: false
+  
+  # Log de queries SQL
+  log-sql-queries: false
+  
+  # Log de cache operations
+  log-cache-operations: false
+  
+  # Log de permissões
+  log-permissions: false

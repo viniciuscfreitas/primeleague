@@ -1,7 +1,7 @@
 package br.com.primeleague.admin.commands;
 
 import br.com.primeleague.admin.managers.AdminManager;
-import br.com.primeleague.admin.models.Ticket;
+import br.com.primeleague.api.models.Ticket;
 import br.com.primeleague.core.api.PrimeLeagueAPI;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;

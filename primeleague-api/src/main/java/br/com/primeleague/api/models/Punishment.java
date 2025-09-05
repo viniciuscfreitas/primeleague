@@ -1,4 +1,4 @@
-package br.com.primeleague.admin.models;
+package br.com.primeleague.api.models;
 
 import java.sql.Timestamp;
 import java.util.UUID;
@@ -34,6 +34,15 @@ public class Punishment {
     private Integer targetPlayerId;
     private Integer authorPlayerId;
     private Integer pardonedByPlayerId;
+    
+    // Campos adicionais para compatibilidade com DAO
+    private int punishmentId;
+    private int playerId;
+    private int staffId;
+    private String punishmentType;
+    private long durationSeconds;
+    private Timestamp appliedAt;
+    private Timestamp removedAt;
 
     public Punishment() {}
 
@@ -188,6 +197,63 @@ public class Punishment {
 
     public void setPardonedByPlayerId(Integer pardonedByPlayerId) {
         this.pardonedByPlayerId = pardonedByPlayerId;
+    }
+    
+    // Getters e Setters para campos de compatibilidade com DAO
+    public int getPunishmentId() {
+        return punishmentId;
+    }
+    
+    public void setPunishmentId(int punishmentId) {
+        this.punishmentId = punishmentId;
+    }
+    
+    public int getPlayerId() {
+        return playerId;
+    }
+    
+    public void setPlayerId(int playerId) {
+        this.playerId = playerId;
+    }
+    
+    public int getStaffId() {
+        return staffId;
+    }
+    
+    public void setStaffId(int staffId) {
+        this.staffId = staffId;
+    }
+    
+    public String getPunishmentType() {
+        return punishmentType;
+    }
+    
+    public void setPunishmentType(String punishmentType) {
+        this.punishmentType = punishmentType;
+    }
+    
+    public long getDurationSeconds() {
+        return durationSeconds;
+    }
+    
+    public void setDurationSeconds(long durationSeconds) {
+        this.durationSeconds = durationSeconds;
+    }
+    
+    public Timestamp getAppliedAt() {
+        return appliedAt;
+    }
+    
+    public void setAppliedAt(Timestamp appliedAt) {
+        this.appliedAt = appliedAt;
+    }
+    
+    public Timestamp getRemovedAt() {
+        return removedAt;
+    }
+    
+    public void setRemovedAt(Timestamp removedAt) {
+        this.removedAt = removedAt;
     }
 
     /**

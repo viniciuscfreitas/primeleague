@@ -3,9 +3,8 @@ package br.com.primeleague.core;
 import br.com.primeleague.api.dao.ClanDAO;
 import br.com.primeleague.api.ProfileServiceRegistry;
 import br.com.primeleague.api.TagServiceRegistry;
-import br.com.primeleague.api.DAOServiceRegistry;
+import br.com.primeleague.core.services.DAOServiceRegistry;
 import br.com.primeleague.core.api.PrimeLeagueAPI;
-import br.com.primeleague.core.database.MySqlClanDAO;
 import br.com.primeleague.core.managers.DataManager;
 import br.com.primeleague.core.managers.IdentityManager;
 import br.com.primeleague.core.managers.DonorManager;
@@ -39,7 +38,7 @@ public final class PrimeLeagueCore extends JavaPlugin {
     private DataManager dataManager;
     private IdentityManager identityManager;
     private DonorManager donorManager;
-    private ClanDAO clanDAO;
+    private DAOServiceRegistry daoServiceRegistry;
     private TagManager tagManager;
     private PrivateMessageManager privateMessageManager;
     private EconomyManager economyManager;
@@ -64,8 +63,8 @@ public final class PrimeLeagueCore extends JavaPlugin {
         // Inicializa o DonorManager (sistema de doadores)
         this.donorManager = new DonorManager(this);
 
-        // Inicializa o DAO de clãs
-        this.clanDAO = new MySqlClanDAO(this);
+        // Inicializa o DAOServiceRegistry (sistema de injeção de dependência)
+        this.daoServiceRegistry = new DAOServiceRegistry(this.logger);
 
         // Inicializa o TagManager
         this.tagManager = new TagManagerImpl(this.dataManager);
@@ -125,8 +124,7 @@ public final class PrimeLeagueCore extends JavaPlugin {
         // Registra o TagService para outros módulos
         TagServiceRegistry.register(new TagServiceAdapter(this.tagManager));
         
-        // Registra o DAOService para outros módulos
-        DAOServiceRegistry.register(new DAOServiceImpl(this.clanDAO));
+        // DAOServiceRegistry será usado pelos módulos para registrar seus próprios DAOs
 
         // Registra comandos
         getCommand("msg").setExecutor(new PrivateMessageCommand(this.privateMessageManager));
@@ -180,8 +178,12 @@ public final class PrimeLeagueCore extends JavaPlugin {
         return donorManager;
     }
 
+    public DAOServiceRegistry getDAOServiceRegistry() {
+        return daoServiceRegistry;
+    }
+    
     public ClanDAO getClanDAO() {
-        return clanDAO;
+        return daoServiceRegistry.getClanDAO();
     }
 
     public TagManager getTagManager() {

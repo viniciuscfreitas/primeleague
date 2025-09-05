@@ -206,12 +206,20 @@ public class PermissionManager implements Listener {
     
     /**
      * Busca o ID do jogador pelo UUID.
+     * CORREÇÃO: Usar UUID canônico em vez de UUID do Bukkit
      */
     private Integer getPlayerId(Connection conn, UUID playerUuid) throws SQLException {
+        // ✅ CORREÇÃO: Converter UUID do Bukkit para UUID canônico
+        UUID canonicalUuid = dataManager.getCanonicalUuid(playerUuid);
+        if (canonicalUuid == null) {
+            // Fallback: tentar com UUID original
+            canonicalUuid = playerUuid;
+        }
+        
         try (PreparedStatement stmt = conn.prepareStatement(
             "SELECT player_id FROM player_data WHERE uuid = ?")) {
             
-            stmt.setString(1, playerUuid.toString());
+            stmt.setString(1, canonicalUuid.toString());
             ResultSet rs = stmt.executeQuery();
             
             if (rs.next()) {

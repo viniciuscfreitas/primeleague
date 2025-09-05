@@ -16,7 +16,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.UUID;
-import br.com.primeleague.admin.models.Punishment;
+import br.com.primeleague.api.models.Punishment;
 
 /**
  * Comando para remover banimento de jogadores.

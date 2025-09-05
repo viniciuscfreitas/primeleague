@@ -1,0 +1,336 @@
+# ========================================
+# CONFIGURAÇÃO - PRIME LEAGUE ESSENTIALS
+# ========================================
+# Sistema de comandos essenciais para qualidade de vida dos jogadores
+
+# Configurações de Homes
+homes:
+  # Limite padrão de homes por jogador
+  default-limit: 3
+  
+  # Nomes de homes reservados (não podem ser usados)
+  reserved-names:
+    - "spawn"
+    - "admin"
+    - "staff"
+    - "mod"
+    - "helper"
+    - "vip"
+    - "premium"
+    - "donator"
+    - "donor"
+    - "test"
+    - "teste"
+    - "debug"
+    - "temp"
+    - "temporary"
+  
+  # Configurações de validação
+  validation:
+    # Permitir nomes com espaços
+    allow-spaces: false
+    
+    # Permitir caracteres especiais
+    allow-special-chars: false
+    
+    # Tamanho mínimo do nome
+    min-name-length: 2
+    
+    # Tamanho máximo do nome
+    max-name-length: 32
+
+# Configurações de Teletransporte
+teleport:
+  # Cooldown em segundos entre teletransportes
+  cooldown: 5
+  
+  # Permitir teletransporte entre mundos
+  cross-world: true
+  
+  # Tempo de delay antes do teletransporte (em ticks)
+  delay: 0
+  
+  # Cancelar teletransporte se jogador se mover
+  cancel-on-move: true
+  
+  # Raio de movimento para cancelar (em blocos)
+  cancel-radius: 2
+  
+  # Configurações de segurança
+  safety:
+    # Verificar se a localização é segura (não há lava, void, etc.)
+    check-safe-location: true
+    
+    # Teleportar para localização segura próxima se necessário
+    find-safe-location: true
+    
+    # Raio de busca para localização segura
+    safe-search-radius: 10
+
+# Configurações do Sistema TPA
+tpa:
+  # Tempo de expiração das solicitações (em segundos)
+  request-expiration: 60
+  
+  # Cooldown entre solicitações (em segundos)
+  request-cooldown: 30
+  
+  # Delay antes do teletransporte (em segundos)
+  teleport-delay: 5
+  
+  # Permitir teletransporte durante combate
+  allow-during-combat: false
+  
+  # Mensagens personalizadas
+  messages:
+    request-sent: "§aSolicitação de teletransporte enviada para {target}!"
+    request-received: "§a{requester} solicitou teletransporte para você! Use /tpaccept ou /tpdeny"
+    request-accepted: "§a{accepter} aceitou sua solicitação de teletransporte!"
+    request-denied: "§c{denier} negou sua solicitação de teletransporte!"
+    request-expired: "§cA solicitação de teletransporte expirou!"
+    teleporting: "§aTeletransportando em {delay} segundos... Não se mova!"
+    already-pending: "§c{target} já possui uma solicitação de teletransporte pendente!"
+    no-pending-requests: "§cVocê não possui solicitações de teletransporte pendentes!"
+    player-not-found: "§cJogador não encontrado!"
+    cannot-tpa-self: "§cVocê não pode solicitar teletransporte para si mesmo!"
+    in-combat: "§cNão é possível solicitar teletransporte durante o combate!"
+    target-in-combat: "§c{target} está em combate! Aguarde o combate terminar."
+    teleport-cancelled: "§cTeletransporte cancelado! Um dos jogadores entrou em combate!"
+    teleport-success: "§aTeletransporte realizado com sucesso!"
+
+# Configurações do Sistema de Kits
+kits:
+  # Configurações globais
+  global:
+    # Permitir uso de kits durante combate
+    allow-during-combat: false
+    
+    # Cooldown global entre kits (em segundos)
+    global-cooldown: 30
+    
+    # Limite máximo de itens por kit
+    max-items-per-kit: 36
+    
+    # Permitir kits com custo econômico (futuro)
+    enable-economy-cost: false
+  
+  # Mensagens personalizadas
+  messages:
+    prefix: "§6[Kits] "
+    
+    # Mensagens de sucesso
+    kit-received: "§aVocê recebeu o kit §e{kit_name}§a!"
+    kit-list-header: "§6=== §eKits Disponíveis §6==="
+    kit-list-item: "§e{kit_name} §7- {description}"
+    kit-list-footer: "§6================================"
+    
+    # Mensagens de erro
+    kit-not-found: "§cKit §e{kit_name} §cnão encontrado!"
+    kit-no-permission: "§cVocê não tem permissão para usar o kit §e{kit_name}§c!"
+    kit-cooldown: "§cAguarde §e{time} §cantes de usar este kit novamente!"
+    kit-in-combat: "§cNão é possível usar kits durante o combate!"
+    kit-inventory-full: "§cSeu inventário está cheio! Limpe espaço antes de usar o kit."
+    kit-requires-empty: "§cVocê deve ter o inventário vazio para usar este kit!"
+    kit-max-uses: "§cVocê atingiu o limite máximo de usos deste kit!"
+    
+    # Mensagens de informação
+    kit-cooldown-remaining: "§eTempo restante: §7{time}"
+    kit-uses-remaining: "§eUsos restantes: §7{uses}"
+
+# Configurações do Comando Discord
+discord-command:
+  # Mensagem do comando /discord
+  message:
+    - "§6§l=== §eNOSSO DISCORD §6§l==="
+    - ""
+    - "§7Todas as regras, atualizações e anúncios"
+    - "§7estão em nosso servidor do Discord!"
+    - ""
+    - "§a§nhttps://discord.gg/primeleague"
+    - ""
+    - "§6§l========================"
+
+# Configurações dos Comandos de Informação
+player-info:
+  # Configurações do comando /seen
+  seen:
+    # Formato de tempo para exibição
+    time-format: "dd/MM/yyyy HH:mm:ss"
+    
+    # Mensagens personalizadas
+    messages:
+      player-not-found: "§cJogador §e{player} §cnão encontrado!"
+      player-online: "§a{player} §aestá online agora!"
+      last-seen: "§e{player} §7foi visto pela última vez: §a{time}"
+      never-seen: "§e{player} §7nunca foi visto no servidor!"
+      usage: "§cUso: /seen <jogador>"
+  
+  # Configurações do comando /whois
+  whois:
+    # Layout do dossiê
+    layout:
+      header: "§6§l=== §eINFORMAÇÕES DE {player} §6§l==="
+      footer: "§6§l================================"
+      
+    # Mensagens personalizadas
+    messages:
+      player-not-found: "§cJogador §e{player} §cnão encontrado!"
+      loading: "§7Carregando informações de §e{player}§7..."
+      usage: "§cUso: /whois <jogador>"
+      
+    # Seções do dossiê
+    sections:
+      basic-info:
+        title: "§6§lInformações Básicas"
+        online-status: "§7Status: {status}"
+        last-seen: "§7Última vez visto: {time}"
+      
+      identity:
+        title: "§6§lIdentidade"
+        display-name: "§7Nome: §e{display_name}"
+        rank: "§7Rank: {rank}"
+      
+      stats:
+        title: "§6§lEstatísticas"
+        elo: "§7ELO: §a{elo}"
+        money: "§7Dinheiro: §a{money}"
+        level: "§7Nível: §a{level}"
+      
+      clan:
+        title: "§6§lClã"
+        clan-name: "§7Clã: §e{clan_name}"
+        clan-role: "§7Cargo: §a{clan_role}"
+        clan-tag: "§7Tag: §f{clan_tag}"
+        no-clan: "§7Clã: §cNenhum"
+      
+      essentials:
+        title: "§6§lEssentials"
+        homes: "§7Homes: §a{home_count}"
+        home-list: "§7Lista: §f{homes}"
+
+# Configurações de Spawn
+spawn:
+  # Cooldown específico para spawn (em segundos)
+  cooldown: 10
+  
+  # Permitir spawn em qualquer mundo
+  allow-any-world: true
+  
+  # Mundo padrão para spawn (se não especificado)
+  default-world: "world"
+
+# Configurações de Performance
+performance:
+  # Tamanho máximo do cache de homes por jogador
+  max-cache-size: 100
+  
+  # Tempo de vida do cache em minutos
+  cache-lifetime: 30
+  
+  # Limpar cache automaticamente
+  auto-cleanup: true
+  
+  # Intervalo de limpeza em minutos
+  cleanup-interval: 15
+
+# Configurações de Mensagens
+messages:
+  # Prefixo das mensagens
+  prefix: "§6[Essentials] "
+  
+  # Mensagens personalizadas
+  home-created: "§aHome '{home}' criada com sucesso!"
+  home-not-found: "§cHome '{home}' não encontrada!"
+  home-removed: "§aHome '{home}' removida com sucesso!"
+  teleport-success: "§aTeleportado para '{location}'!"
+  teleport-cooldown: "§cAguarde {time} segundos para usar o teletransporte novamente!"
+  no-permission: "§cVocê não tem permissão para usar este comando!"
+  invalid-home-name: "§cNome da home inválido!"
+  home-limit-reached: "§cVocê atingiu o limite máximo de homes ({limit})!"
+  world-not-found: "§cMundo '{world}' não está disponível!"
+  cross-world-disabled: "§cTeletransporte entre mundos está desabilitado!"
+  location-not-safe: "§cLocalização não é segura para teletransporte!"
+
+# Configurações do Sistema de Warps
+warps:
+  # Cooldown entre usos de warps (em segundos)
+  cooldown: 3
+  
+  # Permitir teletransporte entre mundos
+  cross-world: true
+  
+  # Mensagens do sistema de warps
+  messages:
+    # Comando /warp
+    warp:
+      usage: "§cUso: /warp <nome>"
+      not-found: "§cWarp '{warp}' não encontrado!"
+      no-permission: "§cVocê não tem permissão para usar este warp!"
+      insufficient-funds: "§cSaldo insuficiente! Você precisa de §a${cost} §cpara usar este warp."
+      current-balance: "§7Seu saldo atual: §a${balance}"
+      payment-success: "§aTaxa de §a${cost} §acobrada com sucesso!"
+      teleport-success: "§aTeleportado para warp '{warp}'!"
+      cooldown-active: "§cAguarde {time} segundos para usar warps novamente!"
+      world-not-available: "§cMundo '{world}' não está disponível!"
+      cross-world-disabled: "§cTeletransporte entre mundos está desabilitado!"
+      payment-error: "§cErro ao processar pagamento: {error}"
+      general-error: "§cErro ao teleportar! Tente novamente."
+    
+    # Comando /warplist
+    warplist:
+      header: "§6§l=== §eWARPS DISPONÍVEIS §6§l==="
+      footer: "§6§l================================"
+      warp-format: "§7• §e{warp} §7- §a${cost} §7- §f{permission}"
+      warp-free: "§7• §e{warp} §7- §aGratuito §7- §f{permission}"
+      no-warps: "§cNenhum warp disponível!"
+      loading: "§7Carregando lista de warps..."
+    
+    # Comando /setwarp
+    setwarp:
+      usage: "§cUso: /setwarp <nome> [custo] [permissão]"
+      invalid-name: "§cNome do warp inválido! Use apenas letras, números e underscore."
+      name-too-long: "§cNome do warp muito longo! Máximo 32 caracteres."
+      invalid-cost: "§cCusto inválido! Use um número positivo."
+      already-exists: "§cJá existe um warp com o nome '{warp}'!"
+      success: "§aWarp '{warp}' criado com sucesso!"
+      cost-info: "§7Custo: §a${cost}"
+      permission-info: "§7Permissão: §e{permission}"
+      error: "§cErro ao criar warp! Tente novamente."
+    
+    # Comando /delwarp
+    delwarp:
+      usage: "§cUso: /delwarp <nome>"
+      not-found: "§cWarp '{warp}' não encontrado!"
+      success: "§aWarp '{warp}' removido com sucesso!"
+      error: "§cErro ao remover warp! Tente novamente."
+
+# Configurações de Logs
+logging:
+  # Habilitar logs detalhados
+  verbose: true
+  
+  # Log de criação de homes
+  log-home-creation: true
+  
+  # Log de teletransportes
+  log-teleports: true
+  
+  # Log de remoção de homes
+  log-home-removal: true
+  
+  # Log de erros
+  log-errors: true
+
+# Configurações de Debug
+debug:
+  # Modo debug
+  enabled: false
+  
+  # Log de queries SQL
+  log-sql-queries: false
+  
+  # Log de cache operations
+  log-cache-operations: false
+  
+  # Log de permissões
+  log-permissions: false

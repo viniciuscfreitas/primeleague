@@ -89,4 +89,4 @@ INSERT INTO `permission_groups` (`group_name`, `display_name`, `description`, `p
 ('moderator', 'Moderador', 'Moderadores do servidor', 20, FALSE, TRUE),
 ('admin', 'Administrador', 'Administradores do servidor', 30, FALSE, TRUE),
 ('owner', 'Dono', 'Dono do servidor', 40, FALSE, TRUE);
-
+image.png

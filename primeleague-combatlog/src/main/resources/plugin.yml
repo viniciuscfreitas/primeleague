@@ -1,0 +1,49 @@
+name: PrimeLeague-CombatLog
+version: 1.0.0
+main: br.com.primeleague.combatlog.CombatLogPlugin
+description: Sistema de prevenção de combat log para o Prime League
+author: PrimeLeague Development Team
+website: https://primeleague.com
+
+# Dependências
+depend: [PrimeLeague-Core, PrimeLeagueAdmin]
+
+# Comandos
+commands:
+  combatlog:
+    description: Comandos para gerenciar o sistema de combat log
+    usage: /combatlog <subcomando> [parâmetros]
+    permission: primeleague.admin.combatlog
+    permission-message: Você não tem permissão para usar este comando.
+
+# Permissões
+permissions:
+  primeleague.admin.combatlog:
+    description: Permite acesso aos comandos de combat log
+    default: op
+    children:
+      primeleague.admin.combatlog.check: true
+      primeleague.admin.combatlog.force: true
+      primeleague.admin.combatlog.remove: true
+      primeleague.admin.combatlog.history: true
+      primeleague.admin.combatlog.stats: true
+  
+  primeleague.admin.combatlog.check:
+    description: Permite verificar status de combate de jogadores
+    default: op
+  
+  primeleague.admin.combatlog.force:
+    description: Permite forçar aplicação de tag de combate
+    default: op
+  
+  primeleague.admin.combatlog.remove:
+    description: Permite remover tag de combate manualmente
+    default: op
+  
+  primeleague.admin.combatlog.history:
+    description: Permite ver histórico de combat logs
+    default: op
+  
+  primeleague.admin.combatlog.stats:
+    description: Permite ver estatísticas do sistema
+    default: op

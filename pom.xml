@@ -22,6 +22,7 @@
         <module>primeleague-clans</module>
         <module>primeleague-p2p</module>
         <module>primeleague-adminshop</module>
+        <module>primeleague-combatlog</module>
     </modules>
 
     <properties>
@@ -45,7 +46,7 @@
                 <artifactId>bukkit</artifactId>
                 <version>${bukkit.version}</version>
                 <scope>system</scope>
-                <systemPath>${project.basedir}/lib/craftbukkit-1.5.2-R1.0.jar</systemPath>
+                <systemPath>${project.basedir}/../lib/craftbukkit-1.5.2-R1.0.jar</systemPath>
             </dependency>
 
             <!-- HikariCP -->

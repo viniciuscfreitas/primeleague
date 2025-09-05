@@ -1082,6 +1082,149 @@ tables:
         columns: ["created_at"]
 
   # ========================================
+  # SISTEMA DE COMANDOS ESSENCIAIS - ESSENTIALS
+  # ========================================
+  player_homes:
+    description: "Homes dos jogadores para sistema de teletransporte"
+    primary_key: "home_id"
+    columns:
+      home_id:
+        type: "INT"
+        nullable: false
+        auto_increment: true
+        description: "ID único da home"
+      player_id:
+        type: "INT"
+        nullable: false
+        description: "ID do jogador (FK para player_data)"
+      home_name:
+        type: "VARCHAR(32)"
+        nullable: false
+        description: "Nome da home (ex: 'casa', 'fazenda')"
+      world:
+        type: "VARCHAR(64)"
+        nullable: false
+        description: "Nome do mundo"
+      x:
+        type: "DOUBLE"
+        nullable: false
+        description: "Coordenada X"
+      y:
+        type: "DOUBLE"
+        nullable: false
+        description: "Coordenada Y"
+      z:
+        type: "DOUBLE"
+        nullable: false
+        description: "Coordenada Z"
+      yaw:
+        type: "FLOAT"
+        nullable: false
+        default: "0.0"
+        description: "Rotação horizontal (yaw)"
+      pitch:
+        type: "FLOAT"
+        nullable: false
+        default: "0.0"
+        description: "Rotação vertical (pitch)"
+      created_at:
+        type: "TIMESTAMP"
+        nullable: false
+        default: "CURRENT_TIMESTAMP"
+        description: "Data de criação da home"
+      last_used:
+        type: "TIMESTAMP"
+        nullable: true
+        description: "Última vez que a home foi usada"
+    indexes:
+      - name: "idx_player_homes_player_id"
+        columns: ["player_id"]
+      - name: "idx_player_homes_player_name"
+        columns: ["player_id", "home_name"]
+        unique: true
+    foreign_keys:
+      - column: "player_id"
+        references_table: "player_data"
+        references_column: "player_id"
+        on_delete: "CASCADE"
+
+  essentials_warps:
+    description: "Warps públicos para teletransporte com custo"
+    primary_key: "warp_id"
+    columns:
+      warp_id:
+        type: "INT"
+        nullable: false
+        auto_increment: true
+        description: "ID único do warp"
+      warp_name:
+        type: "VARCHAR(32)"
+        nullable: false
+        unique: true
+        description: "Nome do warp (único)"
+      world:
+        type: "VARCHAR(64)"
+        nullable: false
+        description: "Nome do mundo"
+      x:
+        type: "DOUBLE"
+        nullable: false
+        description: "Coordenada X"
+      y:
+        type: "DOUBLE"
+        nullable: false
+        description: "Coordenada Y"
+      z:
+        type: "DOUBLE"
+        nullable: false
+        description: "Coordenada Z"
+      yaw:
+        type: "FLOAT"
+        nullable: false
+        default: "0.0"
+        description: "Rotação horizontal (yaw)"
+      pitch:
+        type: "FLOAT"
+        nullable: false
+        default: "0.0"
+        description: "Rotação vertical (pitch)"
+      permission_node:
+        type: "VARCHAR(64)"
+        nullable: true
+        description: "Permissão necessária para usar o warp (null = todos)"
+      cost:
+        type: "DECIMAL(10,2)"
+        nullable: false
+        default: "0.00"
+        description: "Custo em dinheiro para usar o warp"
+      created_by:
+        type: "VARCHAR(16)"
+        nullable: true
+        description: "Nome do jogador que criou o warp"
+      created_at:
+        type: "TIMESTAMP"
+        nullable: false
+        default: "CURRENT_TIMESTAMP"
+        description: "Data de criação do warp"
+      last_used:
+        type: "TIMESTAMP"
+        nullable: true
+        description: "Última vez que o warp foi usado"
+      usage_count:
+        type: "INT"
+        nullable: false
+        default: "0"
+        description: "Contador de usos do warp"
+    indexes:
+      - name: "idx_essentials_warps_name"
+        columns: ["warp_name"]
+        unique: true
+      - name: "idx_essentials_warps_permission"
+        columns: ["permission_node"]
+      - name: "idx_essentials_warps_cost"
+        columns: ["cost"]
+
+  # ========================================
   # SISTEMA DE GRUPOS E PERMISSÕES (CORE)
   # ========================================
   permission_groups:
@@ -1329,6 +1472,68 @@ tables:
       - name: "idx_permission_logs_created_at"
         columns: ["created_at"]
 
+  # ========================================
+  # SISTEMA DE PREVENÇÃO DE COMBAT LOG (COMBATLOG)
+  # ========================================
+  combat_logs:
+    description: "Registro de combat logs para auditoria e análise"
+    primary_key: "id"
+    columns:
+      id:
+        type: "INT"
+        nullable: false
+        auto_increment: true
+        description: "ID único do registro"
+      player_id:
+        type: "INT"
+        nullable: false
+        description: "ID do jogador que fez combat log"
+      player_name:
+        type: "VARCHAR(16)"
+        nullable: false
+        description: "Nome do jogador"
+      combat_start_time:
+        type: "TIMESTAMP"
+        nullable: false
+        description: "Início do combate"
+      combat_end_time:
+        type: "TIMESTAMP"
+        nullable: true
+        description: "Fim do combate (quando deslogou)"
+      combat_duration:
+        type: "INT"
+        nullable: false
+        description: "Duração do combate em segundos"
+      combat_reason:
+        type: "ENUM('DIRECT_DAMAGE')"
+        nullable: false
+        default: "DIRECT_DAMAGE"
+        description: "Razão do combate (apenas dano PvP direto)"
+      zone_type:
+        type: "ENUM('SAFE', 'PVP', 'WARZONE')"
+        nullable: false
+        description: "Tipo de zona onde ocorreu"
+      staff_notes:
+        type: "TEXT"
+        nullable: true
+        description: "Notas da staff sobre o caso"
+      created_at:
+        type: "TIMESTAMP"
+        nullable: false
+        default: "CURRENT_TIMESTAMP"
+        description: "Data/hora do registro"
+    foreign_keys:
+      - column: "player_id"
+        references: "player_data(player_id)"
+        on_delete: "CASCADE"
+    indexes:
+      - name: "idx_combat_logs_player_id"
+        columns: ["player_id"]
+      - name: "idx_combat_logs_created_at"
+        columns: ["created_at"]
+      - name: "idx_combat_logs_combat_start_time"
+        columns: ["combat_start_time"]
+
 # ========================================
 # VALIDACOES ESPECIFICAS
 # ========================================
@@ -1393,6 +1598,54 @@ validations:
         WHERE pd.player_id IS NULL
       severity: "ERROR"
       message: "Punicao {id} referencia jogador inexistente {target_player_id}"
+
+# ========================================
+# SISTEMA DE KITS - ESSENTIALS
+# ========================================
+player_kit_cooldowns:
+  description: "Cooldowns de kits dos jogadores para controle de uso"
+  primary_key: "cooldown_id"
+  columns:
+    cooldown_id:
+      type: "INT"
+      nullable: false
+      auto_increment: true
+      description: "ID único do cooldown"
+    player_id:
+      type: "INT"
+      nullable: false
+      description: "ID do jogador (FK para player_data)"
+    kit_name:
+      type: "VARCHAR(64)"
+      nullable: false
+      description: "Nome do kit usado"
+    last_used:
+      type: "TIMESTAMP"
+      nullable: false
+      default: "CURRENT_TIMESTAMP"
+      description: "Timestamp da última vez que o kit foi usado"
+    uses_count:
+      type: "INT"
+      nullable: false
+      default: "0"
+      description: "Contador de usos do kit (para kits com limite)"
+    expires_at:
+      type: "TIMESTAMP"
+      nullable: true
+      description: "Timestamp de expiração do cooldown (para cooldowns temporários)"
+  indexes:
+    - name: "idx_player_kit_cooldowns_player_id"
+      columns: ["player_id"]
+    - name: "idx_player_kit_cooldowns_kit_name"
+      columns: ["kit_name"]
+    - name: "idx_player_kit_cooldowns_player_kit"
+      columns: ["player_id", "kit_name"]
+      unique: true
+  foreign_keys:
+    - column: "player_id"
+      references_table: "player_data"
+      references_column: "player_id"
+      on_delete: "CASCADE"
 
 # ========================================
 # CONFIGURACOES DE VALIDACAO

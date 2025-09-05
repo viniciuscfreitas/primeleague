@@ -172,30 +172,67 @@ public class VerifyCommand implements CommandExecutor {
             rs.close();
             stmt.close();
             
-            // Usar a procedure do banco de dados
-            stmt = connection.prepareStatement("CALL VerifyDiscordLink(?, ?)");
+            // ✅ CORREÇÃO ARQUITETURAL: Implementar lógica em Java em vez de stored procedure
+            // 1. Verificar se o código de verificação é válido e não expirou
+            String verifyCodeSql = "SELECT dl.discord_id, dl.player_id, dl.verification_code, dl.code_expires_at " +
+                                 "FROM discord_links dl " +
+                                 "JOIN player_data pd ON dl.player_id = pd.player_id " +
+                                 "WHERE pd.name = ? AND dl.verification_code = ? AND dl.verified = 0";
+            
+            stmt = connection.prepareStatement(verifyCodeSql);
             stmt.setString(1, playerName);
             stmt.setString(2, verifyCode);
             
             rs = stmt.executeQuery();
             
             if (rs.next()) {
-                boolean success = rs.getBoolean("success");
+                String discordId = rs.getString("discord_id");
+                int playerId = rs.getInt("player_id");
+                String storedCode = rs.getString("verification_code");
+                java.sql.Timestamp expiresAt = rs.getTimestamp("code_expires_at");
                 
-                if (success) {
-                    String discordId = rs.getString("discord_id");
-                    String playerId = rs.getString("player_id");
+                // Verificar se o código não expirou
+                if (expiresAt != null && expiresAt.after(new java.sql.Timestamp(System.currentTimeMillis()))) {
+                    // Código válido - marcar como verificado
+                    rs.close();
+                    stmt.close();
                     
-                    // Log da verificação bem-sucedida
+                    String updateSql = "UPDATE discord_links SET verified = 1, verified_at = NOW(), " +
+                                     "verification_code = NULL, code_expires_at = NULL " +
+                                     "WHERE discord_id = ? AND player_id = ?";
+                    
+                    stmt = connection.prepareStatement(updateSql);
+                    stmt.setString(1, discordId);
+                    stmt.setInt(2, playerId);
+                    
+                    int affectedRows = stmt.executeUpdate();
+                    
+                    if (affectedRows > 0) {
+                        // Log da verificação bem-sucedida
+                        PrimeLeagueP2P.getInstance().getLogger().info(
+                            "✅ Verificação bem-sucedida: " + playerName + " -> Discord ID: " + discordId + " (player_id: " + playerId + ")"
+                        );
+                        return true;
+                    } else {
+                        PrimeLeagueP2P.getInstance().getLogger().warning(
+                            "⚠️ Falha ao atualizar status de verificação para " + playerName
+                        );
+                        return false;
+                    }
+                } else {
+                    // Código expirado
                     PrimeLeagueP2P.getInstance().getLogger().info(
-                        "Verificação bem-sucedida: " + playerName + " -> Discord ID: " + discordId
+                        "❌ Código de verificação expirado para " + playerName + " (expirava em: " + expiresAt + ")"
                     );
-                    
-                    return true;
+                    return false;
                 }
+            } else {
+                // Código inválido ou jogador não encontrado
+                PrimeLeagueP2P.getInstance().getLogger().info(
+                    "❌ Código de verificação inválido para " + playerName + " (código: " + verifyCode + ")"
+                );
+                return false;
             }
-            
-            return false;
             
         } catch (SQLException e) {
             PrimeLeagueP2P.getInstance().getLogger().severe("Erro SQL ao verificar código: " + e.getMessage());

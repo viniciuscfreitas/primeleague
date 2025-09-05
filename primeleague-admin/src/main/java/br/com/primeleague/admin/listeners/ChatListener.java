@@ -1,7 +1,7 @@
 package br.com.primeleague.admin.listeners;
 
 import br.com.primeleague.admin.managers.AdminManager;
-import br.com.primeleague.admin.models.Punishment;
+import br.com.primeleague.api.models.Punishment;
 import br.com.primeleague.core.api.PrimeLeagueAPI;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;

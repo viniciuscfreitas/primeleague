@@ -2,6 +2,7 @@ package br.com.primeleague.clans.manager;
 
 import br.com.primeleague.api.dao.ClanDAO;
 import br.com.primeleague.api.dto.ClanDTO;
+import br.com.primeleague.clans.dao.MySqlClanDAO;
 import br.com.primeleague.api.dto.ClanPlayerDTO;
 import br.com.primeleague.api.dto.ClanRelationDTO;
 import br.com.primeleague.api.dto.ClanLogDTO;
@@ -47,9 +48,10 @@ public class ClanManager {
     // REFATORADO: Set para rastrear membros online de forma proativa
     private final Map<Integer, Player> onlinePlayers = new ConcurrentHashMap<>(); // REFATORADO: player_id como chave
 
-    public ClanManager(PrimeLeagueClans plugin, ClanDAO clanDAO) {
+    public ClanManager(PrimeLeagueClans plugin) {
         this.plugin = plugin;
-        this.clanDAO = clanDAO;
+        // Instanciar DAO específico do módulo Clans
+        this.clanDAO = new MySqlClanDAO(plugin.getCore());
         this.clans = new ConcurrentHashMap<>();
         this.clanPlayers = new ConcurrentHashMap<>();
         this.pendingInvites = new ConcurrentHashMap<>();
@@ -3372,5 +3374,14 @@ public class ClanManager {
 
         plugin.getLogger().info("Jogador " + playerName + " removido do clã " + clan.getTag());
         return true;
+    }
+    
+    /**
+     * Obtém a instância do ClanDAO para registro no Core.
+     * 
+     * @return Instância do ClanDAO
+     */
+    public ClanDAO getClanDAO() {
+        return clanDAO;
     }
 }

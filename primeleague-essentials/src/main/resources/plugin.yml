@@ -1,0 +1,309 @@
+name: PrimeLeague-Essentials
+version: 1.0.0
+main: br.com.primeleague.essentials.EssentialsPlugin
+api-version: 1.5.2
+author: PrimeLeague Development Team
+description: Sistema de comandos essenciais para qualidade de vida dos jogadores
+
+# Dependências
+depend: [PrimeLeague-Core]
+
+# Comandos
+commands:
+  sethome:
+    description: Criar uma home
+    usage: /sethome <nome>
+    permission: primeleague.essentials.sethome
+    permission-message: "§cVocê não tem permissão para usar este comando!"
+  
+  home:
+    description: Teleportar para uma home ou listar homes
+    usage: /home [nome]
+    permission: primeleague.essentials.home
+    permission-message: "§cVocê não tem permissão para usar este comando!"
+  
+  spawn:
+    description: Teleportar para o spawn
+    usage: /spawn
+    permission: primeleague.essentials.spawn
+    permission-message: "§cVocê não tem permissão para usar este comando!"
+  
+  delhome:
+    description: Remover uma home
+    usage: /delhome <nome>
+    permission: primeleague.essentials.delhome
+    permission-message: "§cVocê não tem permissão para usar este comando!"
+    aliases: [removehome, deletehome]
+  
+  homes:
+    description: Listar todas as suas homes
+    usage: /homes
+    permission: primeleague.essentials.homes
+    permission-message: "§cVocê não tem permissão para usar este comando!"
+    aliases: [listhomes, myhomes]
+  
+  essentials:
+    description: Comando principal do sistema de essentials
+    usage: /essentials [subcomando]
+    permission: primeleague.essentials.use
+    permission-message: "§cVocê não tem permissão para usar este comando!"
+  
+  # Comandos TPA
+  tpa:
+    description: Solicitar teletransporte para um jogador
+    usage: /tpa <jogador>
+    permission: primeleague.essentials.tpa
+    permission-message: "§cVocê não tem permissão para usar este comando!"
+  
+  tpahere:
+    description: Solicitar que um jogador venha até você
+    usage: /tpahere <jogador>
+    permission: primeleague.essentials.tpa
+    permission-message: "§cVocê não tem permissão para usar este comando!"
+  
+  tpaccept:
+    description: Aceitar uma solicitação de teletransporte
+    usage: /tpaccept
+    permission: primeleague.essentials.tpa
+    permission-message: "§cVocê não tem permissão para usar este comando!"
+    aliases: [tpyes]
+  
+  tpdeny:
+    description: Negar uma solicitação de teletransporte
+    usage: /tpdeny
+    permission: primeleague.essentials.tpa
+    permission-message: "§cVocê não tem permissão para usar este comando!"
+    aliases: [tpno]
+  
+  tpcancel:
+    description: Cancelar uma solicitação de teletransporte enviada
+    usage: /tpcancel
+    permission: primeleague.essentials.tpa
+    permission-message: "§cVocê não tem permissão para usar este comando!"
+  
+  tpalist:
+    description: Listar solicitações de teletransporte pendentes
+    usage: /tpalist
+    permission: primeleague.essentials.tpa
+    permission-message: "§cVocê não tem permissão para usar este comando!"
+  
+  # Comando de Kits
+  kit:
+    description: Usar kits ou listar kits disponíveis
+    usage: /kit [nome]
+    permission: primeleague.kits.use
+    permission-message: "§cVocê não tem permissão para usar este comando!"
+    aliases: [kits]
+  
+  # Comando Discord
+  discord:
+    description: Exibir informações do servidor Discord
+    usage: /discord
+    permission: primeleague.essentials.discord
+    permission-message: "§cVocê não tem permissão para usar este comando!"
+  
+  # Comando Seen
+  seen:
+    description: Verificar quando um jogador foi visto pela última vez
+    usage: /seen <jogador>
+    permission: primeleague.essentials.seen
+    permission-message: "§cVocê não tem permissão para usar este comando!"
+  
+  # Comando Whois
+  whois:
+    description: Exibir dossiê público de um jogador
+    usage: /whois <jogador>
+    permission: primeleague.essentials.whois
+    permission-message: "§cVocê não tem permissão para usar este comando!"
+
+  # Comandos de Warps
+  warp:
+    description: Teleportar para um warp público
+    usage: /warp <nome>
+    permission: primeleague.essentials.warp
+    permission-message: "§cVocê não tem permissão para usar este comando!"
+
+  warplist:
+    description: Listar warps públicos disponíveis
+    usage: /warplist
+    permission: primeleague.essentials.warplist
+    permission-message: "§cVocê não tem permissão para usar este comando!"
+    aliases: [warps, listwarps]
+
+  setwarp:
+    description: Criar um warp público (administradores)
+    usage: /setwarp <nome> [custo] [permissão]
+    permission: primeleague.essentials.setwarp
+    permission-message: "§cVocê não tem permissão para usar este comando!"
+
+  delwarp:
+    description: Remover um warp público (administradores)
+    usage: /delwarp <nome>
+    permission: primeleague.essentials.delwarp
+    permission-message: "§cVocê não tem permissão para usar este comando!"
+    aliases: [removewarp, deletewarp]
+
+# Permissões
+permissions:
+  # Permissões básicas
+  primeleague.essentials.use:
+    description: "Permite usar o sistema de essentials"
+    default: true
+  
+  primeleague.essentials.sethome:
+    description: "Permite criar homes"
+    default: true
+  
+  primeleague.essentials.home:
+    description: "Permite teleportar para homes"
+    default: true
+  
+  primeleague.essentials.spawn:
+    description: "Permite teleportar para o spawn"
+    default: true
+  
+  primeleague.essentials.delhome:
+    description: "Permite remover homes"
+    default: true
+  
+  primeleague.essentials.homes:
+    description: "Permite listar homes"
+    default: true
+  
+  primeleague.essentials.tpa:
+    description: "Permite usar o sistema de teletransporte entre jogadores"
+    default: true
+  
+  # Permissões de limite de homes
+  primeleague.homes.limit.1:
+    description: "Limite de 1 home"
+    default: false
+  
+  primeleague.homes.limit.2:
+    description: "Limite de 2 homes"
+    default: false
+  
+  primeleague.homes.limit.3:
+    description: "Limite de 3 homes"
+    default: true
+  
+  primeleague.homes.limit.4:
+    description: "Limite de 4 homes"
+    default: false
+  
+  primeleague.homes.limit.5:
+    description: "Limite de 5 homes"
+    default: false
+  
+  primeleague.homes.limit.6:
+    description: "Limite de 6 homes"
+    default: false
+  
+  primeleague.homes.limit.7:
+    description: "Limite de 7 homes"
+    default: false
+  
+  primeleague.homes.limit.8:
+    description: "Limite de 8 homes"
+    default: false
+  
+  primeleague.homes.limit.9:
+    description: "Limite de 9 homes"
+    default: false
+  
+  primeleague.homes.limit.10:
+    description: "Limite de 10 homes"
+    default: false
+  
+  primeleague.homes.unlimited:
+    description: "Limite ilimitado de homes"
+    default: false
+  
+  # Permissões de cooldown
+  primeleague.cooldown.bypass.teleport:
+    description: "Bypass de cooldown para teletransporte"
+    default: false
+  
+  primeleague.cooldown.bypass.spawn:
+    description: "Bypass de cooldown para spawn"
+    default: false
+  
+  # Permissões TPA
+  primeleague.essentials.tpa.bypass.cooldown:
+    description: "Bypass de cooldown para teletransporte"
+    default: false
+  
+  primeleague.essentials.tpa.bypass.combat:
+    description: "Bypass de restrição de combate"
+    default: false
+  
+  # Permissões de Kits
+  primeleague.kits.use:
+    description: "Permite usar o sistema de kits"
+    default: true
+  
+  primeleague.kits.starter:
+    description: "Permite usar o kit starter"
+    default: true
+  
+  primeleague.kits.vip:
+    description: "Permite usar kits VIP"
+    default: false
+  
+  primeleague.kits.bypass.combat:
+    description: "Bypass de restrição de combate para kits"
+    default: false
+  
+  primeleague.kits.admin:
+    description: "Permissões administrativas de kits"
+    default: op
+  
+  # Permissão do comando Discord
+  primeleague.essentials.discord:
+    description: "Permite usar o comando /discord"
+    default: true
+  
+  # Permissão do comando Seen
+  primeleague.essentials.seen:
+    description: "Permite usar o comando /seen"
+    default: true
+  
+  # Permissão do comando Whois
+  primeleague.essentials.whois:
+    description: "Permite usar o comando /whois"
+    default: true
+  
+  # Permissões de Warps
+  primeleague.essentials.warp:
+    description: "Permite usar o comando /warp"
+    default: true
+  
+  primeleague.essentials.warplist:
+    description: "Permite usar o comando /warplist"
+    default: true
+  
+  primeleague.essentials.setwarp:
+    description: "Permite criar warps públicos"
+    default: op
+  
+  primeleague.essentials.delwarp:
+    description: "Permite remover warps públicos"
+    default: op
+  
+  # Permissões administrativas
+  primeleague.essentials.reload:
+    description: "Permite recarregar configurações do essentials"
+    default: op
+  
+  primeleague.essentials.admin:
+    description: "Permissões administrativas do essentials"
+    default: op
+    children:
+      primeleague.essentials.reload: true
+      primeleague.cooldown.bypass.teleport: true
+      primeleague.cooldown.bypass.spawn: true
+      primeleague.homes.unlimited: true
+      primeleague.essentials.tpa.bypass.cooldown: true
+      primeleague.essentials.tpa.bypass.combat: true
+      primeleague.kits.admin: true
+      primeleague.kits.bypass.combat: true

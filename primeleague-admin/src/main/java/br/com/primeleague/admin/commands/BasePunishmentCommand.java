@@ -5,7 +5,7 @@ import br.com.primeleague.api.events.PlayerPunishedEvent;
 import br.com.primeleague.api.enums.PunishmentSeverity;
 import br.com.primeleague.admin.PrimeLeagueAdmin;
 import br.com.primeleague.admin.managers.AdminManager;
-import br.com.primeleague.admin.models.Punishment;
+import br.com.primeleague.api.models.Punishment;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
@@ -34,7 +34,7 @@ public abstract class BasePunishmentCommand {
      */
     public BasePunishmentCommand(PrimeLeagueAdmin plugin) {
         this.plugin = plugin;
-        this.adminManager = AdminManager.getInstance();
+        this.adminManager = plugin.getAdminManager();
     }
     
     /**

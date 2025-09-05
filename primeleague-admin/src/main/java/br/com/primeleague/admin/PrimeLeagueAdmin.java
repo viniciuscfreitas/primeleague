@@ -4,6 +4,8 @@ import br.com.primeleague.admin.api.AdminAPI;
 import br.com.primeleague.admin.commands.*;
 import br.com.primeleague.admin.listeners.*;
 import br.com.primeleague.admin.managers.AdminManager;
+import br.com.primeleague.admin.dao.MySqlPunishmentDAO;
+import br.com.primeleague.admin.dao.MySqlTicketDAO;
 import br.com.primeleague.admin.services.AdminServiceImpl;
 import br.com.primeleague.api.AdminServiceRegistry;
 import br.com.primeleague.core.api.PrimeLeagueAPI;
@@ -32,8 +34,11 @@ public class PrimeLeagueAdmin extends JavaPlugin {
             return;
         }
 
-        // Inicializar gerenciador administrativo
-        adminManager = AdminManager.getInstance();
+        // Inicializar gerenciador administrativo com injeção de dependência
+        initializeManagers();
+        
+        // Registrar DAOs no Core via DAOServiceRegistry
+        registerDAOs();
 
         // Registrar AdminService na API
         AdminServiceRegistry.register(new AdminServiceImpl(adminManager));
@@ -159,6 +164,52 @@ public class PrimeLeagueAdmin extends JavaPlugin {
      */
     public static PrimeLeagueAdmin getInstance() {
         return instance;
+    }
+
+    /**
+     * Inicializa os managers do sistema.
+     */
+    private void initializeManagers() {
+        try {
+            // Instanciar DAOs
+            MySqlPunishmentDAO punishmentDAO = new MySqlPunishmentDAO(this);
+            MySqlTicketDAO ticketDAO = new MySqlTicketDAO(this);
+            
+            // Inicializar AdminManager com injeção de dependência
+            adminManager = new AdminManager(this, punishmentDAO, ticketDAO);
+            
+            getLogger().info("✅ Managers do Admin inicializados com sucesso!");
+            
+        } catch (Exception e) {
+            getLogger().severe("❌ Erro ao inicializar managers: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+    
+    /**
+     * Registra os DAOs no Core via DAOServiceRegistry.
+     * Permite que outros módulos acessem os DAOs do Admin através do Core.
+     */
+    private void registerDAOs() {
+        try {
+            // Obter o DAOServiceRegistry do Core
+            br.com.primeleague.core.services.DAOServiceRegistry registry = 
+                PrimeLeagueAPI.getDAOServiceRegistry();
+            
+            // Registrar PunishmentDAO
+            registry.registerDAO(br.com.primeleague.api.dao.PunishmentDAO.class, 
+                adminManager.getPunishmentDAO());
+            
+            // Registrar TicketDAO
+            registry.registerDAO(br.com.primeleague.api.dao.TicketDAO.class, 
+                adminManager.getTicketDAO());
+            
+            getLogger().info("✅ DAOs do Admin registrados no Core com sucesso!");
+            
+        } catch (Exception e) {
+            getLogger().severe("❌ Erro ao registrar DAOs no Core: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
     /**

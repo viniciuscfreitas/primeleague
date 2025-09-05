@@ -42,11 +42,12 @@
             <version>1.0.0</version>
         </dependency>
 
-        <!-- API Module -->
+        <!-- PrimeLeague API -->
         <dependency>
             <groupId>br.com.primeleague</groupId>
             <artifactId>primeleague-api</artifactId>
             <version>1.0.0</version>
+            <scope>provided</scope>
         </dependency>
 
         <!-- HikariCP for database connection pooling -->

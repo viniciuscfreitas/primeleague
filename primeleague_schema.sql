@@ -469,11 +469,34 @@ CREATE TABLE IF NOT EXISTS `permission_logs` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ========================================
+-- SISTEMA DE PREVENÇÃO DE COMBAT LOG (COMBATLOG)
+-- ========================================
+
+-- Registro de combat logs para auditoria
+CREATE TABLE IF NOT EXISTS `combat_logs` (
+    `id` INT NOT NULL AUTO_INCREMENT,
+    `player_id` INT NOT NULL,
+    `player_name` VARCHAR(16) NOT NULL,
+    `combat_start_time` TIMESTAMP NOT NULL,
+    `combat_end_time` TIMESTAMP NULL,
+    `combat_duration` INT NOT NULL,
+    `combat_reason` ENUM('DIRECT_DAMAGE') NOT NULL DEFAULT 'DIRECT_DAMAGE',
+    `zone_type` ENUM('SAFE', 'PVP', 'WARZONE') NOT NULL DEFAULT 'PVP',
+    `staff_notes` TEXT NULL,
+    `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_combat_logs_player_id` (`player_id`),
+    KEY `idx_combat_logs_created_at` (`created_at`),
+    KEY `idx_combat_logs_combat_start_time` (`combat_start_time`),
+    CONSTRAINT `fk_combat_logs_player` FOREIGN KEY (`player_id`) REFERENCES `player_data` (`player_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ========================================
 -- RESUMO DA CRIACAO
 -- ========================================
--- Total de tabelas criadas: 24
--- Modulos cobertos: primeleague-core, primeleague-p2p, primeleague-admin, primeleague-adminshop, primeleague-chat
+-- Total de tabelas criadas: 25
+-- Modulos cobertos: primeleague-core, primeleague-p2p, primeleague-admin, primeleague-adminshop, primeleague-chat, primeleague-combatlog
 -- Status: Schema COMPLETO e 100% alinhado com o banco atual
 -- Fonte da verdade: schema-definition.yml + auditoria do banco de dados
 -- Data de geracao: 28/08/2025
--- Versao: 2.1.0 - SCHEMA FINAL COMPLETO
+-- Versao: 2.2.0 - SCHEMA FINAL COMPLETO + COMBATLOG

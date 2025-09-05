@@ -1,4 +1,4 @@
-package br.com.primeleague.core.database;
+package br.com.primeleague.clans.dao;
 
 import br.com.primeleague.api.dao.ClanDAO;
 import br.com.primeleague.api.dto.ClanDTO;
@@ -23,13 +23,13 @@ import java.util.*;
 import java.util.Date;
 
 /**
- * Implementação MySQL do ClanDAO para o Prime League Core.
+ * Implementação MySQL do ClanDAO para o Prime League Clans.
  * Esta classe é responsável por todas as operações de banco de dados relacionadas aos clãs.
  * 
- * REFATORADO para schema normalizado:
- * - Removidas referências a founder_name e player_name das tabelas
- * - Implementados LEFT JOINs com player_data para obter nomes
- * - removeInactiveMember usa DELETE conforme decisão arquitetural
+ * REFATORADO para arquitetura modular:
+ * - Movido do Core para o módulo Clans
+ * - Mantém responsabilidade única de persistência de dados de clãs
+ * - Integra com Core via DataManager para conexões
  */
 public class MySqlClanDAO implements ClanDAO {
 

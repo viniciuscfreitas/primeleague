@@ -1,0 +1,57 @@
+# ========================================
+# CONFIGURAÇÃO DO SISTEMA DE COMBAT LOG
+# ========================================
+
+# Configurações gerais
+combat_log:
+  # Habilitar/desabilitar o sistema
+  enabled: true
+  
+  # Modo debug (logs detalhados)
+  debug_mode: false
+  
+  # Duração dos tags de combate (em segundos)
+  tag_duration:
+    default: 30      # Tag padrão
+    pvp_zone: 60     # Tag em zonas PvP
+    warzone: 90      # Tag em zonas de guerra
+  
+  # Sistema de punições
+  punishments:
+    first_offense: 60      # 1 hora (em minutos)
+    second_offense: 360    # 6 horas (em minutos)
+    third_offense: 1440    # 24 horas (em minutos)
+    chronic_offense: -1    # Permanente (-1)
+  
+  # Configurações de zonas
+  zones:
+    # Zonas seguras (sem tag de combate)
+    safe_zones:
+      - "spawn"
+      - "shop"
+      - "bank"
+      - "lobby"
+    
+    # Zonas PvP (tag estendido)
+    pvp_zones:
+      - "wilderness"
+      - "arena"
+      - "training"
+    
+    # Zonas de guerra (tag máximo)
+    warzones:
+      - "clan_territory"
+      - "battlefield"
+      - "conquest"
+  
+  # Sistema de notificações
+  notifications:
+    tag_applied: true      # Notificar quando tag é aplicado
+    tag_expiring: true     # Notificar quando tag está expirando
+    punishment_applied: true # Notificar quando punição é aplicada
+  
+  # Configurações de performance
+  performance:
+    cleanup_interval: 20   # Intervalo de limpeza (ticks)
+    cache_size_limit: 1000 # Limite de jogadores em cache
+    log_retention_days: 30 # Dias para manter logs

@@ -1,4 +1,4 @@
-package br.com.primeleague.admin.models;
+package br.com.primeleague.api.models;
 
 import java.sql.Timestamp;
 import java.util.UUID;
@@ -28,6 +28,15 @@ public class Ticket {
     private String reporterName;
     private String targetName;
     private String claimedByName;
+    
+    // Campos adicionais para compatibilidade com DAO
+    private int ticketId;
+    private int playerId;
+    private String title;
+    private String description;
+    private String priority;
+    private String status;
+    private Integer assignedStaffId;
 
     public Ticket() {}
 
@@ -152,6 +161,63 @@ public class Ticket {
 
     public void setClaimedByName(String claimedByName) {
         this.claimedByName = claimedByName;
+    }
+    
+    // Getters e Setters para campos de compatibilidade com DAO
+    public int getTicketId() {
+        return ticketId;
+    }
+    
+    public void setTicketId(int ticketId) {
+        this.ticketId = ticketId;
+    }
+    
+    public int getPlayerId() {
+        return playerId;
+    }
+    
+    public void setPlayerId(int playerId) {
+        this.playerId = playerId;
+    }
+    
+    public String getTitle() {
+        return title;
+    }
+    
+    public void setTitle(String title) {
+        this.title = title;
+    }
+    
+    public String getDescription() {
+        return description;
+    }
+    
+    public void setDescription(String description) {
+        this.description = description;
+    }
+    
+    public String getPriority() {
+        return priority;
+    }
+    
+    public void setPriority(String priority) {
+        this.priority = priority;
+    }
+    
+    public String getStatus() {
+        return status;
+    }
+    
+    public void setStatus(String status) {
+        this.status = status;
+    }
+    
+    public Integer getAssignedStaffId() {
+        return assignedStaffId;
+    }
+    
+    public void setAssignedStaffId(Integer assignedStaffId) {
+        this.assignedStaffId = assignedStaffId;
     }
 
     /**

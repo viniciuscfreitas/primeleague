@@ -36,11 +36,11 @@ public class PrimeLeagueClans extends JavaPlugin {
     public void onEnable() {
         instance = this;
         
-        // Inicializar o DAO (será fornecido pelo Core)
-        initializeDAO();
+        // Inicializar o gerenciador de clãs (que instancia seu próprio DAO)
+        this.clanManager = new ClanManager(this);
         
-        // Inicializar o gerenciador de clãs com injeção de dependência
-        this.clanManager = new ClanManager(this, clanDAO);
+        // Registrar DAO no Core via DAOServiceRegistry
+        registerDAO();
         
         // Registrar ClanService na API
         ClanServiceRegistry.register(new ClanServiceImpl(clanManager));
@@ -160,20 +160,22 @@ public class PrimeLeagueClans extends JavaPlugin {
     }
 
     /**
-     * Inicializa o DAO para acesso ao banco de dados.
-     * Obtém a implementação real do Core através do DAOServiceRegistry.
+     * Registra o DAO no Core via DAOServiceRegistry.
+     * Permite que outros módulos acessem o ClanDAO através do Core.
      */
-    private void initializeDAO() {
+    private void registerDAO() {
         try {
-            // Obter o DAO através do registry (sem reflection)
-            this.clanDAO = DAOServiceRegistry.getClanDAO();
-            getLogger().info("DAO de clãs conectado ao Core com sucesso!");
-        } catch (IllegalStateException e) {
-            // Se não conseguir conectar ao Core, desabilitar o plugin
-            getLogger().severe("PrimeLeague-Core não encontrado ou não está habilitado!");
-            getLogger().severe("O módulo de Clãs requer o PrimeLeague-Core para funcionar.");
-            getLogger().severe("Erro: " + e.getMessage());
-            getServer().getPluginManager().disablePlugin(this);
+            // Obter o DAOServiceRegistry do Core
+            br.com.primeleague.core.services.DAOServiceRegistry registry = 
+                br.com.primeleague.core.api.PrimeLeagueAPI.getDAOServiceRegistry();
+            
+            // Registrar o DAO do Clans no registry
+            registry.registerDAO(br.com.primeleague.api.dao.ClanDAO.class, clanManager.getClanDAO());
+            
+            getLogger().info("✅ ClanDAO registrado no Core com sucesso!");
+        } catch (Exception e) {
+            getLogger().severe("❌ Erro ao registrar ClanDAO no Core: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
