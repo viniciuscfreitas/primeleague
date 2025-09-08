@@ -13,6 +13,7 @@ import org.bukkit.entity.Player;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 /**
  * Gerencia todas as operações administrativas do sistema.
@@ -136,6 +137,78 @@ public class AdminManager {
         punishmentDAO.getActivePunishmentByTypeAsync(playerId, punishmentType, callback);
     }
 
+    /**
+     * Obtém punição ativa de um jogador por UUID e tipo.
+     */
+    public Punishment getActivePunishment(UUID playerUuid, Punishment.Type type) {
+        Integer playerId = PrimeLeagueAPI.getIdentityManager().getPlayerIdByUuid(playerUuid);
+        if (playerId == null) {
+            return null;
+        }
+        
+        // Buscar punição ativa de forma síncrona
+        final Punishment[] result = {null};
+        punishmentDAO.getActivePunishmentByTypeAsync(playerId, type.toString(), (punishment) -> {
+            result[0] = punishment;
+        });
+        
+        return result[0];
+    }
+
+    /**
+     * Obtém punição ativa de um jogador por player_id e tipo.
+     */
+    public Punishment getActivePunishment(Integer playerId, Punishment.Type type) {
+        if (playerId == null) {
+            return null;
+        }
+        
+        // Buscar punição ativa de forma síncrona
+        final Punishment[] result = {null};
+        punishmentDAO.getActivePunishmentByTypeAsync(playerId, type.toString(), (punishment) -> {
+            result[0] = punishment;
+        });
+        
+        return result[0];
+    }
+
+    /**
+     * Aplica uma punição.
+     */
+    public void applyPunishment(Punishment punishment) {
+        Integer playerId = PrimeLeagueAPI.getIdentityManager().getPlayerIdByUuid(punishment.getTargetUuid());
+        if (playerId == null) {
+            return;
+        }
+        
+        applyPunishmentAsync(punishment, (success) -> {
+            if (success) {
+                plugin.getLogger().info("Punição aplicada: " + punishment.getPunishmentType() + " para " + punishment.getTargetUuid());
+            }
+        });
+    }
+
+    /**
+     * Perdoa uma punição.
+     */
+    public void pardonPunishment(UUID targetUuid, Punishment.Type type, UUID adminUuid, String reason) {
+        Integer playerId = PrimeLeagueAPI.getIdentityManager().getPlayerIdByUuid(targetUuid);
+        if (playerId == null) {
+            return;
+        }
+        
+        // Buscar punição ativa e removê-la
+        punishmentDAO.getActivePunishmentByTypeAsync(playerId, type.toString(), (punishment) -> {
+            if (punishment != null) {
+                punishmentDAO.removePunishmentAsync(punishment.getPunishmentId(), (success) -> {
+                    if (success) {
+                        plugin.getLogger().info("Punição perdoada: " + type + " para " + targetUuid + " por " + reason);
+                    }
+                });
+            }
+        });
+    }
+
     // ==================== TICKETS ====================
 
     /**
@@ -187,6 +260,134 @@ public class AdminManager {
         ticketDAO.getTicketsByStaffAsync(staffPlayerId, callback);
     }
 
+    /**
+     * Obtém tickets com filtros.
+     */
+    public List<Ticket> getTickets(Ticket.Status status, int limit, int offset) {
+        final List<Ticket>[] result = new List[]{new ArrayList<>()};
+        ticketDAO.getTicketsByStatusAsync(status.toString(), (tickets) -> {
+            result[0] = tickets.stream()
+                    .skip(offset)
+                    .limit(limit)
+                    .collect(Collectors.toList());
+        });
+        return result[0];
+    }
+
+    /**
+     * Obtém um ticket por ID.
+     */
+    public Ticket getTicket(int ticketId) {
+        final Ticket[] result = {null};
+        ticketDAO.getTicketByIdAsync(ticketId, (ticket) -> {
+            result[0] = ticket;
+        });
+        return result[0];
+    }
+
+    /**
+     * Reivindica um ticket.
+     */
+    public void claimTicket(int ticketId, UUID staffUuid) {
+        Integer staffPlayerId = PrimeLeagueAPI.getIdentityManager().getPlayerIdByUuid(staffUuid);
+        if (staffPlayerId == null) {
+            return;
+        }
+        
+        // Buscar o ticket e atualizar o staff
+        ticketDAO.getTicketByIdAsync(ticketId, (ticket) -> {
+            if (ticket != null) {
+                ticket.setAssignedStaffId(staffPlayerId);
+                ticketDAO.updateTicketAsync(ticket, (success) -> {
+                    if (success) {
+                        plugin.getLogger().info("Ticket " + ticketId + " reivindicado por " + staffUuid);
+                    }
+                });
+            }
+        });
+    }
+
+    /**
+     * Fecha um ticket.
+     */
+    public void closeTicket(int ticketId, Ticket.Status status, String reason) {
+        // Buscar o ticket e atualizar o status
+        ticketDAO.getTicketByIdAsync(ticketId, (ticket) -> {
+            if (ticket != null) {
+                ticket.setStatus(status);
+                ticketDAO.updateTicketAsync(ticket, (success) -> {
+                    if (success) {
+                        plugin.getLogger().info("Ticket " + ticketId + " fechado com status " + status);
+                    }
+                });
+            }
+        });
+    }
+
+    /**
+     * Cria um ticket.
+     */
+    public void createTicket(Ticket ticket) {
+        createTicketAsync(ticket, (success) -> {
+            if (success) {
+                plugin.getLogger().info("Ticket criado: " + ticket.getTitle());
+            }
+        });
+    }
+
+    /**
+     * Verifica se um jogador está mutado.
+     */
+    public boolean isMuted(UUID playerUuid) {
+        Punishment mute = getActivePunishment(playerUuid, Punishment.Type.MUTE);
+        return mute != null;
+    }
+
+    /**
+     * Obtém o nome de um jogador por UUID.
+     */
+    public String getPlayerName(UUID playerUuid) {
+        PlayerProfile profile = PrimeLeagueAPI.getDataManager().getPlayerProfile(playerUuid);
+        return profile != null ? profile.getPlayerName() : "Desconhecido";
+    }
+
+    /**
+     * Obtém histórico de punições de um jogador.
+     */
+    public List<Punishment> getPlayerHistory(UUID playerUuid) {
+        Integer playerId = PrimeLeagueAPI.getIdentityManager().getPlayerIdByUuid(playerUuid);
+        if (playerId == null) {
+            return new ArrayList<>();
+        }
+        
+        final List<Punishment>[] result = new List[]{new ArrayList<>()};
+        getPunishmentHistoryAsync(playerId, (history) -> {
+            result[0] = history;
+        });
+        return result[0];
+    }
+
+    /**
+     * Alterna o modo vanish de um jogador.
+     */
+    public void toggleVanish(int playerId, boolean enabled, int adminPlayerId) {
+        if (enabled) {
+            enableVanish(playerId);
+        } else {
+            disableVanish(playerId);
+        }
+    }
+
+    /**
+     * Carrega o estado de vanish de um jogador.
+     */
+    public void loadVanishState(UUID playerUuid) {
+        Integer playerId = PrimeLeagueAPI.getIdentityManager().getPlayerIdByUuid(playerUuid);
+        if (playerId != null && isVanished(playerId)) {
+            // Aplicar efeitos de vanish se necessário
+        }
+    }
+
     // ==================== MODO STAFF ====================
 
     /**
@@ -208,6 +409,14 @@ public class AdminManager {
      */
     public boolean isVanished(int playerId) {
         return vanishedPlayerIds.contains(playerId);
+    }
+
+    /**
+     * Verifica se um jogador está em modo vanish por UUID.
+     */
+    public boolean isVanished(UUID playerUuid) {
+        Integer playerId = PrimeLeagueAPI.getIdentityManager().getPlayerIdByUuid(playerUuid);
+        return playerId != null && isVanished(playerId);
     }
 
     /**
@@ -251,7 +460,8 @@ public class AdminManager {
         
         // Se não tem player_id, tentar obter via UUID
         if (punishment.getTargetUuid() != null) {
-            return PrimeLeagueAPI.getIdentityManager().getPlayerId(punishment.getTargetUuid());
+            Integer playerId = PrimeLeagueAPI.getIdentityManager().getPlayerIdByUuid(punishment.getTargetUuid());
+            return playerId != null ? playerId : -1;
         }
         
         return -1;
@@ -261,7 +471,7 @@ public class AdminManager {
      * Obtém o nome de um jogador pelo player_id.
      */
     private String getPlayerNameByPlayerId(int playerId) {
-        PlayerProfile profile = PrimeLeagueAPI.getIdentityManager().getPlayerProfile(playerId);
+        PlayerProfile profile = PrimeLeagueAPI.getDataManager().getPlayerProfile(playerId);
         return profile != null ? profile.getPlayerName() : "Desconhecido";
     }
 

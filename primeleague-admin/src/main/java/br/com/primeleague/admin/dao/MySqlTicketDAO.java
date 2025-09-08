@@ -40,7 +40,7 @@ public class MySqlTicketDAO implements TicketDAO {
                     stmt.setString(2, ticket.getTitle());
                     stmt.setString(3, ticket.getDescription());
                     stmt.setString(4, ticket.getPriority());
-                    stmt.setString(5, ticket.getStatus());
+                    stmt.setString(5, ticket.getStatus().toString());
                     stmt.setObject(6, ticket.getAssignedStaffId());
                     stmt.setTimestamp(7, ticket.getCreatedAt());
                     stmt.setTimestamp(8, ticket.getUpdatedAt());
@@ -76,7 +76,7 @@ public class MySqlTicketDAO implements TicketDAO {
                     stmt.setString(1, ticket.getTitle());
                     stmt.setString(2, ticket.getDescription());
                     stmt.setString(3, ticket.getPriority());
-                    stmt.setString(4, ticket.getStatus());
+                    stmt.setString(4, ticket.getStatus().toString());
                     stmt.setObject(5, ticket.getAssignedStaffId());
                     stmt.setTimestamp(6, ticket.getUpdatedAt());
                     stmt.setInt(7, ticket.getTicketId());
@@ -103,10 +103,7 @@ public class MySqlTicketDAO implements TicketDAO {
                     stmt.setInt(1, ticketId);
                     
                     try (ResultSet rs = stmt.executeQuery()) {
-                        Ticket ticket = null;
-                        if (rs.next()) {
-                            ticket = mapResultSetToTicket(rs);
-                        }
+                        final Ticket ticket = rs.next() ? mapResultSetToTicket(rs) : null;
                         
                         Bukkit.getScheduler().runTask(plugin, () -> callback.accept(ticket));
                     }
@@ -316,7 +313,7 @@ public class MySqlTicketDAO implements TicketDAO {
         ticket.setTitle(rs.getString("title"));
         ticket.setDescription(rs.getString("description"));
         ticket.setPriority(rs.getString("priority"));
-        ticket.setStatus(rs.getString("status"));
+        ticket.setStatus(Ticket.Status.valueOf(rs.getString("status")));
         
         Integer assignedStaffId = rs.getObject("assigned_staff_id", Integer.class);
         ticket.setAssignedStaffId(assignedStaffId);

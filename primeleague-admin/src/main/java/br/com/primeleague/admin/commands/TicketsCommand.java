@@ -136,11 +136,8 @@ public class TicketsCommand implements CommandExecutor {
             int ticketId = Integer.parseInt(args[1]);
             Player player = (Player) sender;
 
-            if (adminManager.claimTicket(ticketId, player.getUniqueId())) {
-                sender.sendMessage(ChatColor.GREEN + "Ticket #" + ticketId + " reivindicado com sucesso!");
-            } else {
-                sender.sendMessage(ChatColor.RED + "Erro ao reivindicar ticket #" + ticketId + "!");
-            }
+            adminManager.claimTicket(ticketId, player.getUniqueId());
+            sender.sendMessage(ChatColor.GREEN + "Ticket #" + ticketId + " reivindicado com sucesso!");
 
         } catch (NumberFormatException e) {
             sender.sendMessage(ChatColor.RED + "ID inválido!");
@@ -176,11 +173,8 @@ public class TicketsCommand implements CommandExecutor {
             String resolutionNotes = "Resolução: " + resolution +
                 (notes.isEmpty() ? "" : " | Notas: " + notes);
 
-            if (adminManager.closeTicket(ticketId, finalStatus, resolutionNotes)) {
-                sender.sendMessage(ChatColor.GREEN + "Ticket #" + ticketId + " fechado com sucesso!");
-            } else {
-                sender.sendMessage(ChatColor.RED + "Erro ao fechar ticket #" + ticketId + "!");
-            }
+            adminManager.closeTicket(ticketId, finalStatus, resolutionNotes);
+            sender.sendMessage(ChatColor.GREEN + "Ticket #" + ticketId + " fechado com sucesso!");
 
         } catch (NumberFormatException e) {
             sender.sendMessage(ChatColor.RED + "ID inválido!");

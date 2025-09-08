@@ -1,0 +1,103 @@
+# Configuração do Prime League Territories
+# Sistema de territórios para o servidor Prime League
+
+# Configurações de territórios
+territories:
+  # Custo base de manutenção por território (por dia)
+  maintenance-cost: 100.0
+  
+  # Multiplicador de escala para custos (exponencial)
+  scale-multiplier: 1.2
+  
+  # Taxa de manutenção diária (em horas)
+  maintenance-interval: 24
+  
+  # Máximo de territórios por clã
+  max-territories-per-clan: 50
+  
+  # Raio de proteção ao redor do território (em chunks)
+  protection-radius: 1
+
+# Configurações de guerra
+war:
+  # Custo para declarar guerra
+  declaration-cost: 500.0
+  
+  # Duração da janela de exclusividade (em horas)
+  exclusivity-window: 24
+  
+  # Duração do cerco (em minutos)
+  siege-duration: 20
+  
+  # Raio da zona de contestação (em blocos)
+  contestation-radius: 5
+  
+  # Duração da fase de pilhagem (em minutos)
+  pillage-duration: 5
+
+# Configurações do Altar da Discórdia
+altar:
+  # Nome do item do altar
+  item-name: "§c§lAltar da Discórdia"
+  
+  # Duração da canalização para posicionar (em segundos)
+  channeling-duration: 5
+  
+  # Custo para criar o altar
+  creation-cost: 1000.0
+  
+  # Material do altar
+  material: "DIAMOND_BLOCK"
+
+# Configurações de economia
+economy:
+  # Taxa de imposto sobre territórios (porcentagem)
+  tax-rate: 0.05
+  
+  # Bônus de moral por território conquistado
+  moral-bonus-per-territory: 10
+  
+  # Penalidade de moral por território perdido
+  moral-penalty-per-territory: 15
+
+# Configurações de proteção
+protection:
+  # Blocos que podem ser quebrados por não-membros
+  breakable-blocks:
+    - "GRASS"
+    - "DIRT"
+    - "SAND"
+    - "GRAVEL"
+  
+  # Blocos protegidos (não podem ser quebrados)
+  protected-blocks:
+    - "CHEST"
+    - "FURNACE"
+    - "DISPENSER"
+    - "DROPPER"
+    - "HOPPER"
+    - "BEACON"
+    - "ENCHANTING_TABLE"
+    - "ANVIL"
+
+# Configurações de logging
+logging:
+  # Log de todas as ações territoriais
+  log-actions: true
+  
+  # Log de guerras e cercos
+  log-wars: true
+  
+  # Arquivo de log
+  log-file: "logs/territories-actions.log"
+
+# Configurações de performance
+performance:
+  # Intervalo de verificação de contestação (em ticks)
+  contestation-check-interval: 20
+  
+  # Intervalo de limpeza de cache (em minutos)
+  cache-cleanup-interval: 30
+  
+  # Tamanho máximo do cache de territórios
+  max-cache-size: 10000

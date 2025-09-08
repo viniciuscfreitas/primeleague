@@ -3,7 +3,7 @@ package br.com.primeleague.combatlog.managers;
 import br.com.primeleague.combatlog.CombatLogPlugin;
 import br.com.primeleague.core.api.PrimeLeagueAPI;
 import br.com.primeleague.admin.api.AdminAPI;
-import br.com.primeleague.admin.models.Punishment;
+import br.com.primeleague.api.models.Punishment;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 

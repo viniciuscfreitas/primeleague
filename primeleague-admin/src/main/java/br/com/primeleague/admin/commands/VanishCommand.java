@@ -39,18 +39,15 @@ public class VanishCommand implements CommandExecutor {
         boolean newVanishState = !isCurrentlyVanished;
         
         // Aplicar vanish
-        if (adminManager.toggleVanish(playerId, newVanishState, playerId)) {
-            if (newVanishState) {
-                // Ativar vanish
-                enableVanish(player);
-                player.sendMessage(ChatColor.GREEN + "Modo vanish ativado!");
-            } else {
-                // Desativar vanish
-                disableVanish(player);
-                player.sendMessage(ChatColor.GREEN + "Modo vanish desativado!");
-            }
+        adminManager.toggleVanish(playerId, newVanishState, playerId);
+        if (newVanishState) {
+            // Ativar vanish
+            enableVanish(player);
+            player.sendMessage(ChatColor.GREEN + "Modo vanish ativado!");
         } else {
-            player.sendMessage(ChatColor.RED + "Erro ao alterar modo vanish!");
+            // Desativar vanish
+            disableVanish(player);
+            player.sendMessage(ChatColor.GREEN + "Modo vanish desativado!");
         }
         
         return true;

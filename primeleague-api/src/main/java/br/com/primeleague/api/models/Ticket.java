@@ -35,7 +35,6 @@ public class Ticket {
     private String title;
     private String description;
     private String priority;
-    private String status;
     private Integer assignedStaffId;
 
     public Ticket() {}
@@ -204,13 +203,6 @@ public class Ticket {
         this.priority = priority;
     }
     
-    public String getStatus() {
-        return status;
-    }
-    
-    public void setStatus(String status) {
-        this.status = status;
-    }
     
     public Integer getAssignedStaffId() {
         return assignedStaffId;

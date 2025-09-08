@@ -1,0 +1,34 @@
+name: PrimeLeague-Territories
+version: 1.0.0
+main: br.com.primeleague.territories.PrimeLeagueTerritories
+description: Sistema de Territórios para o servidor Prime League
+author: Prime League Team
+api-version: 1.5.2
+softdepend: [PrimeLeague-Core, PrimeLeague-Clans]
+
+commands:
+  territory:
+    description: Comandos do sistema de territórios
+    usage: /territory <subcomando> [argumentos]
+    permission: primeleague.territories.use
+  war:
+    description: Comandos de guerra territorial
+    usage: /war <subcomando> [argumentos]
+    permission: primeleague.territories.war
+
+permissions:
+  primeleague.territories.use:
+    description: Permite usar comandos básicos de território
+    default: true
+  primeleague.territories.claim:
+    description: Permite reivindicar territórios
+    default: true
+  primeleague.territories.unclaim:
+    description: Permite desistir de territórios
+    default: true
+  primeleague.territories.war:
+    description: Permite declarar guerra
+    default: true
+  primeleague.territories.admin:
+    description: Permissões administrativas do sistema de territórios
+    default: op

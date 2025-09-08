@@ -378,10 +378,72 @@ CREATE TABLE IF NOT EXISTS `server_notifications` (
     `id` INT NOT NULL AUTO_INCREMENT,
     `action_type` VARCHAR(100) NOT NULL,
     `payload` TEXT NOT NULL,
+    `processed` BOOLEAN NOT NULL DEFAULT FALSE,
     `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     KEY `idx_server_notifications_action_type` (`action_type`),
-    KEY `idx_server_notifications_created_at` (`created_at`)
+    KEY `idx_server_notifications_created_at` (`created_at`),
+    KEY `idx_server_notifications_processed` (`processed`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ========================================
+-- SISTEMA DE COMANDOS ESSENCIAIS - ESSENTIALS
+-- ========================================
+
+-- Homes dos jogadores para sistema de teletransporte
+CREATE TABLE IF NOT EXISTS `player_homes` (
+    `home_id` INT NOT NULL AUTO_INCREMENT,
+    `player_id` INT NOT NULL,
+    `home_name` VARCHAR(32) NOT NULL,
+    `world` VARCHAR(64) NOT NULL,
+    `x` DOUBLE NOT NULL,
+    `y` DOUBLE NOT NULL,
+    `z` DOUBLE NOT NULL,
+    `yaw` FLOAT NOT NULL DEFAULT 0.0,
+    `pitch` FLOAT NOT NULL DEFAULT 0.0,
+    `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `last_used` TIMESTAMP NULL,
+    PRIMARY KEY (`home_id`),
+    KEY `idx_player_homes_player_id` (`player_id`),
+    UNIQUE KEY `idx_player_homes_player_name` (`player_id`, `home_name`),
+    CONSTRAINT `fk_player_homes_player` FOREIGN KEY (`player_id`) REFERENCES `player_data` (`player_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Warps públicos para teletransporte com custo
+CREATE TABLE IF NOT EXISTS `essentials_warps` (
+    `warp_id` INT NOT NULL AUTO_INCREMENT,
+    `warp_name` VARCHAR(32) NOT NULL,
+    `world` VARCHAR(64) NOT NULL,
+    `x` DOUBLE NOT NULL,
+    `y` DOUBLE NOT NULL,
+    `z` DOUBLE NOT NULL,
+    `yaw` FLOAT NOT NULL DEFAULT 0.0,
+    `pitch` FLOAT NOT NULL DEFAULT 0.0,
+    `permission_node` VARCHAR(64) NULL,
+    `cost` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    `created_by` VARCHAR(16) NULL,
+    `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `last_used` TIMESTAMP NULL,
+    `usage_count` INT NOT NULL DEFAULT 0,
+    PRIMARY KEY (`warp_id`),
+    UNIQUE KEY `idx_essentials_warps_name` (`warp_name`),
+    KEY `idx_essentials_warps_permission` (`permission_node`),
+    KEY `idx_essentials_warps_cost` (`cost`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Cooldowns de kits dos jogadores para controle de uso
+CREATE TABLE IF NOT EXISTS `player_kit_cooldowns` (
+    `cooldown_id` INT NOT NULL AUTO_INCREMENT,
+    `player_id` INT NOT NULL,
+    `kit_name` VARCHAR(64) NOT NULL,
+    `last_used` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `uses_count` INT NOT NULL DEFAULT 0,
+    `expires_at` TIMESTAMP NULL,
+    PRIMARY KEY (`cooldown_id`),
+    KEY `idx_player_kit_cooldowns_player_id` (`player_id`),
+    KEY `idx_player_kit_cooldowns_kit_name` (`kit_name`),
+    UNIQUE KEY `idx_player_kit_cooldowns_player_kit` (`player_id`, `kit_name`),
+    CONSTRAINT `fk_player_kit_cooldowns_player` FOREIGN KEY (`player_id`) REFERENCES `player_data` (`player_id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ========================================
@@ -494,9 +556,17 @@ CREATE TABLE IF NOT EXISTS `combat_logs` (
 -- ========================================
 -- RESUMO DA CRIACAO
 -- ========================================
--- Total de tabelas criadas: 25
--- Modulos cobertos: primeleague-core, primeleague-p2p, primeleague-admin, primeleague-adminshop, primeleague-chat, primeleague-combatlog
--- Status: Schema COMPLETO e 100% alinhado com o banco atual
+-- Total de tabelas criadas: 28
+-- Modulos cobertos: primeleague-core, primeleague-p2p, primeleague-admin, primeleague-adminshop, primeleague-chat, primeleague-combatlog, primeleague-essentials
+-- Status: Schema COMPLETO e 100% alinhado com o schema-definition.yml
 -- Fonte da verdade: schema-definition.yml + auditoria do banco de dados
 -- Data de geracao: 28/08/2025
--- Versao: 2.2.0 - SCHEMA FINAL COMPLETO + COMBATLOG
+-- Versao: 2.3.0 - SCHEMA FINAL COMPLETO + ESSENTIALS + NOTIFICATIONS FIX
+-- 
+-- TABELAS ADICIONADAS:
+-- - player_homes: Sistema de homes para teletransporte
+-- - essentials_warps: Warps públicos com custo
+-- - player_kit_cooldowns: Cooldowns de kits
+-- 
+-- CAMPOS ADICIONADOS:
+-- - server_notifications.processed: Campo para controlar processamento de notificações

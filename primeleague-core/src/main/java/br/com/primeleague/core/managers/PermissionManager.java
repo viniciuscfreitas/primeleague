@@ -69,22 +69,33 @@ public class PermissionManager implements Listener {
      * Carrega o cache inicial do sistema de permissões.
      */
     private void loadInitialCache() {
+        logger.info("🔍 [PERMISSION-DEBUG] loadInitialCache() iniciado");
+        
         try {
             // Carregar grupos
+            logger.info("🔍 [PERMISSION-DEBUG] Carregando cache de grupos...");
             loadGroupsCache();
             
             // Carregar permissões dos grupos
+            logger.info("🔍 [PERMISSION-DEBUG] Carregando cache de permissões de grupos...");
             loadGroupPermissionsCache();
             
             // Carregar jogadores online
-            for (Player player : Bukkit.getOnlinePlayers()) {
+            logger.info("🔍 [PERMISSION-DEBUG] Carregando permissões de jogadores online...");
+            Player[] onlinePlayers = Bukkit.getOnlinePlayers();
+            logger.info("🔍 [PERMISSION-DEBUG] - Total de jogadores online: " + onlinePlayers.length);
+            
+            for (Player player : onlinePlayers) {
+                logger.info("🔍 [PERMISSION-DEBUG] - Carregando permissões para: " + player.getName() + " (" + player.getUniqueId() + ")");
                 loadPlayerPermissionsAsync(player.getUniqueId());
             }
             
-            logger.info("✅ Cache inicial de permissões carregado com sucesso!");
+            logger.info("🔍 [PERMISSION-DEBUG] ✅ Cache inicial de permissões carregado com sucesso!");
+            logger.info("🔍 [PERMISSION-DEBUG] - Grupos carregados: " + groupsCache.size());
+            logger.info("🔍 [PERMISSION-DEBUG] - Permissões de grupos carregadas: " + groupPermissionsCache.size());
             
         } catch (Exception e) {
-            logger.severe("❌ Erro ao carregar cache inicial de permissões: " + e.getMessage());
+            logger.severe("🔍 [PERMISSION-DEBUG] ❌ Erro ao carregar cache inicial de permissões: " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -93,12 +104,17 @@ public class PermissionManager implements Listener {
      * Carrega o cache de grupos.
      */
     private void loadGroupsCache() {
+        logger.info("🔍 [PERMISSION-DEBUG] loadGroupsCache() iniciado");
+        
         try (Connection conn = dataManager.getConnection();
              PreparedStatement stmt = conn.prepareStatement(
                  "SELECT group_id, group_name, display_name, description, priority, is_default, is_active, created_at, updated_at " +
                  "FROM permission_groups WHERE is_active = true ORDER BY priority DESC")) {
             
+            logger.info("🔍 [PERMISSION-DEBUG] Executando query para carregar grupos...");
             ResultSet rs = stmt.executeQuery();
+            
+            int count = 0;
             while (rs.next()) {
                 PermissionGroup group = new PermissionGroup(
                     rs.getInt("group_id"),
@@ -114,12 +130,20 @@ public class PermissionManager implements Listener {
                 
                 groupsCache.put(group.getGroupId(), group);
                 groupPlayersCache.put(group.getGroupId(), new HashSet<>());
+                
+                logger.info("🔍 [PERMISSION-DEBUG] - Grupo carregado: ID=" + group.getGroupId() + 
+                           ", Nome=" + group.getGroupName() + 
+                           ", Prioridade=" + group.getPriority() + 
+                           ", Padrão=" + group.isDefault() + 
+                           ", Ativo=" + group.isActive());
+                count++;
             }
             
-            logger.info("✅ Cache de grupos carregado: " + groupsCache.size() + " grupos");
+            logger.info("🔍 [PERMISSION-DEBUG] ✅ Cache de grupos carregado: " + count + " grupos");
             
         } catch (SQLException e) {
-            logger.severe("❌ Erro ao carregar cache de grupos: " + e.getMessage());
+            logger.severe("🔍 [PERMISSION-DEBUG] ❌ Erro ao carregar cache de grupos: " + e.getMessage());
+            e.printStackTrace();
         }
     }
     
@@ -127,12 +151,19 @@ public class PermissionManager implements Listener {
      * Carrega o cache de permissões dos grupos.
      */
     private void loadGroupPermissionsCache() {
+        logger.info("🔍 [PERMISSION-DEBUG] loadGroupPermissionsCache() iniciado");
+        
         try (Connection conn = dataManager.getConnection();
              PreparedStatement stmt = conn.prepareStatement(
                  "SELECT id, group_id, permission_node, is_granted, created_at, created_by_player_id " +
                  "FROM group_permissions")) {
             
+            logger.info("🔍 [PERMISSION-DEBUG] Executando query para carregar permissões de grupos...");
             ResultSet rs = stmt.executeQuery();
+            
+            int totalPermissions = 0;
+            Map<Integer, Integer> permissionsPerGroup = new HashMap<>();
+            
             while (rs.next()) {
                 GroupPermission perm = new GroupPermission(
                     rs.getInt("id"),
@@ -144,12 +175,30 @@ public class PermissionManager implements Listener {
                 );
                 
                 groupPermissionsCache.computeIfAbsent(perm.getGroupId(), k -> new ArrayList<>()).add(perm);
+                
+                // Contar permissões por grupo
+                permissionsPerGroup.put(perm.getGroupId(), 
+                    permissionsPerGroup.getOrDefault(perm.getGroupId(), 0) + 1);
+                
+                logger.info("🔍 [PERMISSION-DEBUG] - Permissão carregada: Grupo=" + perm.getGroupId() + 
+                           ", Node=" + perm.getPermissionNode() + 
+                           ", Granted=" + perm.isGranted());
+                
+                totalPermissions++;
             }
             
-            logger.info("✅ Cache de permissões de grupos carregado");
+            logger.info("🔍 [PERMISSION-DEBUG] ✅ Cache de permissões de grupos carregado: " + totalPermissions + " permissões");
+            
+            // Log de permissões por grupo
+            for (Map.Entry<Integer, Integer> entry : permissionsPerGroup.entrySet()) {
+                PermissionGroup group = groupsCache.get(entry.getKey());
+                String groupName = group != null ? group.getGroupName() : "UNKNOWN";
+                logger.info("🔍 [PERMISSION-DEBUG] - Grupo " + groupName + " (ID=" + entry.getKey() + "): " + entry.getValue() + " permissões");
+            }
             
         } catch (SQLException e) {
-            logger.severe("❌ Erro ao carregar cache de permissões de grupos: " + e.getMessage());
+            logger.severe("🔍 [PERMISSION-DEBUG] ❌ Erro ao carregar cache de permissões de grupos: " + e.getMessage());
+            e.printStackTrace();
         }
     }
     
@@ -159,19 +208,60 @@ public class PermissionManager implements Listener {
      * @param playerUuid UUID do jogador
      */
     public void loadPlayerPermissionsAsync(UUID playerUuid) {
+        logger.info("🔍 [PERMISSION-DEBUG] loadPlayerPermissionsAsync() chamado para UUID: " + playerUuid);
+        
         Bukkit.getScheduler().runTaskAsynchronously(core, () -> {
             try {
+                logger.info("🔍 [PERMISSION-DEBUG] Iniciando carregamento assíncrono para: " + playerUuid);
                 loadPlayerPermissions(playerUuid);
                 
                 // Sincronizar com a thread principal
                 Bukkit.getScheduler().runTask(core, () -> {
-                    logger.fine("✅ Permissões carregadas para jogador: " + playerUuid);
+                    logger.info("🔍 [PERMISSION-DEBUG] ✅ Permissões carregadas para jogador: " + playerUuid);
+                    
+                    // Log das permissões carregadas
+                    Set<String> permissions = playerPermissionsCache.get(playerUuid);
+                    if (permissions != null) {
+                        logger.info("🔍 [PERMISSION-DEBUG] - Permissões carregadas: " + permissions);
+                    } else {
+                        logger.warning("🔍 [PERMISSION-DEBUG] ⚠️ Permissões ainda NULL após carregamento!");
+                    }
                 });
                 
             } catch (Exception e) {
-                logger.severe("❌ Erro ao carregar permissões do jogador " + playerUuid + ": " + e.getMessage());
+                logger.severe("🔍 [PERMISSION-DEBUG] ❌ Erro ao carregar permissões do jogador " + playerUuid + ": " + e.getMessage());
+                e.printStackTrace();
             }
         });
+    }
+    
+    /**
+     * Carrega as permissões de um jogador de forma síncrona (para resolver cache miss).
+     * 
+     * @param playerUuid UUID do jogador
+     * @throws Exception se houver erro no carregamento
+     */
+    public void loadPlayerPermissionsSync(UUID playerUuid) throws Exception {
+        logger.info("🔍 [PERMISSION-DEBUG] loadPlayerPermissionsSync() chamado para UUID: " + playerUuid);
+        
+        try {
+            logger.info("🔍 [PERMISSION-DEBUG] Iniciando carregamento síncrono para: " + playerUuid);
+            loadPlayerPermissions(playerUuid);
+            
+            // Verificar se o carregamento foi bem-sucedido
+            Set<String> permissions = playerPermissionsCache.get(playerUuid);
+            if (permissions != null) {
+                logger.info("🔍 [PERMISSION-DEBUG] ✅ Carregamento síncrono bem-sucedido para: " + playerUuid);
+                logger.info("🔍 [PERMISSION-DEBUG] - Permissões carregadas: " + permissions);
+            } else {
+                logger.warning("🔍 [PERMISSION-DEBUG] ⚠️ Carregamento síncrono falhou - permissões ainda NULL para: " + playerUuid);
+                throw new Exception("Falha no carregamento síncrono de permissões");
+            }
+            
+        } catch (Exception e) {
+            logger.severe("🔍 [PERMISSION-DEBUG] ❌ Erro no carregamento síncrono para " + playerUuid + ": " + e.getMessage());
+            throw e;
+        }
     }
     
     /**
@@ -180,27 +270,50 @@ public class PermissionManager implements Listener {
      * @param playerUuid UUID do jogador
      */
     private void loadPlayerPermissions(UUID playerUuid) {
+        logger.info("🔍 [PERMISSION-DEBUG] loadPlayerPermissions() iniciado para UUID: " + playerUuid);
+        
         try (Connection conn = dataManager.getConnection()) {
+            logger.info("🔍 [PERMISSION-DEBUG] Conexão com banco obtida");
+            
             // Buscar ID do jogador
             Integer playerId = getPlayerId(conn, playerUuid);
+            logger.info("🔍 [PERMISSION-DEBUG] Player ID encontrado: " + playerId);
+            
             if (playerId == null) {
-                logger.warning("⚠️ Jogador não encontrado: " + playerUuid);
+                logger.warning("🔍 [PERMISSION-DEBUG] ⚠️ Jogador não encontrado no banco: " + playerUuid);
                 return;
             }
             
             // Carregar grupos do jogador
+            logger.info("🔍 [PERMISSION-DEBUG] Carregando grupos do jogador...");
             List<PlayerGroup> playerGroups = loadPlayerGroups(conn, playerId);
+            logger.info("🔍 [PERMISSION-DEBUG] Grupos carregados: " + playerGroups.size() + " grupos");
+            
+            for (PlayerGroup group : playerGroups) {
+                logger.info("🔍 [PERMISSION-DEBUG] - Grupo ID: " + group.getGroupId() + ", Primary: " + group.isPrimary() + ", Expired: " + group.isExpired());
+            }
+            
             playerGroupsCache.put(playerUuid, playerGroups);
             
             // Calcular permissões consolidadas
+            logger.info("🔍 [PERMISSION-DEBUG] Calculando permissões consolidadas...");
             Set<String> permissions = calculatePlayerPermissions(playerId, playerGroups);
+            logger.info("🔍 [PERMISSION-DEBUG] Permissões calculadas: " + permissions.size() + " permissões");
+            logger.info("🔍 [PERMISSION-DEBUG] - Lista de permissões: " + permissions);
+            
             playerPermissionsCache.put(playerUuid, permissions);
             
             // Atualizar cache de jogadores por grupo
             updateGroupPlayersCache(playerUuid, playerGroups);
             
+            logger.info("🔍 [PERMISSION-DEBUG] ✅ Carregamento de permissões concluído para: " + playerUuid);
+            
         } catch (SQLException e) {
-            logger.severe("❌ Erro ao carregar permissões do jogador " + playerUuid + ": " + e.getMessage());
+            logger.severe("🔍 [PERMISSION-DEBUG] ❌ Erro SQL ao carregar permissões do jogador " + playerUuid + ": " + e.getMessage());
+            e.printStackTrace();
+        } catch (Exception e) {
+            logger.severe("🔍 [PERMISSION-DEBUG] ❌ Erro geral ao carregar permissões do jogador " + playerUuid + ": " + e.getMessage());
+            e.printStackTrace();
         }
     }
     
@@ -264,8 +377,12 @@ public class PermissionManager implements Listener {
      * Calcula as permissões consolidadas de um jogador.
      */
     private Set<String> calculatePlayerPermissions(int playerId, List<PlayerGroup> playerGroups) {
+        logger.info("🔍 [PERMISSION-DEBUG] calculatePlayerPermissions() iniciado para Player ID: " + playerId);
+        
         Set<String> permissions = new HashSet<>();
         Map<String, Boolean> permissionMap = new HashMap<>();
+        
+        logger.info("🔍 [PERMISSION-DEBUG] - Total de grupos do jogador: " + playerGroups.size());
         
         // Ordenar grupos por prioridade (maior primeiro)
         playerGroups.sort((g1, g2) -> {
@@ -275,23 +392,53 @@ public class PermissionManager implements Listener {
             return Integer.compare(pg2.getPriority(), pg1.getPriority());
         });
         
+        logger.info("🔍 [PERMISSION-DEBUG] - Grupos ordenados por prioridade:");
+        for (PlayerGroup group : playerGroups) {
+            PermissionGroup pg = groupsCache.get(group.getGroupId());
+            logger.info("🔍 [PERMISSION-DEBUG]   - Grupo ID: " + group.getGroupId() + 
+                       ", Nome: " + (pg != null ? pg.getGroupName() : "NULL") + 
+                       ", Prioridade: " + (pg != null ? pg.getPriority() : "NULL") +
+                       ", Ativo: " + (pg != null ? pg.isActive() : "NULL") +
+                       ", Expirado: " + group.isExpired());
+        }
+        
         // Processar permissões de cada grupo
         for (PlayerGroup playerGroup : playerGroups) {
-            if (playerGroup.isExpired()) continue;
+            if (playerGroup.isExpired()) {
+                logger.info("🔍 [PERMISSION-DEBUG] - Pulando grupo expirado: " + playerGroup.getGroupId());
+                continue;
+            }
             
             PermissionGroup group = groupsCache.get(playerGroup.getGroupId());
-            if (group == null || !group.isActive()) continue;
+            if (group == null) {
+                logger.warning("🔍 [PERMISSION-DEBUG] - Grupo não encontrado no cache: " + playerGroup.getGroupId());
+                continue;
+            }
+            
+            if (!group.isActive()) {
+                logger.info("🔍 [PERMISSION-DEBUG] - Pulando grupo inativo: " + group.getGroupName());
+                continue;
+            }
             
             List<GroupPermission> groupPerms = groupPermissionsCache.get(playerGroup.getGroupId());
-            if (groupPerms == null) continue;
+            if (groupPerms == null) {
+                logger.warning("🔍 [PERMISSION-DEBUG] - Nenhuma permissão encontrada para grupo: " + group.getGroupName());
+                continue;
+            }
+            
+            logger.info("🔍 [PERMISSION-DEBUG] - Processando grupo: " + group.getGroupName() + " (" + groupPerms.size() + " permissões)");
             
             for (GroupPermission perm : groupPerms) {
                 String node = perm.getPermissionNode();
                 
                 // Se a permissão já foi definida por um grupo de maior prioridade, ignorar
-                if (permissionMap.containsKey(node)) continue;
+                if (permissionMap.containsKey(node)) {
+                    logger.info("🔍 [PERMISSION-DEBUG]   - Permissão já definida por grupo de maior prioridade: " + node);
+                    continue;
+                }
                 
                 permissionMap.put(node, perm.isGranted());
+                logger.info("🔍 [PERMISSION-DEBUG]   - Adicionada permissão: " + node + " = " + perm.isGranted());
             }
         }
         
@@ -299,8 +446,14 @@ public class PermissionManager implements Listener {
         for (Map.Entry<String, Boolean> entry : permissionMap.entrySet()) {
             if (entry.getValue()) {
                 permissions.add(entry.getKey());
+                logger.info("🔍 [PERMISSION-DEBUG] - Permissão final concedida: " + entry.getKey());
+            } else {
+                logger.info("🔍 [PERMISSION-DEBUG] - Permissão negada: " + entry.getKey());
             }
         }
+        
+        logger.info("🔍 [PERMISSION-DEBUG] - Total de permissões finais: " + permissions.size());
+        logger.info("🔍 [PERMISSION-DEBUG] - Lista final de permissões: " + permissions);
         
         return permissions;
     }
@@ -334,20 +487,56 @@ public class PermissionManager implements Listener {
      * @return true se o jogador tem a permissão, false caso contrário
      */
     public boolean hasPermission(Player player, String permissionNode) {
+        // 🔧 DEBUG: Log de entrada
+        logger.info("🔍 [PERMISSION-DEBUG] hasPermission() chamado:");
+        logger.info("🔍 [PERMISSION-DEBUG] - Player: " + (player != null ? player.getName() : "NULL"));
+        logger.info("🔍 [PERMISSION-DEBUG] - Permission: " + permissionNode);
+        
         if (player == null || permissionNode == null) {
+            logger.warning("🔍 [PERMISSION-DEBUG] ❌ Parâmetros inválidos - Player: " + (player != null ? "OK" : "NULL") + ", Permission: " + (permissionNode != null ? "OK" : "NULL"));
             return false;
         }
         
         UUID playerUuid = player.getUniqueId();
+        logger.info("🔍 [PERMISSION-DEBUG] - Player UUID: " + playerUuid);
+        
         Set<String> permissions = playerPermissionsCache.get(playerUuid);
+        logger.info("🔍 [PERMISSION-DEBUG] - Cache hit: " + (permissions != null ? "SIM" : "NÃO"));
         
         if (permissions == null) {
-            // Cache miss - carregar permissões
-            loadPlayerPermissionsAsync(playerUuid);
-            return false; // Por segurança, negar até carregar
+            logger.warning("🔍 [PERMISSION-DEBUG] ⚠️ CACHE MISS - Tentando carregamento síncrono para " + player.getName());
+            
+            // 🔧 CORREÇÃO: Tentar carregamento síncrono primeiro
+            try {
+                loadPlayerPermissionsSync(playerUuid);
+                permissions = playerPermissionsCache.get(playerUuid);
+                
+                if (permissions != null) {
+                    logger.info("🔍 [PERMISSION-DEBUG] ✅ Carregamento síncrono bem-sucedido para " + player.getName());
+                } else {
+                    logger.warning("🔍 [PERMISSION-DEBUG] ⚠️ Carregamento síncrono falhou, iniciando assíncrono para " + player.getName());
+                    loadPlayerPermissionsAsync(playerUuid);
+                    return false; // Por segurança, negar até carregar
+                }
+            } catch (Exception e) {
+                logger.severe("🔍 [PERMISSION-DEBUG] ❌ Erro no carregamento síncrono para " + player.getName() + ": " + e.getMessage());
+                loadPlayerPermissionsAsync(playerUuid);
+                return false; // Por segurança, negar até carregar
+            }
         }
         
-        return permissions.contains(permissionNode);
+        boolean hasPermission = permissions.contains(permissionNode);
+        logger.info("🔍 [PERMISSION-DEBUG] - Permissões do jogador: " + permissions);
+        logger.info("🔍 [PERMISSION-DEBUG] - Tem permissão '" + permissionNode + "': " + hasPermission);
+        
+        if (!hasPermission) {
+            logger.warning("🔍 [PERMISSION-DEBUG] ❌ PERMISSÃO NEGADA para " + player.getName() + " - " + permissionNode);
+            logger.warning("🔍 [PERMISSION-DEBUG] - Permissões disponíveis: " + permissions);
+        } else {
+            logger.info("🔍 [PERMISSION-DEBUG] ✅ PERMISSÃO CONCEDIDA para " + player.getName() + " - " + permissionNode);
+        }
+        
+        return hasPermission;
     }
     
     /**

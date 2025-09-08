@@ -174,10 +174,7 @@ public class MySqlPunishmentDAO implements PunishmentDAO {
                     stmt.setString(2, punishmentType);
                     
                     try (ResultSet rs = stmt.executeQuery()) {
-                        Punishment punishment = null;
-                        if (rs.next()) {
-                            punishment = mapResultSetToPunishment(rs);
-                        }
+                        final Punishment punishment = rs.next() ? mapResultSetToPunishment(rs) : null;
                         
                         Bukkit.getScheduler().runTask(plugin, () -> callback.accept(punishment));
                     }
@@ -250,10 +247,7 @@ public class MySqlPunishmentDAO implements PunishmentDAO {
                     stmt.setInt(1, punishmentId);
                     
                     try (ResultSet rs = stmt.executeQuery()) {
-                        Punishment punishment = null;
-                        if (rs.next()) {
-                            punishment = mapResultSetToPunishment(rs);
-                        }
+                        final Punishment punishment = rs.next() ? mapResultSetToPunishment(rs) : null;
                         
                         Bukkit.getScheduler().runTask(plugin, () -> callback.accept(punishment));
                     }

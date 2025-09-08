@@ -1,0 +1,53 @@
+---- Minecraft Crash Report ----
+// Hey, that tickles! Hehehe!
+
+Time: 9/7/25 11:23 AM
+Description: Exception in server tick loop
+
+java.lang.SecurityException: Invalid signature file digest for Manifest main attributes
+	at sun.security.util.SignatureFileVerifier.processImpl(Unknown Source)
+	at sun.security.util.SignatureFileVerifier.process(Unknown Source)
+	at java.util.jar.JarVerifier.processEntry(Unknown Source)
+	at java.util.jar.JarVerifier.update(Unknown Source)
+	at java.util.jar.JarFile.initializeVerifier(Unknown Source)
+	at java.util.jar.JarFile.getInputStream(Unknown Source)
+	at org.bukkit.plugin.java.JavaPluginLoader.getPluginDescription(JavaPluginLoader.java:250)
+	at org.bukkit.plugin.SimplePluginManager.loadPlugins(SimplePluginManager.java:132)
+	at org.bukkit.craftbukkit.v1_5_R3.CraftServer.loadPlugins(CraftServer.java:241)
+	at org.bukkit.craftbukkit.v1_5_R3.CraftServer.<init>(CraftServer.java:219)
+	at net.minecraft.server.v1_5_R3.PlayerList.<init>(PlayerList.java:55)
+	at net.minecraft.server.v1_5_R3.DedicatedPlayerList.<init>(SourceFile:11)
+	at net.minecraft.server.v1_5_R3.DedicatedServer.init(DedicatedServer.java:93)
+	at net.minecraft.server.v1_5_R3.MinecraftServer.run(MinecraftServer.java:388)
+	at net.minecraft.server.v1_5_R3.ThreadServerApplication.run(SourceFile:573)
+
+
+A detailed walkthrough of the error, its code path and all known details is as follows:
+---------------------------------------------------------------------------------------
+
+-- System Details --
+Details:
+	Minecraft Version: 1.5.2
+	Operating System: Windows 11 (amd64) version 10.0
+	Java Version: 1.8.0_461, Oracle Corporation
+	Java VM Version: Java HotSpot(TM) 64-Bit Server VM (mixed mode), Oracle Corporation
+	Memory: 959383624 bytes (914 MB) / 1029177344 bytes (981 MB) up to 1908932608 bytes (1820 MB)
+	JVM Flags: 2 total; -Xms1024M -Xmx2G
+	AABB Pool Size: 0 (0 bytes; 0 MB) allocated, 0 (0 bytes; 0 MB) used
+	Suspicious classes: $Proxy1[com.avaje.ebean.config.dbplatform.DatabasePlatform, SQLitePlatform], [com.google.common.base.Function, Supplier, Suppliers, ...], [com.google.common.cache.CacheLoader, CacheBuilder, Cache, ...], [com.google.common.collect.ImmutableCollection, ImmutableList, Maps, ...], [com.google.common.io.Files, InputSupplier, OutputSupplier], [com.google.common.util.concurrent.UncheckedExecutionException, ThreadFactoryBuilder], [net.minecraft.server.v1_5_R3.ICommandListener, IMojangStatistics, IProgressUpdate, ...], [org.apache.commons.lang.Validate], [org.bukkit.World, BlockChangeDelegate, Server, ...], [org.bukkit.block.BlockState, BlockFace], [org.bukkit.command.CommandSender, RemoteConsoleCommandSender, CommandException, ...], [org.bukkit.command.defaults.VanillaCommand, SaveCommand, SaveOnCommand, ...], [org.bukkit.configuration.ConfigurationSection, Configuration, MemorySection, ...], [org.bukkit.configuration.file.FileConfiguration, YamlConfiguration, FileConfigurationOptions, ...], [org.bukkit.configuration.serialization.ConfigurationSerializable, ConfigurationSerialization, DelegateDeserialization, ...], [org.bukkit.conversations.Conversable], [org.bukkit.craftbukkit.Main], [org.bukkit.craftbukkit.libs.com.google.gson.JsonDeserializer, JsonParseException], [org.bukkit.craftbukkit.libs.jline.TerminalFactory, Terminal, Flavor, ...], [org.bukkit.craftbukkit.libs.jline.console.ConsoleReader, CursorBuffer, ConsoleKeys, ...], [org.bukkit.craftbukkit.libs.jline.console.completer.CompletionHandler, CandidateListCompletionHandler], [org.bukkit.craftbukkit.libs.jline.console.history.History, MemoryHistory], [org.bukkit.craftbukkit.libs.jline.internal.InputStreamReader, Configuration, Log], [org.bukkit.craftbukkit.libs.joptsimple.OptionException, OptionParser, OptionSpec, ...], [org.bukkit.craftbukkit.libs.joptsimple.internal.AbbreviationMap, ReflectionException, Reflection, ...], [org.bukkit.craftbukkit.v1_5_R3.LoggerOutputStream, CraftServer, CraftOfflinePlayer, ...], [org.bukkit.craftbukkit.v1_5_R3.enchantments.CraftEnchantment], [org.bukkit.craftbukkit.v1_5_R3.help.SimpleHelpMap, CommandAliasHelpTopic, HelpYamlReader, ...], [org.bukkit.craftbukkit.v1_5_R3.inventory.CraftItemStack, CraftInventory, CraftInventoryDoubleChest, ...], [org.bukkit.craftbukkit.v1_5_R3.metadata.EntityMetadataStore, PlayerMetadataStore, WorldMetadataStore], [org.bukkit.craftbukkit.v1_5_R3.potion.CraftPotionEffectType, CraftPotionBrewer], [org.bukkit.craftbukkit.v1_5_R3.scheduler.CraftScheduler, CraftTask, CraftAsyncTask, ...], [org.bukkit.craftbukkit.v1_5_R3.updater.AutoUpdater, BukkitDLUpdaterService, DateDeserializer], [org.bukkit.craftbukkit.v1_5_R3.util.Waitable, ServerShutdownThread, TerminalConsoleHandler, ...], [org.bukkit.enchantments.Enchantment, EnchantmentWrapper], [org.bukkit.entity.Entity, Damageable, LivingEntity, ...], [org.bukkit.event.Event, Cancellable], [org.bukkit.event.block.BlockEvent, BlockFadeEvent, BlockGrowEvent, ...], [org.bukkit.event.entity.EntityEvent, EntityInteractEvent, EntityDamageEvent, ...], [org.bukkit.event.hanging.HangingEvent, HangingPlaceEvent], [org.bukkit.event.inventory.InventoryMoveItemEvent], [org.bukkit.event.painting.PaintingEvent, PaintingPlaceEvent], [org.bukkit.event.player.PlayerEvent, PlayerInteractEvent, PlayerFishEvent, ...], [org.bukkit.event.server.ServerEvent, MapInitializeEvent, ServerCommandEvent, ...], [org.bukkit.event.world.WorldEvent, WorldSaveEvent, WorldInitEvent, ...], [org.bukkit.help.HelpMap, HelpTopic, IndexHelpTopic, ...], [org.bukkit.inventory.ItemStack, Inventory, DoubleChestInventory, ...], [org.bukkit.inventory.meta.ItemMeta, Repairable, BookMeta, ...], [org.bukkit.map.MapView], [org.bukkit.material.MaterialData, Tree, Directional, ...], [org.bukkit.metadata.Metadatable, MetadataStore, MetadataStoreBase], [org.bukkit.permissions.ServerOperator, Permissible], [org.bukkit.plugin.ServicesManager, PluginManager, SimpleServicesManager, ...], [org.bukkit.plugin.java.JavaPluginLoader, PluginClassLoader], [org.bukkit.plugin.messaging.PluginMessageRecipient, Messenger, StandardMessenger, ...], [org.bukkit.potion.PotionEffectType, PotionEffectTypeWrapper, PotionBrewer, ...], [org.bukkit.scheduler.BukkitScheduler, BukkitTask], [org.bukkit.scoreboard.ScoreboardManager, DisplaySlot], [org.bukkit.util.Vector, BlockVector, Java15Compat, ...], [org.fusesource.hawtjni.runtime.Library], [org.fusesource.jansi.AnsiOutputStream, WindowsAnsiOutputStream, AnsiConsole, ...], [org.fusesource.jansi.internal.Kernel32, CONSOLE_SCREEN_BUFFER_INFO, COORD, ...], [org.spigotmc.netty.NettyServerConnection], [org.yaml.snakeyaml.DumperOptions, ScalarStyle, FlowStyle, ...], [org.yaml.snakeyaml.composer.Composer, ComposerException], [org.yaml.snakeyaml.constructor.BaseConstructor, SafeConstructor, Constructor, ...], [org.yaml.snakeyaml.emitter.Emitable, Emitter, EmitterState, ...], [org.yaml.snakeyaml.error.YAMLException, MarkedYAMLException, Mark], [org.yaml.snakeyaml.events.Event, NodeEvent, AliasEvent, ...], [org.yaml.snakeyaml.external.com.google.gdata.util.common.base.Escaper, UnicodeEscaper, PercentEscaper], [org.yaml.snakeyaml.introspector.PropertyUtils, BeanAccess], [org.yaml.snakeyaml.nodes.Node, ScalarNode, CollectionNode, ...], [org.yaml.snakeyaml.parser.Parser, ParserImpl, ParserException, ...], [org.yaml.snakeyaml.reader.UnicodeReader, StreamReader, ReaderException], [org.yaml.snakeyaml.representer.BaseRepresenter, SafeRepresenter, Representer, ...], [org.yaml.snakeyaml.resolver.Resolver, ResolverTuple], [org.yaml.snakeyaml.scanner.Scanner, ScannerImpl, ScannerException, ...], [org.yaml.snakeyaml.serializer.Serializer, SerializerException], [org.yaml.snakeyaml.tokens.Token, AliasToken, ScalarToken, ...], [org.yaml.snakeyaml.util.UriEncoder, ArrayStack]
+	IntCache: cache: 0, tcache: 0, allocated: 0, tallocated: 0
+	CraftBukkit Information: 
+   Running: CraftBukkit version git-Spigot-1.5.2-R1.0-61-gfb828bb (MC: 1.5.2) (Implementing API version 1.5.2-R1.1-SNAPSHOT) 
+   Failed to handle CraftCrashReport:
+java.lang.NullPointerException
+	at net.minecraft.server.v1_5_R3.MinecraftServer.getOnlineMode(MinecraftServer.java:1085)
+	at org.bukkit.craftbukkit.v1_5_R3.CraftCrashReport.call(CraftCrashReport.java:20)
+	at net.minecraft.server.v1_5_R3.CrashReportSystemDetails.a(SourceFile:74)
+	at net.minecraft.server.v1_5_R3.CrashReport.h(CrashReport.java:41)
+	at net.minecraft.server.v1_5_R3.CrashReport.<init>(CrashReport.java:28)
+	at net.minecraft.server.v1_5_R3.MinecraftServer.run(MinecraftServer.java:421)
+	at net.minecraft.server.v1_5_R3.ThreadServerApplication.run(SourceFile:573)
+
+	Profiler Position: N/A (disabled)
+	Is Modded: Definitely; Server brand changed to 'craftbukkit'
+	Type: Dedicated Server (map_server.txt)

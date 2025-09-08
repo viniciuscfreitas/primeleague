@@ -14,6 +14,9 @@ import br.com.primeleague.core.services.DAOServiceRegistry;
 import br.com.primeleague.core.models.PlayerProfile;
 import br.com.primeleague.core.models.PlayerGroup;
 import br.com.primeleague.core.util.UUIDUtils;
+import br.com.primeleague.api.ClanServiceRegistry;
+import br.com.primeleague.api.EconomyServiceRegistry;
+import br.com.primeleague.api.IdentityServiceRegistry;
 import org.bukkit.entity.Player;
 
 import java.util.List;
@@ -277,8 +280,25 @@ public final class PrimeLeagueAPI {
      * @return true se o jogador tem a permissão, false caso contrário
      */
     public static boolean hasPermission(Player player, String permissionNode) {
-        ensureInit();
-        return permissionManager.hasPermission(player, permissionNode);
+        // 🔧 DEBUG: Log de entrada na API
+        System.out.println("🔍 [API-DEBUG] PrimeLeagueAPI.hasPermission() chamado:");
+        System.out.println("🔍 [API-DEBUG] - Player: " + (player != null ? player.getName() : "NULL"));
+        System.out.println("🔍 [API-DEBUG] - Permission: " + permissionNode);
+        System.out.println("🔍 [API-DEBUG] - API inicializada: " + initialized);
+        
+        try {
+            ensureInit();
+            System.out.println("🔍 [API-DEBUG] - PermissionManager: " + (permissionManager != null ? "OK" : "NULL"));
+            
+            boolean result = permissionManager.hasPermission(player, permissionNode);
+            System.out.println("🔍 [API-DEBUG] - Resultado: " + result);
+            
+            return result;
+        } catch (Exception e) {
+            System.err.println("🔍 [API-DEBUG] ❌ Erro na API hasPermission: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
     }
     
     /**
@@ -341,6 +361,35 @@ public final class PrimeLeagueAPI {
     public static DAOServiceRegistry getDAOServiceRegistry() {
         ensureInit();
         return daoServiceRegistry;
+    }
+    
+    // ==================== SERVIÇOS PARA MÓDULOS EXTERNOS ====================
+    
+    /**
+     * Obtém o ClanService para comunicação com o módulo de Clãs.
+     * 
+     * @return ClanService ou null se não registrado
+     */
+    public static br.com.primeleague.api.ClanService getClanServiceRegistry() {
+        return ClanServiceRegistry.getInstance();
+    }
+    
+    /**
+     * Obtém o EconomyService para comunicação com o sistema de economia.
+     * 
+     * @return EconomyService ou null se não registrado
+     */
+    public static br.com.primeleague.api.EconomyService getEconomyServiceRegistry() {
+        return EconomyServiceRegistry.getInstance();
+    }
+    
+    /**
+     * Obtém o IdentityService para comunicação com o sistema de identidade.
+     * 
+     * @return IdentityService ou null se não registrado
+     */
+    public static br.com.primeleague.api.IdentityService getIdentityServiceRegistry() {
+        return IdentityServiceRegistry.getInstance();
     }
 }
 

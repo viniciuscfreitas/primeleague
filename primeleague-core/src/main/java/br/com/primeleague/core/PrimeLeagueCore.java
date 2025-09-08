@@ -124,6 +124,11 @@ public final class PrimeLeagueCore extends JavaPlugin {
         // Registra o TagService para outros módulos
         TagServiceRegistry.register(new TagServiceAdapter(this.tagManager));
         
+        // Registra o EconomyService para outros módulos
+        br.com.primeleague.api.EconomyServiceRegistry.register(
+            new br.com.primeleague.core.services.EconomyServiceImpl(this.economyManager, this.identityManager)
+        );
+        
         // DAOServiceRegistry será usado pelos módulos para registrar seus próprios DAOs
 
         // Registra comandos

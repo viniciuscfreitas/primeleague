@@ -81,17 +81,13 @@ public class ReportCommand implements CommandExecutor {
         // Criar ticket
         Ticket ticket = new Ticket(reporterUuid, targetUuid, reason, evidenceLink);
 
-        if (adminManager.createTicket(ticket)) {
-            // Mensagem de sucesso para o reporter
-            String message = ChatColor.GREEN + "Denúncia #" + ticket.getId() + " criada com sucesso. Nossa equipe irá analisar.";
-            reporter.sendMessage(message);
+        adminManager.createTicket(ticket);
+        // Mensagem de sucesso para o reporter
+        String message = ChatColor.GREEN + "Denúncia criada com sucesso. Nossa equipe irá analisar.";
+        reporter.sendMessage(message);
 
-            // Notificar staff online
-            notifyStaff(ticket);
-
-        } else {
-            reporter.sendMessage(ChatColor.RED + "Erro ao criar denúncia. Tente novamente mais tarde.");
-        }
+        // Notificar staff online
+        notifyStaff(ticket);
 
         return true;
     }

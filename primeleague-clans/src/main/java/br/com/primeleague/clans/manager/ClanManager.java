@@ -12,6 +12,7 @@ import br.com.primeleague.api.dto.ClanRankingInfoDTO;
 import br.com.primeleague.api.enums.LogActionType;
 import br.com.primeleague.api.enums.PunishmentSeverity;
 import br.com.primeleague.clans.PrimeLeagueClans;
+import br.com.primeleague.core.PrimeLeagueCore;
 import br.com.primeleague.clans.model.Clan;
 import br.com.primeleague.clans.model.ClanInvitation;
 import br.com.primeleague.clans.model.ClanPlayer;
@@ -51,7 +52,7 @@ public class ClanManager {
     public ClanManager(PrimeLeagueClans plugin) {
         this.plugin = plugin;
         // Instanciar DAO específico do módulo Clans
-        this.clanDAO = new MySqlClanDAO(plugin.getCore());
+        this.clanDAO = new MySqlClanDAO((PrimeLeagueCore) plugin.getServer().getPluginManager().getPlugin("PrimeLeague-Core"));
         this.clans = new ConcurrentHashMap<>();
         this.clanPlayers = new ConcurrentHashMap<>();
         this.pendingInvites = new ConcurrentHashMap<>();
@@ -636,6 +637,19 @@ public class ClanManager {
             }
         }
         return null;
+    }
+
+    /**
+     * Busca um clã pelo ID.
+     *
+     * @param clanId O ID do clã
+     * @return O clã encontrado ou null
+     */
+    public Clan getClanById(int clanId) {
+        if (clanId <= 0) {
+            return null;
+        }
+        return clans.get(clanId);
     }
 
     /**
@@ -1830,6 +1844,19 @@ public class ClanManager {
         }
         
         return relation != null && relation.getType() == ClanRelation.RelationType.ALLY;
+    }
+
+    /**
+     * Verifica se há um pacto de não agressão ativo entre dois clãs.
+     * Por enquanto, considera alianças como pactos de não agressão.
+     *
+     * @param clan1 Primeiro clã
+     * @param clan2 Segundo clã
+     * @return true se há um pacto de não agressão ativo
+     */
+    public boolean hasNonAggressionPact(Clan clan1, Clan clan2) {
+        // Por enquanto, alianças são consideradas pactos de não agressão
+        return areAllies(clan1, clan2);
     }
 
     /**
@@ -3376,12 +3403,4 @@ public class ClanManager {
         return true;
     }
     
-    /**
-     * Obtém a instância do ClanDAO para registro no Core.
-     * 
-     * @return Instância do ClanDAO
-     */
-    public ClanDAO getClanDAO() {
-        return clanDAO;
-    }
 }

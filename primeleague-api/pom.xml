@@ -5,9 +5,14 @@
          http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>br.com.primeleague</groupId>
+    <parent>
+        <groupId>br.com.primeleague</groupId>
+        <artifactId>primeleague-parent</artifactId>
+        <version>1.0.0</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
     <artifactId>primeleague-api</artifactId>
-    <version>1.0.0</version>
     <packaging>jar</packaging>
 
     <name>PrimeLeague-API</name>
@@ -25,8 +30,7 @@
             <groupId>org.bukkit</groupId>
             <artifactId>bukkit</artifactId>
             <version>1.5.2-R1.0</version>
-            <scope>system</scope>
-            <systemPath>${project.basedir}/../lib/craftbukkit-1.5.2-R1.0.jar</systemPath>
+            <scope>provided</scope>
         </dependency>
     </dependencies>
 

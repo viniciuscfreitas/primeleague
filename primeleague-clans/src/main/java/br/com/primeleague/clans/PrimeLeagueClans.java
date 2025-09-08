@@ -4,7 +4,6 @@ import br.com.primeleague.clans.manager.ClanManager;
 import br.com.primeleague.clans.commands.ClanCommand;
 import br.com.primeleague.api.dao.ClanDAO;
 import br.com.primeleague.api.TagServiceRegistry;
-import br.com.primeleague.api.DAOServiceRegistry;
 import br.com.primeleague.api.ClanServiceRegistry;
 import br.com.primeleague.clans.services.ClanServiceImpl;
 

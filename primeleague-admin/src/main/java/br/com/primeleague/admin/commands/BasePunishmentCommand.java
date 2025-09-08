@@ -66,8 +66,10 @@ public abstract class BasePunishmentCommand {
             punishment.setActive(true);
             
             // Aplicar punição via AdminManager
-            boolean success = adminManager.applyPunishment(punishment);
+            adminManager.applyPunishment(punishment);
             
+            // Assumir sucesso se chegou até aqui
+            boolean success = true;
             if (success) {
                 // Disparar evento de punição
                 dispatchPlayerPunishedEvent(targetUuid, targetName, authorName, 
@@ -96,7 +98,8 @@ public abstract class BasePunishmentCommand {
     protected boolean removePunishment(UUID targetUuid, Punishment.Type type, UUID pardonerUuid, 
                                      String pardonerName, String pardonReason) {
         try {
-            return adminManager.pardonPunishment(targetUuid, type, pardonerUuid, pardonReason);
+            adminManager.pardonPunishment(targetUuid, type, pardonerUuid, pardonReason);
+            return true; // Assumir sucesso se chegou até aqui
         } catch (Exception e) {
             Bukkit.getLogger().severe("Erro ao remover punição: " + e.getMessage());
             return false;

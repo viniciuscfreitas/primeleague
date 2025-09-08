@@ -1,0 +1,91 @@
+# Mensagens do Módulo de Territórios - Prime League
+# Este arquivo permite customizar todas as mensagens exibidas aos jogadores
+
+# Mensagens de Território
+territory:
+  claim:
+    success: "&aTerritório reivindicado com sucesso!"
+    already_claimed: "&cEste território já foi reivindicado!"
+    no_permission: "&cVocê não tem permissão para reivindicar territórios!"
+    insufficient_moral: "&cMoral insuficiente! Necessário: {required}, Atual: {current}"
+    no_clan: "&cVocê precisa estar em um clã para reivindicar territórios!"
+    cost_info: "&eCusto para reivindicar: ${cost}"
+    
+  unclaim:
+    success: "&aTerritório removido com sucesso!"
+    not_claimed: "&cEste território não foi reivindicado!"
+    no_permission: "&cVocê não tem permissão para remover territórios!"
+    not_owner: "&cEste território pertence a outro clã!"
+    
+  bank:
+    deposit:
+      success: "&aDepositado ${amount} no banco do clã!"
+      insufficient_balance: "&cSaldo insuficiente!"
+    withdraw:
+      success: "&aSacado ${amount} do banco do clã!"
+      insufficient_balance: "&cSaldo insuficiente no banco do clã!"
+    balance: "&eSaldo do banco do clã: ${amount}"
+    
+  maintenance:
+    cost: "&eCusto de manutenção: ${cost}"
+    insufficient_funds: "&cSaldo insuficiente para manutenção! Perdendo território mais antigo..."
+    territory_lost: "&cTerritório perdido por falta de manutenção: {location}"
+
+# Mensagens de Guerra
+war:
+  declare:
+    success: "&aGuerra declarada contra {clan}!"
+    target_not_vulnerable: "&cO clã {clan} não está vulnerável!"
+    insufficient_balance: "&cSaldo insuficiente para declarar guerra!"
+    active_truce: "&cExiste uma trégua ativa com o clã {clan}!"
+    no_permission: "&cVocê não tem permissão para declarar guerra!"
+    cost_info: "&eCusto para declarar guerra: ${cost}"
+    exclusivity_window: "&eJanela de exclusividade: {hours} horas"
+    
+  siege:
+    start: "&cCerco iniciado em {location}!"
+    end: "&aCerco finalizado em {location}!"
+    victory: "&aVitória! Território conquistado!"
+    defeat: "&cDerrota! Território defendido!"
+    timer_update: "&eTempo restante: {time}"
+    contestation:
+      attackers_winning: "&cAtacantes dominando! Timer acelerando..."
+      defenders_winning: "&aDefensores dominando! Timer regredindo..."
+      balanced: "&eCombate equilibrado! Timer pausado."
+    
+  pillage:
+    phase_start: "&cFase de pilhagem iniciada! 5 minutos para saquear!"
+    phase_end: "&aFase de pilhagem finalizada! Contêineres serão limpos."
+    containers_cleared: "&eContêineres do território foram limpos."
+
+# Mensagens de Informação
+info:
+  territory_status: "&eStatus do território: {status}"
+  clan_territories: "&eTerritórios do clã: {count}"
+  clan_moral: "&eMoral do clã: {moral}"
+  clan_bank: "&eBanco do clã: ${balance}"
+  war_status: "&eStatus da guerra: {status}"
+  
+# Mensagens de Erro
+error:
+  database: "&cErro de banco de dados. Tente novamente."
+  generic: "&cOcorreu um erro. Tente novamente."
+  invalid_arguments: "&cArgumentos inválidos!"
+  player_not_found: "&cJogador não encontrado!"
+  clan_not_found: "&cClã não encontrado!"
+  territory_not_found: "&cTerritório não encontrado!"
+  no_permission: "&cVocê não tem permissão para executar este comando!"
+  
+# Mensagens de Sucesso
+success:
+  operation_completed: "&aOperação concluída com sucesso!"
+  data_loaded: "&aDados carregados com sucesso!"
+  data_saved: "&aDados salvos com sucesso!"
+  
+# Mensagens de Sistema
+system:
+  module_loaded: "&aMódulo de Territórios carregado com sucesso!"
+  module_disabled: "&cMódulo de Territórios desabilitado!"
+  maintenance_check: "&eVerificação de manutenção executada."
+  territory_loaded: "&eTerritório carregado: {location}"
+  war_loaded: "&eGuerra carregada: {aggressor} vs {defender}"

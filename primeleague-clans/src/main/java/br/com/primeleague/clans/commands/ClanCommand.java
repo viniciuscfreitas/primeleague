@@ -41,28 +41,44 @@ public class ClanCommand implements CommandExecutor {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        // DEBUG: Log de entrada no comando principal
+        plugin.getLogger().info("[CLAN-DEBUG] onCommand() chamado:");
+        plugin.getLogger().info("[CLAN-DEBUG] - Sender: " + (sender != null ? sender.getName() : "NULL"));
+        plugin.getLogger().info("[CLAN-DEBUG] - Command: " + (command != null ? command.getName() : "NULL"));
+        plugin.getLogger().info("[CLAN-DEBUG] - Label: " + label);
+        plugin.getLogger().info("[CLAN-DEBUG] - Args: " + java.util.Arrays.toString(args));
+        
         if (!(sender instanceof Player)) {
+            plugin.getLogger().info("[CLAN-DEBUG] Sender não é um Player");
             sender.sendMessage(ChatColor.RED + "Este comando só pode ser usado por jogadores!");
             return true;
         }
 
         Player player = (Player) sender;
+        plugin.getLogger().info("[CLAN-DEBUG] - Player UUID: " + player.getUniqueId());
         
         // BARRERA DE SEGURANÇA: Verificar se o perfil do jogador está carregado
-        if (PrimeLeagueAPI.getDataManager().isLoading(player.getUniqueId())) {
+        boolean isLoading = PrimeLeagueAPI.getDataManager().isLoading(player.getUniqueId());
+        plugin.getLogger().info("[CLAN-DEBUG] - Perfil carregando: " + isLoading);
+        
+        if (isLoading) {
+            plugin.getLogger().info("[CLAN-DEBUG] Perfil ainda carregando para " + player.getName());
             player.sendMessage("§cSeu perfil ainda está carregando. Tente novamente em um instante.");
             return true;
         }
 
         if (args.length == 0) {
+            plugin.getLogger().info("[CLAN-DEBUG] Nenhum argumento fornecido, mostrando ajuda");
             showHelp(player);
             return true;
         }
 
         String subCommand = args[0].toLowerCase();
+        plugin.getLogger().info("[CLAN-DEBUG] Subcomando identificado: " + subCommand);
 
         switch (subCommand) {
             case "create":
+                plugin.getLogger().info("[CLAN-DEBUG] Executando subcomando: create");
                 handleCreate(player, args);
                 break;
             case "invite":
@@ -168,10 +184,25 @@ public class ClanCommand implements CommandExecutor {
      * Manipula o comando /clan create.
      */
     private void handleCreate(Player player, String[] args) {
-        if (!PrimeLeagueAPI.hasPermission(player, "primeleague.clans.create")) {
+        // DEBUG: Log de entrada no comando
+        plugin.getLogger().info("[CLAN-DEBUG] handleCreate() chamado:");
+        plugin.getLogger().info("[CLAN-DEBUG] - Player: " + player.getName());
+        plugin.getLogger().info("[CLAN-DEBUG] - UUID: " + player.getUniqueId());
+        plugin.getLogger().info("[CLAN-DEBUG] - Args: " + java.util.Arrays.toString(args));
+        
+        // DEBUG: Log antes da verificação de permissão
+        plugin.getLogger().info("[CLAN-DEBUG] Verificando permissão 'primeleague.clans.create' para " + player.getName());
+        
+        boolean hasPermission = PrimeLeagueAPI.hasPermission(player, "primeleague.clans.create");
+        plugin.getLogger().info("[CLAN-DEBUG] Resultado da verificação de permissão: " + hasPermission);
+        
+        if (!hasPermission) {
+            plugin.getLogger().warning("[CLAN-DEBUG] PERMISSÃO NEGADA para " + player.getName() + " - primeleague.clans.create");
             player.sendMessage(ChatColor.RED + "Você não tem permissão para criar clãs!");
             return;
         }
+        
+        plugin.getLogger().info("[CLAN-DEBUG] PERMISSÃO CONCEDIDA para " + player.getName() + " - primeleague.clans.create");
 
         if (args.length < 3) {
             player.sendMessage(ChatColor.RED + "Uso: /clan create <tag> <nome>");

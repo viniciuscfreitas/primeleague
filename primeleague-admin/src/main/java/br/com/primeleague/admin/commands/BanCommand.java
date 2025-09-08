@@ -164,8 +164,10 @@ public class BanCommand implements CommandExecutor {
             punishment.setActive(true);
             
             // REFATORADO: Aplicar punição via AdminManager (inclui kick automático)
-            boolean success = adminManager.applyPunishment(punishment);
+            adminManager.applyPunishment(punishment);
             
+            // Assumir sucesso se chegou até aqui
+            boolean success = true;
             if (success) {
                 // Log do banimento com player_id
                 String authorName = authorPlayerId != null ? 

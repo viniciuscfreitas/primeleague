@@ -31,6 +31,7 @@
             <groupId>br.com.primeleague</groupId>
             <artifactId>primeleague-api</artifactId>
             <version>1.0.0</version>
+            <scope>provided</scope>
         </dependency>
 
         <!-- PrimeLeague Core -->
@@ -38,6 +39,7 @@
             <groupId>br.com.primeleague</groupId>
             <artifactId>primeleague-core</artifactId>
             <version>1.0.0</version>
+            <scope>provided</scope>
         </dependency>
 
         <!-- Bukkit API -->
@@ -45,8 +47,7 @@
             <groupId>org.bukkit</groupId>
             <artifactId>bukkit</artifactId>
             <version>1.5.2-R1.0</version>
-            <scope>system</scope>
-            <systemPath>${project.basedir}/../lib/craftbukkit-1.5.2-R1.0.jar</systemPath>
+            <scope>provided</scope>
         </dependency>
     </dependencies>
 

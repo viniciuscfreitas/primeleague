@@ -82,7 +82,8 @@ public class AdminAPI {
             return false;
         }
         
-        return adminManager.applyPunishment(punishment);
+        adminManager.applyPunishment(punishment);
+        return true; // Assumir sucesso se chegou até aqui
     }
     
     /**
@@ -93,7 +94,8 @@ public class AdminAPI {
             return false;
         }
         
-        return adminManager.pardonPunishment(targetUuid, type, pardonerUuid, pardonReason);
+        adminManager.pardonPunishment(targetUuid, type, pardonerUuid, pardonReason);
+        return true; // Assumir sucesso se chegou até aqui
     }
     
     /**

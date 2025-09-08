@@ -3,9 +3,14 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>br.com.primeleague</groupId>
+    <parent>
+        <groupId>br.com.primeleague</groupId>
+        <artifactId>primeleague-parent</artifactId>
+        <version>1.0.0</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
     <artifactId>primeleague-core</artifactId>
-    <version>1.0.0</version>
     <packaging>jar</packaging>
 
     <name>PrimeLeague-Core</name>
@@ -22,6 +27,7 @@
             <groupId>br.com.primeleague</groupId>
             <artifactId>primeleague-api</artifactId>
             <version>1.0.0</version>
+            <scope>provided</scope>
         </dependency>
 
         <!-- Bukkit API 1.5.2 - dependência local -->
@@ -29,43 +35,37 @@
             <groupId>org.bukkit</groupId>
             <artifactId>bukkit</artifactId>
             <version>1.5.2-R1.0</version>
-            <scope>system</scope>
-            <systemPath>${project.basedir}/../lib/craftbukkit-1.5.2-R1.0.jar</systemPath>
+            <scope>provided</scope>
         </dependency>
 
-        <!-- Pool de conexões HikariCP - versão moderna -->
+        <!-- Pool de conexões HikariCP -->
         <dependency>
             <groupId>com.zaxxer</groupId>
             <artifactId>HikariCP</artifactId>
-            <version>5.1.0</version>
         </dependency>
 
-        <!-- Driver MySQL moderno -->
+        <!-- Driver MySQL -->
         <dependency>
             <groupId>mysql</groupId>
             <artifactId>mysql-connector-java</artifactId>
-            <version>8.0.33</version>
         </dependency>
 
-        <!-- SLF4J API moderno -->
+        <!-- SLF4J API -->
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
-            <version>2.0.12</version>
         </dependency>
 
-        <!-- SLF4J NOP moderno -->
+        <!-- SLF4J NOP -->
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-nop</artifactId>
-            <version>2.0.12</version>
         </dependency>
 
-        <!-- BCrypt moderno -->
+        <!-- BCrypt -->
         <dependency>
             <groupId>at.favre.lib</groupId>
             <artifactId>bcrypt</artifactId>
-            <version>0.10.2</version>
             <exclusions>
                 <exclusion>
                     <groupId>org.slf4j</groupId>
@@ -119,6 +119,17 @@
                                     <mainClass>br.com.primeleague.core.PrimeLeagueCore</mainClass>
                                 </transformer>
                             </transformers>
+                            <!-- Excluir arquivos de assinatura para evitar SecurityException -->
+                            <filters>
+                                <filter>
+                                    <artifact>*:*</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/*.SF</exclude>
+                                        <exclude>META-INF/*.DSA</exclude>
+                                        <exclude>META-INF/*.RSA</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
                         </configuration>
                     </execution>
                 </executions>

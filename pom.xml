@@ -11,58 +11,47 @@
     <packaging>pom</packaging>
 
     <name>PrimeLeague Parent</name>
-    <description>Projeto pai para o ecossistema Prime League</description>
+    <description>Projeto pai para todos os módulos do Prime League</description>
 
-    <!-- Módulos do projeto -->
+    <properties>
+        <maven.compiler.source>8</maven.compiler.source>
+        <maven.compiler.target>8</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.plugin.version>3.11.0</maven.compiler.plugin.version>
+        <maven.shade.plugin.version>3.5.1</maven.shade.plugin.version>
+        <maven.jar.plugin.version>3.4.1</maven.jar.plugin.version>
+        <jacoco.version>0.8.7</jacoco.version>
+    </properties>
+
+    <!-- Repositório local para craftbukkit.jar -->
+    <repositories>
+        <repository>
+            <id>primeleague-local-repo</id>
+            <url>file://${project.basedir}/repo</url>
+        </repository>
+    </repositories>
+
+    <!-- Módulos na ordem de dependência -->
     <modules>
-        <module>primeleague-core</module>
+        <!-- 1. API - Base sem dependências internas -->
         <module>primeleague-api</module>
-        <module>primeleague-admin</module>
-        <module>primeleague-chat</module>
+        
+        <!-- 2. Core - Depende da API -->
+        <module>primeleague-core</module>
+        
+        <!-- 3. Módulos que dependem do Core -->
         <module>primeleague-clans</module>
         <module>primeleague-p2p</module>
+        <module>primeleague-admin</module>
         <module>primeleague-adminshop</module>
+        <module>primeleague-chat</module>
+        <module>primeleague-essentials</module>
         <module>primeleague-combatlog</module>
     </modules>
 
-    <properties>
-        <maven.compiler.source>1.7</maven.compiler.source>
-        <maven.compiler.target>1.7</maven.compiler.target>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        
-        <!-- Versões das dependências -->
-        <bukkit.version>1.5.2-R1.0</bukkit.version>
-        <hikaricp.version>4.0.3</hikaricp.version>
-        <gson.version>2.8.9</gson.version>
-    </properties>
-
-    <!-- Dependências comuns para todos os módulos -->
+    <!-- Gerenciamento de dependências -->
     <dependencyManagement>
         <dependencies>
-            <!-- Bukkit API -->
-            <dependency>
-                <groupId>org.bukkit</groupId>
-                <artifactId>bukkit</artifactId>
-                <version>${bukkit.version}</version>
-                <scope>system</scope>
-                <systemPath>${project.basedir}/../lib/craftbukkit-1.5.2-R1.0.jar</systemPath>
-            </dependency>
-
-            <!-- HikariCP -->
-            <dependency>
-                <groupId>com.zaxxer</groupId>
-                <artifactId>HikariCP</artifactId>
-                <version>${hikaricp.version}</version>
-            </dependency>
-
-            <!-- Gson -->
-            <dependency>
-                <groupId>com.google.code.gson</groupId>
-                <artifactId>gson</artifactId>
-                <version>${gson.version}</version>
-            </dependency>
-
             <!-- PrimeLeague API -->
             <dependency>
                 <groupId>br.com.primeleague</groupId>
@@ -70,66 +59,96 @@
                 <version>${project.version}</version>
             </dependency>
 
-            <!-- PrimeLeague Core -->
+
+            <!-- HikariCP - versão compatível com Java 8 -->
             <dependency>
-                <groupId>br.com.primeleague</groupId>
-                <artifactId>primeleague-core</artifactId>
-                <version>${project.version}</version>
+                <groupId>com.zaxxer</groupId>
+                <artifactId>HikariCP</artifactId>
+                <version>4.0.3</version>
+            </dependency>
+
+            <!-- MySQL Connector - versão compatível com Java 8 -->
+            <dependency>
+                <groupId>mysql</groupId>
+                <artifactId>mysql-connector-java</artifactId>
+                <version>5.1.49</version>
+            </dependency>
+
+            <!-- SLF4J - versões compatíveis com Java 8 -->
+            <dependency>
+                <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-api</artifactId>
+                <version>1.7.36</version>
+            </dependency>
+            <dependency>
+                <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-nop</artifactId>
+                <version>1.7.36</version>
+            </dependency>
+
+            <!-- BCrypt -->
+            <dependency>
+                <groupId>at.favre.lib</groupId>
+                <artifactId>bcrypt</artifactId>
+                <version>0.10.2</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
 
-    <!-- Configurações de build comuns -->
+    <!-- Configurações de build padrão -->
     <build>
         <pluginManagement>
             <plugins>
-                <!-- Compiler Plugin -->
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-compiler-plugin</artifactId>
-                    <version>3.8.1</version>
+                    <version>${maven.compiler.plugin.version}</version>
                     <configuration>
-                        <source>${maven.compiler.source}</source>
-                        <target>${maven.compiler.target}</target>
-                        <encoding>${project.build.sourceEncoding}</encoding>
+                        <source>8</source>
+                        <target>8</target>
                     </configuration>
                 </plugin>
 
-                <!-- Shade Plugin -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-jar-plugin</artifactId>
+                    <version>${maven.jar.plugin.version}</version>
+                    <configuration>
+                        <archive>
+                            <manifest>
+                                <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+                            </manifest>
+                        </archive>
+                    </configuration>
+                </plugin>
+
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-shade-plugin</artifactId>
-                    <version>3.2.4</version>
-                    <configuration>
-                        <createDependencyReducedPom>true</createDependencyReducedPom>
-                    </configuration>
+                    <version>${maven.shade.plugin.version}</version>
                 </plugin>
 
-                <!-- Surefire Plugin (para testes) -->
+                <!-- Plugin JaCoCo para cobertura de código -->
                 <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-surefire-plugin</artifactId>
-                    <version>3.2.5</version>
-                    <configuration>
-                        <skipTests>true</skipTests>
-                    </configuration>
+                    <groupId>org.jacoco</groupId>
+                    <artifactId>jacoco-maven-plugin</artifactId>
+                    <version>${jacoco.version}</version>
+                    <executions>
+                        <execution>
+                            <goals>
+                                <goal>prepare-agent</goal>
+                            </goals>
+                        </execution>
+                        <execution>
+                            <id>report</id>
+                            <phase>prepare-package</phase>
+                            <goals>
+                                <goal>report</goal>
+                            </goals>
+                        </execution>
+                    </executions>
                 </plugin>
             </plugins>
         </pluginManagement>
     </build>
-
-    <!-- Repositórios -->
-    <repositories>
-        <repository>
-            <id>spigot-repo</id>
-            <url>https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url>
-        </repository>
-    </repositories>
-
-    <pluginRepositories>
-        <pluginRepository>
-            <id>spigot-repo</id>
-            <url>https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url>
-        </pluginRepository>
-    </pluginRepositories>
 </project>
